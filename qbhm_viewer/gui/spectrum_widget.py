@@ -343,7 +343,7 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self.pet.hv_value.setToolTip(
 """set HV value which restricts x axis and
 influences heights of preview lines as function
-of effectivness""")
+of effectivness (2.7 rule)""")
         self.pet.hv_value.setRange(0.1, 1e4)
         self.pet.setCellWidget(8, 0, self.pet.hv_value)
         #self.dock_pet_win = QtGui.QDockWidget(self)

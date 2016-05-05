@@ -171,8 +171,6 @@ class ElementTableGUI(QtGui.QTableWidget):
         self._setup_text_interface()
         self._setup_etc()
         self.resize(500, 300)
-        #self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint)
-
 
     def _setup_etc(self):
         self.setShowGrid(False)
@@ -292,13 +290,15 @@ Use '-' (minus) sign to switch all elements after it:
         self.setCellWidget(6, 2, act_text)
         lant_text.setEnabled(False)
         act_text.setEnabled(False)
+        self.setMinimumWidth(self.horizontalHeader().length() + 10)
 
     def keyPressEvent(self, event):
         #if (event.key() >= 0x41) and (event.key() <= 0x5a):
         if event.key() == Qt.Key_Shift:
             self.textInterface.setFocus()
-        elif(event.key() == Qt.Key_Escape):
-            self.close()
+        #that should be done from parent widget level:
+        #elif(event.key() == Qt.Key_Escape):
+        #    self.close()
 
     @QtCore.pyqtSlot(QtGui.QWidget)
     def previewToggler(self, button):
@@ -333,4 +333,3 @@ Use '-' (minus) sign to switch all elements after it:
             self.cellWidget(pt_indexes[i][0],
                             pt_indexes[i][1]).toggle()
         self.signalMapper2.blockSignals(False)
-        
