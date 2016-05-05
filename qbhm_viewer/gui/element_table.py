@@ -154,8 +154,8 @@ class ElementTableGUI(QtGui.QTableWidget):
     enableElement = QtCore.pyqtSignal(str)
     disableElement = QtCore.pyqtSignal(str)
 
-    def __init__(self, preenabled=[]):
-        QtGui.QTableWidget.__init__(self)
+    def __init__(self, parent = None, preenabled=[]):
+        QtGui.QTableWidget.__init__(self, parent)
         self.setWindowTitle('Element Table')
         self.setColumnCount(18)
         self.setRowCount(9)
@@ -171,6 +171,8 @@ class ElementTableGUI(QtGui.QTableWidget):
         self._setup_text_interface()
         self._setup_etc()
         self.resize(500, 300)
+        #self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint)
+
 
     def _setup_etc(self):
         self.setShowGrid(False)
@@ -331,3 +333,4 @@ Use '-' (minus) sign to switch all elements after it:
             self.cellWidget(pt_indexes[i][0],
                             pt_indexes[i][1]).toggle()
         self.signalMapper2.blockSignals(False)
+        

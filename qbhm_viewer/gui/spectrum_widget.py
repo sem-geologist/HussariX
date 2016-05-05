@@ -158,6 +158,8 @@ class PenEditor(QtGui.QDialog):
 class EDSCanvas(pg.PlotWidget):
     def __init__(self, kv=15):
         pg.PlotWidget.__init__(self)
+        #p1 the main plotItem/canvas
+        #p2 secondary viewbox for EDS preview lines
         self.p1 = self.plotItem
         self.p1.setLabels(left='cts', bottom='keV')
         self.p2 = pg.ViewBox()
@@ -239,36 +241,50 @@ class CustomToolButton(QtGui.QToolButton):
 
 
 class EDSSpectraGUI(QtGui.QMainWindow):
-    def __init__(self):
-        QtGui.QMainWindow.__init__(self)
+    def __init__(self, parent=None, icon_size=None, pet_opacity=None):
+        QtGui.QMainWindow.__init__(self, parent)
         self.resize(550,500)
         self.toolbar = QtGui.QToolBar('tools', parent=self)
-        self.toolbar.setIconSize(QtCore.QSize(32,32))
+        self._pet_opacity = pet_opacity
+        if icon_size is not None:
+            self.toolbar.setIconSize(QtCore.QSize(icon_size,
+                                                icon_size))
         self.addToolBar(QtCore.Qt.RightToolBarArea, self.toolbar)
         self.centralwidget = QtGui.QWidget()
         self.setCentralWidget(self.centralwidget)
         self.horizontalLayout = QtGui.QHBoxLayout(self.centralwidget)
-        self.splitter = QtGui.QSplitter(self.centralwidget)
-        self.splitter.setOrientation(QtCore.Qt.Vertical)
         self._setup_toolbar()
-        self._setup_widgets()
-        self.horizontalLayout.addWidget(self.splitter)
+        self.canvas = EDSCanvas()
         self._setup_connections()
-        self.spectra_list = QtGui.QListView()
-        self.tabWidget.addTab(self.spectra_list, 'spectras')
+        self.horizontalLayout.addWidget(self.canvas)
         
     def _setup_connections(self):
         self.pet.enableElementPrev.connect(self.canvas.previewLines)
         self.pet.disableElementPrev.connect(self.canvas.clearPreview)
         self.config_preview.triggered.connect(self.canvas.tweek_preview_style)
+        self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
+        self.actionFullscreen.triggered.connect(self.go_fullscreen)
+        self.actionWindowed.triggered.connect(self.go_windowed)
         
     def _setup_toolbar(self):
+        self.fullscreen_button =QtGui.QToolButton()
+        self.toolbar.addWidget(self.fullscreen_button)
+        self.actionFullscreen = QtGui.QAction(self)
+        self.actionFullscreen.setIcon(QtGui.QIcon('gui/icons/tango_fullscreen.svg'))
+        self.actionWindowed = QtGui.QAction(self)
+        self.actionWindowed.setIcon(QtGui.QIcon('gui/icons/windowed.svg'))
+        self.fullscreen_button.setDefaultAction(self.actionFullscreen)
+        #add spacer:
+        self._empty2 = QtGui.QWidget()
+        self._empty2.setSizePolicy(QtGui.QSizePolicy.Expanding,
+                                   QtGui.QSizePolicy.Expanding)
+        self.toolbar.addWidget(self._empty2)
         self.actionElementTable = QtGui.QAction(self)
-        icon = QtGui.QIcon('gui/icons/pt.svg')
-        self.actionElementTable.setIcon(icon)
+        self.actionElementTable.setIcon(QtGui.QIcon('gui/icons/pt.svg'))
+        #self.actionElementTable.setCheckable(True)
         self.toolbar.addAction(self.actionElementTable)
-        self.actionElementTable.triggered.connect(self.show_pet)
         self._setup_pet()
+        self.actionElementTable.triggered.connect(self.show_pet)
         self.toolbar.addSeparator()
         self.auto_button = CustomToolButton(self)
         self._setup_auto()
@@ -277,6 +293,11 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self.config_button.setIcon(QtGui.QIcon('gui/icons/tango_preferences_system.svg'))
         self._setup_config()
         self.toolbar.addWidget(self.config_button)
+        self._empty1 = QtGui.QWidget()
+        self._empty1.setSizePolicy(QtGui.QSizePolicy.Expanding,
+                                   QtGui.QSizePolicy.Expanding)
+        self.toolbar.addWidget(self._empty1)
+        
         
     def _setup_auto(self):
         menu = QtGui.QMenu('auto range')
@@ -313,30 +334,26 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self.config_button.setDefaultAction(self.config_preview)
         
     def _setup_pet(self):
-        self.pet = pet.ElementTableGUI()
+        self.dock_pet_win = QtGui.QDockWidget('Periodic table', self)
+        
+        self.pet = pet.ElementTableGUI(self.dock_pet_win)
         self.pet.hv_value = QtGui.QDoubleSpinBox()
         self.pet.hv_value.setValue(15.)
+        self.pet.hv_value.setSuffix(" kV")
         self.pet.hv_value.setToolTip(
-"""set HV value which
-restricts x axis and
-influences height of
-preview lines""")
-        self.pet.preview.setToolTip('double click\n for customization')
+"""set HV value which restricts x axis and
+influences heights of preview lines as function
+of effectivness""")
         self.pet.hv_value.setRange(0.1, 1e4)
         self.pet.setCellWidget(8, 0, self.pet.hv_value)
-        
-    def _setup_widgets(self):
-        self.canvas_w = QtGui.QWidget(self.splitter)
-        chlayout = QtGui.QHBoxLayout(self.canvas_w)
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Preferred,
-                                       QtGui.QSizePolicy.Preferred)
-        sizePolicy.setVerticalStretch(1)
-        self.canvas = EDSCanvas()
-        chlayout.addWidget(self.canvas)
-        self.canvas_w.setSizePolicy(sizePolicy)
-        self.tabWidget = QtGui.QTabWidget(self.splitter)
-        self.tableView = {}
-        self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
+        #self.dock_pet_win = QtGui.QDockWidget(self)
+        self.dock_pet_win.setWidget(self.pet)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dock_pet_win)
+        self.dock_pet_win.setAllowedAreas(QtCore.Qt.NoDockWidgetArea)
+        self.dock_pet_win.setFloating(True)
+        if self._pet_opacity:
+            self.dock_pet_win.setWindowOpacity(self._pet_opacity)
+        self.dock_pet_win.hide()
         
     def add_table(self, name):
         self.tableView[name] = QtGui.QTableView(self.tabWidget)
@@ -344,5 +361,26 @@ preview lines""")
         
     def show_pet(self):
         #self.pet.setWindowOpacity(0.9)
-        self.pet.show()
-
+        if self.dock_pet_win.isVisible():
+            self.dock_pet_win.hide()
+        else:
+            self.dock_pet_win.show()
+    
+    def go_fullscreen(self):
+        if self.parent() is not None:
+            self.windowed_parent = self.parent()
+            self.index_in_parent = self.windowed_parent.indexOf(self)
+        self.windowed_flags = self.windowFlags()
+        self.windowed_geometry = self.geometry()
+        self.setParent(None)
+        self.showFullScreen()
+        self.fullscreen_button.removeAction(self.actionFullscreen)
+        self.fullscreen_button.setDefaultAction(self.actionWindowed)
+        
+    def go_windowed(self):
+        self.showNormal()
+        if 'windowed_parent' in self.__dict__:
+            self.windowed_parent.insertWidget(self.index_in_parent, self)
+        self.setGeometry(self.windowed_geometry)
+        self.fullscreen_button.removeAction(self.actionWindowed)
+        self.fullscreen_button.setDefaultAction(self.actionFullscreen)
