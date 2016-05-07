@@ -58,6 +58,7 @@ pt_indexes = {'H': (0, 0), 'He': (0, 17), 'Li': (1, 0),
               'Pu': (8, 8)}
 
 #element groups:
+#TODO: this could go to json and configs
 geo_groups = {'LITHOPHILE': ['Na', 'K', 'Si', 'Al', 'Ti', 'Mg', 'Ca'],
               'SIDEROPHILE': ['Fe', 'Co', 'Ni', 'Pt', 'Re', 'Os'],
               'CHALCOPHILE': ['Cu', 'Ag', 'Zn', 'Pb', 'S'],
@@ -304,26 +305,18 @@ Use '-' (minus) sign to switch all elements after it:
     def previewToggler(self, button):
         if button.isEnabled() and self.preview.checkState():
             if button.hoverState:
-                if debug_flag >= 2:
-                    print('hovered_over', button.text())
                 self.enableElementPrev.emit(button.text())
             else:
-                if debug_flag >= 2:
-                    print('de-hovered', button.text())
                 self.disableElementPrev.emit(button.text())
 
     @QtCore.pyqtSlot(QtGui.QWidget)
     def elementToggler(self, button):
         if button.isChecked():
-            if debug_flag >= 2:
-                print('on', button.text())
             self.enableElement.emit(button.text())
             if button.hoverState:
                 button.setGeometry(button.orig_size)
                 button.setStyleSheet("""font: bold;""")
         else:
-            if debug_flag >= 2:
-                print('off', button.text())
             self.disableElement.emit(button.text())
             button.setStyleSheet("""font: normal;""")
 

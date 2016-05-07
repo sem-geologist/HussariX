@@ -321,6 +321,9 @@ def parse_in_chunks(bcf, heights=[], downsample=1, cutoff=None):
     look like this:
     >> parse_in_chunks(some_bcf, heights=[513, 513, 513, 509], downsample = 3)
     """
+    if sum heights > bcf.sfs.header.image.height:
+        raise ValueError('sum of provided line intervals is larger than',
+                         'physical height of image/array')
     blocks, block_size, total_blocks = bcf.get_iter_and_properties()
     cdef DataStream data_stream = DataStream(blocks, block_size)
     data_stream.seek(0x1A0)

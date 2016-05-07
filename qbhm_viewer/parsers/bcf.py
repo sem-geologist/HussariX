@@ -18,9 +18,7 @@
 #
 # This python library subset provides read functionality of
 #  Bruker bcf files.
-# The basic reading capabilities of proprietary AidAim Software(tm)
-#  SFS (Single File System) (used in bcf technology) is present in
-#  the same library.
+
 
 
 from lxml import objectify
@@ -33,6 +31,7 @@ import logging
 _logger = logging.getLogger(__name__)
 
 from . import unbcf_fast
+from .bxml import BasicEDXSpectrum
 
 import psutil
 import tables as tb
@@ -40,72 +39,6 @@ import tables as tb
 
 class Container(object):
     pass
-
-
-class EDXSpectrum(object):
-    def __init__(self, spectrum):
-        """
-        Wrap the objectified bruker EDS spectrum xml part
-        to the python object, leaving all the xml and bruker clutter behind
-
-        Arguments:
-        spectrum -- lxml objectified xml where spectrum.attrib['Type'] should
-            be 'TRTSpectrum'
-        """
-        if str(spectrum.attrib['Type']) != 'TRTSpectrum':
-            raise IOError('Not valid objectified xml passed',
-                          ' to Bruker EDXSpectrum class')
-        try:
-            self.realTime = int(
-                            spectrum.TRTHeaderedClass.ClassInstance.RealTime)
-            self.lifeTime = int(
-                            spectrum.TRTHeaderedClass.ClassInstance.LifeTime)
-            self.deadTime = int(
-                            spectrum.TRTHeaderedClass.ClassInstance.DeadTime)
-        except AttributeError:
-            _logger.warning('spectrum have no dead time records...')
-        self.zeroPeakPosition = int(
-                      spectrum.TRTHeaderedClass.ClassInstance.ZeroPeakPosition)
-        self.amplification = int(
-                      spectrum.TRTHeaderedClass.ClassInstance.Amplification)
-        self.shapingTime = int(
-                      spectrum.TRTHeaderedClass.ClassInstance.ShapingTime)
-        self.detectorType = str(spectrum.TRTHeaderedClass.ClassInstance[1].Type)
-        self.hv = float(
-                      spectrum.TRTHeaderedClass.ClassInstance[2].PrimaryEnergy)
-        self.elevationAngle = float(
-                      spectrum.TRTHeaderedClass.ClassInstance[2].ElevationAngle)
-        self.azimutAngle = float(
-                      spectrum.TRTHeaderedClass.ClassInstance[2].AzimutAngle)
-        self.calibAbs = float(spectrum.ClassInstance[0].CalibAbs)
-        self.calibLin = float(spectrum.ClassInstance[0].CalibLin)
-        self.chnlCnt = int(spectrum.ClassInstance[0].ChannelCount)
-        self.date = str(spectrum.ClassInstance[0].Date)
-        self.time = str(spectrum.ClassInstance[0].Time)
-        self.data = np.fromstring(str(spectrum.Channels), dtype='Q', sep=",")
-        self.energy = np.arange(self.calibAbs,
-                           self.calibLin * self.chnlCnt + self.calibAbs,
-                           self.calibLin)  # the x axis for ploting spectra
-
-    def energy_to_channel(self, energy, kV=True):
-        """ convert energy to channel index,
-        optional kwarg 'kV' (default: True) should be set to False
-        if given energy units is in V"""
-        if not kV:
-            en_temp = energy / 1000.
-        else:
-            en_temp = energy
-        return int(round((en_temp - self.calibAbs) / self.calibLin))
-
-    def channel_to_energy(self, channel, kV=True):
-        """convert given channel index to energy,
-        optional kwarg 'kV' (default: True) decides if returned value
-        is in kV or V"""
-        if not kV:
-            kV = 1000
-        else:
-            kV = 1
-        return (channel * self.calibLin + self.calibAbs) * kV
 
 
 class HyperHeader(object):
@@ -146,7 +79,7 @@ class HyperHeader(object):
         #fill the sem and stage attributes:
         self._set_sem(root)
         self._set_image(root)
-        self.elements = []
+        self.elements = {}
         self._set_elements(root)
         self.line_counter = np.fromstring(str(root.LineCounter),
                                           dtype=np.uint16, sep=',')
@@ -219,15 +152,17 @@ class HyperHeader(object):
                "/ClassInstance[@Type='TRTSpectrumRegionList']",
                "/ChildClassInstances"]))[0]
             for j in elements.xpath("ClassInstance[@Type='TRTSpectrumRegion']"):
-                self.elements.append(int(j.Element))
+                self.elements[j.attrib['Name']] = {'line': j.Line.pyval,
+                                                   'energy': j.Energy.pyval,
+                                                   'width': j.Width.pyval}
         except IndexError:
-            _logger.info('no element selection present in the spectra..')
+            _logger.info('no element selection present in the hypermap..')
 
     def _set_sum_edx(self, root):
         for i in range(self.mapping_count):
             self.channel_factors[i] = int(root.xpath("ChannelFactor" +
                                                                     str(i))[0])
-            self.spectra_data[i] = EDXSpectrum(root.xpath("SpectrumData" +
+            self.spectra_data[i] = BasicEDXSpectrum(root.xpath("SpectrumData" +
                                                        str(i))[0].ClassInstance)
 
     def estimate_map_channels(self, index=0):
@@ -410,3 +345,6 @@ class HyperMap(object):
         self.ycalib = parent.header.image.y_res * downsample
         self.hypermap = nparray
         self.energy_scale = sp_meta.energy[:self.hypermap.shape[0]]
+        
+    def calc_max_peak_spectrum(self):
+        pass
