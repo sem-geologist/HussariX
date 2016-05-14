@@ -22,11 +22,22 @@
 # are supported.
 
 import numpy as np
+from scipy.interpolate import UnivariateSpline
 
 import logging
 _logger = logging.getLogger(__name__)
 
 from periodictable import elements
+
+from math import log
+
+init_width_dict = {'XFlash 6|10':  # the value at 60 000 shapingtime
+                             lambda x: -0.0612674 + 0.11484 * log(x + 2.53485)}
+
+
+class Container(object):
+    pass
+
 
 class BasicEDXSpectrum(object):
     def __init__(self, spectrum, name='noname'):
@@ -41,7 +52,7 @@ class BasicEDXSpectrum(object):
         if str(spectrum.attrib['Type']) != 'TRTSpectrum':
             raise IOError('Not valid objectified xml passed',
                           ' to Bruker EDXSpectrum class')
-        
+
         try:
             self.name = str(spectrum.attrib['Name'])
             if self.name.endswith('.spx') or self.name.endswith('.xls'):
@@ -49,7 +60,7 @@ class BasicEDXSpectrum(object):
         except KeyError:
             _logger.warning('spectrum have no name...')
             self.name = name
-        
+
         try:
             self.realTime = int(
                             spectrum.TRTHeaderedClass.ClassInstance.RealTime)
@@ -80,6 +91,40 @@ class BasicEDXSpectrum(object):
         self.data = np.fromstring(str(spectrum.Channels), dtype='Q', sep=",")
         self.calc_energy_axis()
         self.elements = []
+        self._estimate_zero_peak_fwhm()
+        self._estimate_abc_for_2_sigmas()
+
+    def _estimate_zero_peak_fwhm(self):
+        zpp = self.zeroPeakPosition
+        zero_peak = UnivariateSpline(self.energy[:2 * zpp],
+                                     self.data[:2 * zpp] -
+                                         np.max(self.data[zpp - 3:zpp + 3]) / 2)
+        self.fwhm_zero = np.diff(zero_peak.roots())[0]
+
+    def _estimate_abc_for_2_sigmas(self):
+        """estimation is based on RE testing of bruker eds spectras behaviour.
+        estimated a, b, c parameters are meant to be used to calculate
+        2sigma width of the peak at given energy [en]:
+            sigma_2_width = a + b * log(en + c)
+
+        THIS MODEL SHOULD GET MORE PRECISE IN FUTURE
+        """
+        self._w_par = Container()
+        self._w_par.a = 0.780977 + 0.609263 * log(0.277366 - self.fwhm_zero)
+        self._w_par.b = -0.167433 - 0.259091 * log(0.360115 - self.fwhm_zero)
+        self._w_par.c = -26.0497 - 17.1639 * log(0.219774 - self.fwhm_zero)
+
+    def calc_width(self, energy):
+        """estimate 2 sigma of peak for given energy"""
+        return self._w_par.a + self._w_par.b * log(energy + self._w_par.c)
+
+    def calc_sigma1(self, energy):
+        width = self.calc_width(energy)
+        return width / 4
+
+    def make_roi(self, energy):
+        width = self.calc_width(energy)
+        return [energy - width / 2, energy + width / 2]
 
     def energy_to_channel(self, energy, kV=True):
         """ convert energy to channel index,
@@ -100,32 +145,39 @@ class BasicEDXSpectrum(object):
         else:
             kV = 1
         return (channel * self.calibLin + self.calibAbs) * kV
-    
+
     def calc_energy_axis(self):
         """calc or re-calc and create energy axis (X axis) in the EDS
         plots"""
         self.energy = np.arange(self.calibAbs,
                                 self.calibLin * self.chnlCnt + self.calibAbs,
                                 self.calibLin)
-        
+
     def set_elements(self, element_list):
         self.elements = element_list
-        
+
     def add_element(self, element):
         self.elements.append(element)
-    
+
     def remove_element(self, element):
         self.elements.remove(element)
+
+    def initial_roi(self, element):
+        pass
+
+    def calc_counts(self, element):
+        pass
 
 
 class AnalysedEDXSpectrum(BasicEDXSpectrum):
     def __init__(self, spectrum):
         BasicEDXSpectrum.__init__(self, spectrum)
-        self.elements = []
         self._parse_elements(spectrum)
         self.results = {}
         self._parse_results(spectrum)
-        
+        self.roi_results = {}
+        self._parse_roi_results(spectrum)
+
     def _parse_results(self, spectrum):
         try:
             for j in spectrum.xpath("ClassInstance[@Type='TRTResult']/Result"):
@@ -136,12 +188,32 @@ class AnalysedEDXSpectrum(BasicEDXSpectrum):
                     self.results[elem][str(i.tag)] = i.pyval
         except IndexError:
             _logger.info('no results present..')
-            
+
     def _parse_elements(self, spectrum):
         try:
             for k in spectrum.xpath(
-                              "ClassInstance[@Type='TRTPSEElementList']/*/ClassInstance"):
+                    "ClassInstance[@Type='TRTPSEElementList']/*/ClassInstance"):
                 self.elements.append(str(k.attrib['Name']))
         except IndexError:
             _logger.info('no element selection present in the spectra..')
+
+    def _parse_roi_results(self, spectrum):
+        try:
+            for j in spectrum.xpath(
+                                 "ClassInstance[@Type='TRTResult']/RoiResults"):
+                children = j.getchildren()
+                elem = str(children[1].pyval)
+                self.roi_results[elem] = {}
+                for i in children[2:]:
+                    self.roi_results[elem][str(i.tag)] = i.pyval
+        except IndexError:
+            _logger.info('no ROI results present..')
+
+        if len(self.roi_results.keys()) > 0:
+            for k in self.roi_results:
+                try:
+                    bounds = self.make_roi(self.roi_results[k]['Energy'])
+                    self.roi_results[k]['ROI'] = bounds
+                except KeyError:
+                    pass  # TODO implementation to handle this
 
