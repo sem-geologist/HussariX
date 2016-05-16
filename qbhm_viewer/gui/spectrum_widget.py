@@ -19,8 +19,7 @@
 
 from PyQt4 import QtCore, QtGui
 
-from .chem.energies import Elements
-el = Elements()
+from utils import xray_util as xu
 
 from . import element_table as pet
 pet.debug_flag = 0
@@ -198,7 +197,7 @@ class EDSCanvas(pg.PlotWidget):
         if kv == None:
             kv = self.kv
         self.p2.clear()
-        lines = el.xray_lines_for_plot(element, kv)
+        lines = xu.xray_lines_for_plot(element, kv)
         for i in lines:
             line = pg.PlotCurveItem([i[1], i[1]],
                                     [0, i[2]],

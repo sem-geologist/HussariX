@@ -216,4 +216,3 @@ class AnalysedEDXSpectrum(BasicEDXSpectrum):
                     self.roi_results[k]['ROI'] = bounds
                 except KeyError:
                     pass  # TODO implementation to handle this
-

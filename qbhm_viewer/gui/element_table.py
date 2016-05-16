@@ -155,7 +155,7 @@ class ElementTableGUI(QtGui.QTableWidget):
     enableElement = QtCore.pyqtSignal(str)
     disableElement = QtCore.pyqtSignal(str)
 
-    def __init__(self, parent = None, preenabled=[]):
+    def __init__(self, parent=None, preenabled=[]):
         QtGui.QTableWidget.__init__(self, parent)
         self.setWindowTitle('Element Table')
         self.setColumnCount(18)
