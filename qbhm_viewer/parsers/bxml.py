@@ -31,8 +31,7 @@ from periodictable import elements
 
 from math import log
 
-init_width_dict = {'XFlash 6|10':  # the value at 60 000 shapingtime
-                             lambda x: -0.0612674 + 0.11484 * log(x + 2.53485)}
+from utils import xray_util as xu
 
 
 class Container(object):
@@ -215,4 +214,8 @@ class AnalysedEDXSpectrum(BasicEDXSpectrum):
                     bounds = self.make_roi(self.roi_results[k]['Energy'])
                     self.roi_results[k]['ROI'] = bounds
                 except KeyError:
-                    pass  # TODO implementation to handle this
+                    line = max(xu.xray_lines_for_plot(k), key=lambda x: x[2])
+                    self.roi_results[k]['Line'] = line[0]
+                    self.roi_results[k]['Energy'] = line[1]
+                    bounds = self.make_roi(self.roi_results[k]['Energy'])
+                    self.roi_results[k]['ROI'] = bounds
