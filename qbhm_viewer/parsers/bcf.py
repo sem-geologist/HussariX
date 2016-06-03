@@ -20,7 +20,6 @@
 #  Bruker bcf files.
 
 
-
 from lxml import objectify
 from .unsfs import SFS_reader
 import codecs
@@ -34,7 +33,7 @@ from . import unbcf_fast
 from .bxml import BasicEDXSpectrum
 
 import psutil
-import tables as tb
+#import tables as tb
 
 
 class Container(object):
@@ -176,11 +175,11 @@ class HyperHeader(object):
         Returns:
         optimal channel number
         """
-        bruker_hv_range = self.spectra_data[index].amplification / 1000
+        bruker_hv_range = self.spectra_data[index].meta.amplification / 1000
         if self.sem.hv >= bruker_hv_range:
             return self.spectra_data[index].data.shape[0]
         else:
-            return self.spectra_data[index].energy_to_channel(self.sem.hv)
+            return self.spectra_data[index].meta.energy_to_channel(self.sem.hv)
 
     def estimate_map_depth(self, index=0, downsample=1):
         """estimate minimal dtype of array using cumulative spectra
@@ -260,9 +259,9 @@ class BCF_reader(SFS_reader):
             print("\t*", i.detector_name)
         ed = self.header.get_spectra_metadata()
         print(' *', len(self.header.spectra_data), ' spectral cube(s)',
-            'with', ed.chnlCnt,
+            'with', ed.meta.chnlCnt,
             'channels recorded, corresponding to {0:.2f}kV'.format(
-            ed.channel_to_energy(ed.chnlCnt)))
+            ed.meta.channel_to_energy(ed.meta.chnlCnt)))
         print('image size (width x height):',
               self.header.image.width, 'x', self.header.image.height)
 
@@ -310,7 +309,7 @@ class BCF_reader(SFS_reader):
 
         if type(cutoff_at_kV) in (int, float):
             eds = self.header.get_spectra_metadata()
-            cutoff_chan = eds.energy_to_channel(cutoff_at_kV)
+            cutoff_chan = eds.meta.energy_to_channel(cutoff_at_kV)
         else:
             cutoff_chan = None
 
@@ -324,7 +323,7 @@ class BCF_reader(SFS_reader):
         width = self.header.image.width
         height = self.header.image.height
         array_size = width * height * pixel_size * map_depth
-        if array_size < memory_available:
+        if array_size < memory_available * 0.9:
             return unbcf_fast.parse_to_numpy(spectrum_file,
                                              downsample=downsample,
                                              cutoff=cutoff_chan)
@@ -339,12 +338,12 @@ class HyperMap(object):
 
     def __init__(self, nparray, parent, index=0, downsample=1):
         sp_meta = parent.header.get_spectra_metadata(index=index)
-        self.calib_abs = sp_meta.calibAbs    # keV -> eV
-        self.calib_lin = sp_meta.calibLin
+        self.e_offset = sp_meta.meta.offset    # keV -> eV
+        self.e_scale = sp_meta.meta.scale
         self.xcalib = parent.header.image.x_res * downsample
         self.ycalib = parent.header.image.y_res * downsample
         self.hypermap = nparray
-        self.energy_scale = sp_meta.energy[:self.hypermap.shape[0]]
-        
+        self.energy_scale = sp_meta.meta.energy[:self.hypermap.shape[0]]
+
     def calc_max_peak_spectrum(self):
         pass

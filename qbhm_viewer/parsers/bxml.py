@@ -38,6 +38,56 @@ class Container(object):
     pass
 
 
+class EDXSpectrumMeta(object):
+    def __init__(self, spectrum):
+        self.zero_position = int(
+                      spectrum.TRTHeaderedClass.ClassInstance.ZeroPeakPosition)
+        self.amplification = int(
+                      spectrum.TRTHeaderedClass.ClassInstance.Amplification)
+        self.shapingTime = int(
+                      spectrum.TRTHeaderedClass.ClassInstance.ShapingTime)
+        self.detectorType = str(spectrum.TRTHeaderedClass.ClassInstance[1].Type)
+        self.hv = float(
+                      spectrum.TRTHeaderedClass.ClassInstance[2].PrimaryEnergy)
+        self.elevationAngle = float(
+                      spectrum.TRTHeaderedClass.ClassInstance[2].ElevationAngle)
+        self.azimutAngle = float(
+                      spectrum.TRTHeaderedClass.ClassInstance[2].AzimutAngle)
+        self.offset = float(spectrum.ClassInstance[0].CalibAbs)
+        self.scale = float(spectrum.ClassInstance[0].CalibLin)
+        self.chnlCnt = int(spectrum.ClassInstance[0].ChannelCount)
+        self.date = str(spectrum.ClassInstance[0].Date)
+        self.time = str(spectrum.ClassInstance[0].Time)
+        self.calc_energy_axis()
+
+    def energy_to_channel(self, energy, kV=True):
+        """ convert energy to channel index,
+        optional kwarg 'kV' (default: True) should be set to False
+        if given energy units is in V"""
+        if not kV:
+            en_temp = energy / 1000
+        else:
+            en_temp = energy
+        return int(round((en_temp - self.offset) / self.scale))
+
+    def channel_to_energy(self, channel, kV=True):
+        """convert given channel index to energy,
+        optional kwarg 'kV' (default: True) decides if returned value
+        is in kV or V"""
+        if not kV:
+            kV = 1000
+        else:
+            kV = 1
+        return (channel * self.scale + self.offset) * kV
+
+    def calc_energy_axis(self):
+        """calc or re-calc and create energy axis (X axis) in the EDS
+        plots"""
+        self.energy = np.arange(self.offset,
+                                self.scale * self.chnlCnt + self.offset,
+                                self.scale)
+
+
 class BasicEDXSpectrum(object):
     def __init__(self, spectrum, name='noname'):
         """
@@ -61,41 +111,23 @@ class BasicEDXSpectrum(object):
             self.name = name
 
         try:
-            self.realTime = int(
+            self.real_time = int(
                             spectrum.TRTHeaderedClass.ClassInstance.RealTime)
-            self.lifeTime = int(
+            self.life_time = int(
                             spectrum.TRTHeaderedClass.ClassInstance.LifeTime)
-            self.deadTime = int(
+            self.dead_time = int(
                             spectrum.TRTHeaderedClass.ClassInstance.DeadTime)
         except AttributeError:
             _logger.warning('spectrum have no dead time records...')
-        self.zeroPeakPosition = int(
-                      spectrum.TRTHeaderedClass.ClassInstance.ZeroPeakPosition)
-        self.amplification = int(
-                      spectrum.TRTHeaderedClass.ClassInstance.Amplification)
-        self.shapingTime = int(
-                      spectrum.TRTHeaderedClass.ClassInstance.ShapingTime)
-        self.detectorType = str(spectrum.TRTHeaderedClass.ClassInstance[1].Type)
-        self.hv = float(
-                      spectrum.TRTHeaderedClass.ClassInstance[2].PrimaryEnergy)
-        self.elevationAngle = float(
-                      spectrum.TRTHeaderedClass.ClassInstance[2].ElevationAngle)
-        self.azimutAngle = float(
-                      spectrum.TRTHeaderedClass.ClassInstance[2].AzimutAngle)
-        self.calibAbs = float(spectrum.ClassInstance[0].CalibAbs)
-        self.calibLin = float(spectrum.ClassInstance[0].CalibLin)
-        self.chnlCnt = int(spectrum.ClassInstance[0].ChannelCount)
-        self.date = str(spectrum.ClassInstance[0].Date)
-        self.time = str(spectrum.ClassInstance[0].Time)
         self.data = np.fromstring(str(spectrum.Channels), dtype='Q', sep=",")
-        self.calc_energy_axis()
-        self.elements = []
+        self.meta = EDXSpectrumMeta(spectrum)
         self._estimate_zero_peak_fwhm()
         self._estimate_abc_for_2_sigmas()
+        self.elements = []
 
     def _estimate_zero_peak_fwhm(self):
-        zpp = self.zeroPeakPosition
-        zero_peak = UnivariateSpline(self.energy[:2 * zpp],
+        zpp = self.meta.zero_position
+        zero_peak = UnivariateSpline(self.meta.energy[:2 * zpp],
                                      self.data[:2 * zpp] -
                                          np.max(self.data[zpp - 3:zpp + 3]) / 2)
         self.fwhm_zero = np.diff(zero_peak.roots())[0]
@@ -124,33 +156,6 @@ class BasicEDXSpectrum(object):
     def make_roi(self, energy):
         width = self.calc_width(energy)
         return [energy - width / 2, energy + width / 2]
-
-    def energy_to_channel(self, energy, kV=True):
-        """ convert energy to channel index,
-        optional kwarg 'kV' (default: True) should be set to False
-        if given energy units is in V"""
-        if not kV:
-            en_temp = energy / 1000.
-        else:
-            en_temp = energy
-        return int(round((en_temp - self.calibAbs) / self.calibLin))
-
-    def channel_to_energy(self, channel, kV=True):
-        """convert given channel index to energy,
-        optional kwarg 'kV' (default: True) decides if returned value
-        is in kV or V"""
-        if not kV:
-            kV = 1000
-        else:
-            kV = 1
-        return (channel * self.calibLin + self.calibAbs) * kV
-
-    def calc_energy_axis(self):
-        """calc or re-calc and create energy axis (X axis) in the EDS
-        plots"""
-        self.energy = np.arange(self.calibAbs,
-                                self.calibLin * self.chnlCnt + self.calibAbs,
-                                self.calibLin)
 
     def set_elements(self, element_list):
         self.elements = element_list
@@ -219,3 +224,8 @@ class AnalysedEDXSpectrum(BasicEDXSpectrum):
                     self.roi_results[k]['Energy'] = line[1]
                     bounds = self.make_roi(self.roi_results[k]['Energy'])
                     self.roi_results[k]['ROI'] = bounds
+
+
+#class ROIEDXSpectrum(object):
+#    def __init__(self, sum_spect):
+#        self = sum_spect

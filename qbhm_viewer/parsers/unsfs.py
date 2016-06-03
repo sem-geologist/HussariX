@@ -409,8 +409,9 @@ class SFS_reader(object):
         Example:
         to get "file" object 'kitten.png' in folder 'catz' which
         resides in root directory of sfs, you would use:
-
-        >>> instance_of_SFSReader.get_file('catz/kitten.png')
+        
+        >>> instance_of_SFSReader = SFS_reader("filepath")
+        >>> instance_of_SFSReader.get_file('catz/kitten.png') 
 
         See also:
         SFSTreeItem
