@@ -17,8 +17,7 @@
 # If not, see <http://www.gnu.org/licenses/>.
 #
 
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import Qt
+from PyQt5 import QtCore, Qt
 import re
 
 #the periodic table possitions in gui:
@@ -95,11 +94,11 @@ element_regex = r"C[laroudse]?|Os?|N[eaibdps]?|S[icernbm]?|" +\
 geo_regex = '(?:%s)' % '|'.join(geo_groups.keys())
 
 
-class HoverableButton(QtGui.QPushButton):
+class HoverableButton(Qt.QPushButton):
     hoverChanged = QtCore.pyqtSignal()
 
     def __init__(self, name):
-        QtGui.QAbstractButton.__init__(self)
+        Qt.QAbstractButton.__init__(self)
         self.setMouseTracking(1)
         self.setText(name)
         self.setCheckable(True)
@@ -125,7 +124,7 @@ class HoverableButton(QtGui.QPushButton):
             self.setGeometry(self.orig_size)
 
 
-class ElementTableGUI(QtGui.QTableWidget):
+class ElementTableGUI(Qt.QTableWidget):
     """
     Create the periodic element gui with toggleble buttons
     for element selection and preview signal triggered with
@@ -155,12 +154,12 @@ class ElementTableGUI(QtGui.QTableWidget):
     disableElement = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None, preenabled=[]):
-        QtGui.QTableWidget.__init__(self, parent)
+        Qt.QTableWidget.__init__(self, parent)
         self.setWindowTitle('Element Table')
         self.setColumnCount(18)
         self.setRowCount(9)
-        self.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
-        self.verticalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
+        self.horizontalHeader().setSectionResizeMode(Qt.QHeaderView.Stretch)
+        self.verticalHeader().setSectionResizeMode(Qt.QHeaderView.Stretch)
         self.verticalHeader().setVisible(False)
         self.horizontalHeader().setVisible(False)
         self._populate_table(preenabled)
@@ -170,19 +169,19 @@ class ElementTableGUI(QtGui.QTableWidget):
         self.setSpan(8, 0, 1, 3)  # for line intensity filter
         self._setup_text_interface()
         self._setup_etc()
-        self.resize(500, 300)
+        self.resize(550, 300)
 
     def _setup_etc(self):
         self.setShowGrid(False)
-        self.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
-        self.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
-        self.preview = QtGui.QTableWidgetItem('preview')
+        self.setEditTriggers(Qt.QAbstractItemView.NoEditTriggers)
+        self.setSelectionMode(Qt.QAbstractItemView.NoSelection)
+        self.preview = Qt.QTableWidgetItem('preview')
         self.setItem(7, 0, self.preview)
         self.previewCheck = self.item(7, 0)
         self.previewCheck.setCheckState(QtCore.Qt.Checked)
 
     def _setup_text_interface(self):
-        self.textInterface = QtGui.QLineEdit()
+        self.textInterface = Qt.QLineEdit()
         self.setCellWidget(8, 9, self.textInterface)
         self.textInterface.returnPressed.connect(self.parseText)
         self.textInterface.setToolTip(
@@ -199,7 +198,7 @@ Use '-' (minus) sign to switch all elements after it:
     -AlCa, K; P -> toggles off Al, Ca, K, P
     HFSE - Nb -> toggles on HFSE elements, but switches off Nb
 """)
-        completer = QtGui.QCompleter(list(pt_indexes.keys()) +
+        completer = Qt.QCompleter(list(pt_indexes.keys()) +
                                      list(geo_groups.keys()))
         self.textInterface.setCompleter(completer)
 
@@ -255,9 +254,9 @@ Use '-' (minus) sign to switch all elements after it:
 
     def _populate_table(self, elements=[]):
         self.signalMapper = QtCore.QSignalMapper(self)
-        self.signalMapper.mapped[QtGui.QWidget].connect(self.previewToggler)
+        self.signalMapper.mapped[Qt.QWidget].connect(self.previewToggler)
         self.signalMapper2 = QtCore.QSignalMapper(self)
-        self.signalMapper2.mapped[QtGui.QWidget].connect(self.elementToggler)
+        self.signalMapper2.mapped[Qt.QWidget].connect(self.elementToggler)
         for i in pt_indexes:
             pt_button = HoverableButton(i)
             pt_button.setStyleSheet("""
@@ -274,18 +273,18 @@ Use '-' (minus) sign to switch all elements after it:
             pt_button.toggled.connect(self.signalMapper2.map)
             self.signalMapper.setMapping(pt_button, pt_button)
             self.signalMapper2.setMapping(pt_button, pt_button)
-        line = QtGui.QFrame()
-        line.setFrameShape(QtGui.QFrame.HLine)
-        line.setFrameShadow(QtGui.QFrame.Sunken)
+        line = Qt.QFrame()
+        line.setFrameShape(Qt.QFrame.HLine)
+        line.setFrameShadow(Qt.QFrame.Sunken)
         self.setCellWidget(6, 3, line)
         #dissable inert gasses and H, He and Li:
         for i in ['H', 'He', 'Ne', 'Ar', 'Xe', 'Kr', 'Rn', 'Li']:
             self.cellWidget(pt_indexes[i][0],
                             pt_indexes[i][1]).setEnabled(False)
-        lant_text = QtGui.QLabel('Lan')
-        act_text = QtGui.QLabel('Act')
-        lant_text.setAlignment(Qt.AlignCenter)
-        act_text.setAlignment(Qt.AlignCenter)
+        lant_text = Qt.QLabel('Lan')
+        act_text = Qt.QLabel('Act')
+        lant_text.setAlignment(QtCore.Qt.AlignCenter)
+        act_text.setAlignment(QtCore.Qt.AlignCenter)
         self.setCellWidget(5, 2, lant_text)
         self.setCellWidget(6, 2, act_text)
         lant_text.setEnabled(False)
@@ -294,13 +293,13 @@ Use '-' (minus) sign to switch all elements after it:
 
     def keyPressEvent(self, event):
         #if (event.key() >= 0x41) and (event.key() <= 0x5a):
-        if event.key() == Qt.Key_Shift:
+        if event.key() == QtCore.Qt.Key_Shift:
             self.textInterface.setFocus()
         #that should be done from parent widget level:
         #elif(event.key() == Qt.Key_Escape):
         #    self.close()
 
-    @QtCore.pyqtSlot(QtGui.QWidget)
+    @QtCore.pyqtSlot(Qt.QWidget)
     def previewToggler(self, button):
         if button.isEnabled() and self.preview.checkState():
             if button.hoverState:
@@ -308,7 +307,7 @@ Use '-' (minus) sign to switch all elements after it:
             else:
                 self.disableElementPrev.emit(button.text())
 
-    @QtCore.pyqtSlot(QtGui.QWidget)
+    @QtCore.pyqtSlot(Qt.QWidget)
     def elementToggler(self, button):
         if button.isChecked():
             self.enableElement.emit(button.text())
