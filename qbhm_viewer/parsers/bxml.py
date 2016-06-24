@@ -226,6 +226,6 @@ class AnalysedEDXSpectrum(BasicEDXSpectrum):
                     self.roi_results[k]['ROI'] = bounds
 
 
-#class ROIEDXSpectrum(object):
-#    def __init__(self, sum_spect):
-#        self = sum_spect
+class ImageMeta(object):
+    def __init__(self,  xml_image):
+        pass

@@ -17,7 +17,7 @@
 # If not, see <http://www.gnu.org/licenses/>.
 #
 
-from PyQt5 import QtCore, Qt
+from PyQt5 import QtCore, Qt,  QtWidgets,  QtGui
 import re
 
 #the periodic table possitions in gui:
@@ -93,6 +93,38 @@ element_regex = r"C[laroudse]?|Os?|N[eaibdps]?|S[icernbm]?|" +\
 
 geo_regex = '(?:%s)' % '|'.join(geo_groups.keys())
 
+class LineEnabler(Qt.QWidget):
+    
+    def __init__(self, parent=None):
+        Qt.QWidget.__init__(self,  parent)
+        self.gridLayout = QtWidgets.QGridLayout(self)
+        self.pushHide = QtWidgets.QPushButton(self)
+        self.pushHide.setText('Hide')
+        self.gridLayout.addWidget(self.pushHide, 3, 2, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.gridLayout.addItem(spacerItem, 2, 2, 1, 1)
+        self.pushSave = QtWidgets.QPushButton(self)
+        self.pushSave.setText('Save to default')
+        self.gridLayout.addWidget(self.pushSave, 1, 2, 1, 1)
+        self.atom = QtWidgets.QLabel(self)
+        font = QtGui.QFont()
+        font.setPointSize(40)
+        self.atom.setFont(font)
+        self.atom.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.atom.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.atom.setLineWidth(2)
+        self.atom.setAlignment(QtCore.Qt.AlignCenter)
+        self.gridLayout.addWidget(self.atom, 0, 2, 1, 1)
+        self.lineView = QtWidgets.QTreeView(self)
+        self.gridLayout.addWidget(self.lineView, 0, 0, 4, 2)
+        if parent is not None:
+            self.pushHide.pressed.connect(parent.hide)
+        
+    def element_lines(self,  element):
+        if self.parent().isHidden():
+            self.parent().show()
+        self.atom.setText(element)
+
 
 class HoverableButton(Qt.QPushButton):
     hoverChanged = QtCore.pyqtSignal()
@@ -104,6 +136,7 @@ class HoverableButton(Qt.QPushButton):
         self.setCheckable(True)
         self.hoverState = False
         self.orig_size = self.geometry()
+        self.pal = self.palette()
 
     def enterEvent(self, event):
         if self.isEnabled():
@@ -152,6 +185,8 @@ class ElementTableGUI(Qt.QTableWidget):
     # button press slots:
     enableElement = QtCore.pyqtSignal(str)
     disableElement = QtCore.pyqtSignal(str)
+    # right_mouse_button_press_slot:
+    selectLines = QtCore.pyqtSignal(str)
 
     def __init__(self, parent=None, preenabled=[]):
         Qt.QTableWidget.__init__(self, parent)
@@ -257,6 +292,8 @@ Use '-' (minus) sign to switch all elements after it:
         self.signalMapper.mapped[Qt.QWidget].connect(self.previewToggler)
         self.signalMapper2 = QtCore.QSignalMapper(self)
         self.signalMapper2.mapped[Qt.QWidget].connect(self.elementToggler)
+        self.signalMapper3 = QtCore.QSignalMapper(self)
+        self.signalMapper3.mapped[Qt.QWidget].connect(self.lineSelector)
         for i in pt_indexes:
             pt_button = HoverableButton(i)
             pt_button.setStyleSheet("""
@@ -269,10 +306,13 @@ Use '-' (minus) sign to switch all elements after it:
             self.setCellWidget(pt_indexes[i][0],
                                pt_indexes[i][1],
                                pt_button)
+            pt_button.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
             pt_button.hoverChanged.connect(self.signalMapper.map)
             pt_button.toggled.connect(self.signalMapper2.map)
+            pt_button.customContextMenuRequested.connect(self.signalMapper3.map)
             self.signalMapper.setMapping(pt_button, pt_button)
             self.signalMapper2.setMapping(pt_button, pt_button)
+            self.signalMapper3.setMapping(pt_button, pt_button)
         line = Qt.QFrame()
         line.setFrameShape(Qt.QFrame.HLine)
         line.setFrameShadow(Qt.QFrame.Sunken)
@@ -317,7 +357,11 @@ Use '-' (minus) sign to switch all elements after it:
         else:
             self.disableElement.emit(button.text())
             button.setStyleSheet("""font: normal;""")
-
+            
+    @QtCore.pyqtSlot(Qt.QWidget)
+    def lineSelector(self,  button):
+        self.selectLines.emit(button.text())
+        
     def toggle_buttons_wo_trigger(self, elements):
         self.signalMapper2.blockSignals(True)
         for i in elements:
