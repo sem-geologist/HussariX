@@ -76,7 +76,7 @@ cdef class DataStream:
 
     cdef void seek(self, int value):
         """move offset to given value.
-        NOTE: it do not check if value is in bounds of buffer!"""
+        NOTE: it does not check if value is in bounds of buffer!"""
         self.offset = value
 
     cdef void skip(self, int length):
@@ -322,6 +322,7 @@ def parse_in_chunks(bcf, heights=[], downsample=1, cutoff=None):
     >> parse_in_chunks(some_bcf, heights=[513, 513, 513, 509], downsample = 3)
     """
     if sum(heights) > bcf.sfs.header.image.height:
+        #else it would silently segfault
         raise ValueError('sum of provided line intervals is larger than',
                          'physical height of image/array')
     blocks, block_size, total_blocks = bcf.get_iter_and_properties()

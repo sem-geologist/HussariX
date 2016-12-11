@@ -126,7 +126,8 @@ class BasicEDXSpectrum(object):
         self.elements = []
 
     def _estimate_zero_peak_fwhm(self):
-        zpp = self.meta.zero_position
+        """estimate full width at half maximum for bruker reference 0.0kV peak"""
+        zpp = self.meta.zero_position  # zero peak position
         zero_peak = UnivariateSpline(self.meta.energy[:2 * zpp],
                                      self.data[:2 * zpp] -
                                          np.max(self.data[zpp - 3:zpp + 3]) / 2)
@@ -150,10 +151,12 @@ class BasicEDXSpectrum(object):
         return self._w_par.a + self._w_par.b * log(energy + self._w_par.c)
 
     def calc_sigma1(self, energy):
+        """estimate one sigma of the peak at given energy"""
         width = self.calc_width(energy)
         return width / 4
 
     def make_roi(self, energy):
+        """make 2 sigma ROI (list of min and max energy)"""
         width = self.calc_width(energy)
         return [energy - width / 2, energy + width / 2]
 

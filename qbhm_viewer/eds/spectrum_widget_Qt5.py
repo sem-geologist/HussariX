@@ -17,14 +17,20 @@
 # If not, see <http://www.gnu.org/licenses/>.
 #
 
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, Qt,  QtGui,  QtWidgets
+import pyqtgraph as pg
 
-from utils import xray_util as xu
+from . import xray_util as xu
+from .node import ElementLineTreeModel, SimpleDictNode
 
-from . import element_table as pet
+from . import element_table_Qt5 as pet
 pet.debug_flag = 0
 
-import pyqtgraph as pg
+import json
+
+with open('configurations/lines.json') as fn:
+    jsn = fn.read()
+lines = json.loads(jsn)
 
 
 # dealling with greek letters, where windows dos retards made it
@@ -38,37 +44,36 @@ def utfize(text):
     """
     return ''.join(dos_greek[s] if s in dos_greek else s for s in text)
 
-
-class AutoEditor(QtGui.QDialog):
+class AutoEditor(Qt.QDialog):
     """widget for entering min max x and y for
     auto range of the spectra"""
     def __init__(self, title, x_range, y_range, parent=None):
-        QtGui.QDialog.__init__(self, parent)
+        Qt.QDialog.__init__(self, parent)
         self.setWindowTitle(title)
-        self.verticalLayout = QtGui.QVBoxLayout(self)
+        self.verticalLayout = Qt.QVBoxLayout(self)
         self._setup_ui()
         self._setup_connections(x_range, y_range)
 
     def _setup_ui(self):
-        self.groupBox1 = QtGui.QGroupBox("x min-max", self)
-        self.gridLayout = QtGui.QHBoxLayout(self.groupBox1)
-        self.x_min = QtGui.QLineEdit()
-        self.x_max = QtGui.QLineEdit()
+        self.groupBox1 = Qt.QGroupBox("x min-max", self)
+        self.gridLayout = Qt.QHBoxLayout(self.groupBox1)
+        self.x_min = Qt.QLineEdit()
+        self.x_max = Qt.QLineEdit()
         self.gridLayout.addWidget(self.x_min)
         self.gridLayout.addWidget(self.x_max)
         self.verticalLayout.addWidget(self.groupBox1)
 
-        self.groupBox2 = QtGui.QGroupBox("y min-max", self)
-        self.gridLayout2 = QtGui.QHBoxLayout(self.groupBox2)
-        self.y_min = QtGui.QLineEdit()
-        self.y_max = QtGui.QLineEdit()
+        self.groupBox2 = Qt.QGroupBox("y min-max", self)
+        self.gridLayout2 = Qt.QHBoxLayout(self.groupBox2)
+        self.y_min = Qt.QLineEdit()
+        self.y_max = Qt.QLineEdit()
         self.gridLayout2.addWidget(self.y_min)
         self.gridLayout2.addWidget(self.y_max)
         self.verticalLayout.addWidget(self.groupBox2)
 
-        self.buttonBox = QtGui.QDialogButtonBox(self)
-        self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel |
-                                          QtGui.QDialogButtonBox.Ok)
+        self.buttonBox = Qt.QDialogButtonBox(self)
+        self.buttonBox.setStandardButtons(Qt.QDialogButtonBox.Cancel |
+                                          Qt.QDialogButtonBox.Ok)
         self.verticalLayout.addWidget(self.buttonBox)
 
     def _setup_connections(self, x_range, y_range):
@@ -85,56 +90,117 @@ class AutoEditor(QtGui.QDialog):
         return x_range, y_range
 
 
-class PenEditor(QtGui.QDialog):
+class LeavableTreeView(QtWidgets.QTreeView):
+    """Customised QTreeView to emit signal when mouse leaves
+    emits mouseLeft signal
+    """    
+    mouseLeft = QtCore.pyqtSignal() 
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)
+        
+    def leaveEvent(self, event):
+        self.mouseLeft.emit()
+        super().leaveEvent(event)
+        
+
+class LineEnabler(Qt.QWidget):
+    
+    def __init__(self, parent=None):
+        Qt.QWidget.__init__(self,  parent)
+        self.gridLayout = QtWidgets.QGridLayout(self)
+        self.buttonHide = QtWidgets.QPushButton(self)
+        self.buttonHide.setText('Hide')
+        self.gridLayout.addWidget(self.buttonHide, 4, 2, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum,
+                                                QtWidgets.QSizePolicy.Expanding)
+        self.gridLayout.addItem(spacerItem, 3, 2, 1, 1)
+        self.buttonToggle = QtWidgets.QPushButton(self)
+        self.buttonToggle.setText('Save to custom')
+        self.gridLayout.addWidget(self.buttonToggle, 2, 2, 1, 1)
+        self.buttonSave = QtWidgets.QPushButton(self)
+        self.buttonSave.setText('Save to default')
+        self.gridLayout.addWidget(self.buttonSave, 1, 2, 1, 1)
+        self.atom = QtWidgets.QLabel(self)
+        font = QtGui.QFont()
+        font.setPointSize(40)
+        self.atom.setFont(font)
+        self.atom.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.atom.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.atom.setLineWidth(2)
+        self.atom.setAlignment(QtCore.Qt.AlignCenter)
+        self.gridLayout.addWidget(self.atom, 0, 2, 1, 1)
+        self.lineView = LeavableTreeView(self)
+        self.gridLayout.addWidget(self.lineView, 0, 0, 4, 2)
+        if parent is not None:
+            self.buttonHide.pressed.connect(parent.hide)
+        else:
+            self.buttonHide.pressed.connect(self.hide)
+        
+    @QtCore.pyqtSlot(str)
+    def set_element_lines(self,  element):
+        if self.parent() is not None:
+            if self.parent().isHidden():
+                self.parent().show()
+        else:
+            self.show()
+        self.atom.setText(element)
+        node_tree = SimpleDictNode.node_builder(lines[element], name=element)
+        model = ElementLineTreeModel(node_tree)
+        self.lineView.setModel(model)
+        
+
+class PenEditor(Qt.QDialog):
     def __init__(self, text_size, text_color, pen, parent=None):
-        QtGui.QDialog.__init__(self, parent)
+        Qt.QDialog.__init__(self, parent)
         self.setWindowTitle('customize preview')
-        self.verticalLayout = QtGui.QVBoxLayout(self)
+        self.verticalLayout = Qt.QVBoxLayout(self)
         self._setup_ui()
         self._setup_connections(text_size, text_color, pen)
 
     def _setup_ui(self):
-        self.groupBox1 = QtGui.QGroupBox("Text Style", self)
-        self.formLayout = QtGui.QFormLayout(self.groupBox1)
+        self.groupBox1 = Qt.QGroupBox("Text Style", self)
+        self.formLayout = Qt.QFormLayout(self.groupBox1)
         self.formLayout.setWidget(0,
-                                  QtGui.QFormLayout.LabelRole,
-                                  QtGui.QLabel('color'))
+                                  Qt.QFormLayout.LabelRole,
+                                  Qt.QLabel('color'))
         self.text_color_btn = pg.ColorButton()
         self.formLayout.setWidget(0,
-                                  QtGui.QFormLayout.FieldRole,
+                                  Qt.QFormLayout.FieldRole,
                                   self.text_color_btn)
         self.formLayout.setWidget(1,
-                                  QtGui.QFormLayout.LabelRole,
-                                  QtGui.QLabel('size'))
+                                  Qt.QFormLayout.LabelRole,
+                                  Qt.QLabel('size'))
         self.text_size_spn = pg.SpinBox(value=12, bounds=(1, 64),
                                         suffix='pt', step=1,
                                         int=True)
         self.formLayout.setWidget(1,
-                                  QtGui.QFormLayout.FieldRole,
+                                  Qt.QFormLayout.FieldRole,
                                   self.text_size_spn)
         self.verticalLayout.addWidget(self.groupBox1)
 
-        self.groupBox2 = QtGui.QGroupBox("Line Style", self)
-        self.formLayout2 = QtGui.QFormLayout(self.groupBox2)
+        self.groupBox2 = Qt.QGroupBox("Line Style", self)
+        self.formLayout2 = Qt.QFormLayout(self.groupBox2)
         self.formLayout2.setWidget(0,
-                                  QtGui.QFormLayout.LabelRole,
-                                  QtGui.QLabel('color'))
+                                  Qt.QFormLayout.LabelRole,
+                                  Qt.QLabel('color'))
         self.line_color_btn = pg.ColorButton()
         self.formLayout2.setWidget(0,
-                                  QtGui.QFormLayout.FieldRole,
+                                  Qt.QFormLayout.FieldRole,
                                   self.line_color_btn)
         self.formLayout2.setWidget(1,
-                                  QtGui.QFormLayout.LabelRole,
-                                  QtGui.QLabel('width'))
+                                  Qt.QFormLayout.LabelRole,
+                                  Qt.QLabel('width'))
         self.line_width_spn = pg.SpinBox(value=2, bounds=(0.1, 10),
                                          dec=1, minStep=0.1)
         self.formLayout2.setWidget(1,
-                                  QtGui.QFormLayout.FieldRole,
+                                  Qt.QFormLayout.FieldRole,
                                   self.line_width_spn)
         self.verticalLayout.addWidget(self.groupBox2)
-        self.buttonBox = QtGui.QDialogButtonBox(self)
-        self.buttonBox.setStandardButtons(QtGui.QDialogButtonBox.Cancel |
-                                          QtGui.QDialogButtonBox.Ok)
+        self.buttonBox = Qt.QDialogButtonBox(self)
+        self.buttonBox.setStandardButtons(Qt.QDialogButtonBox.Cancel |
+                                          Qt.QDialogButtonBox.Ok)
         self.verticalLayout.addWidget(self.buttonBox)
 
     def _setup_connections(self, text_size, text_color, pen):
@@ -159,16 +225,21 @@ class EDSCanvas(pg.PlotWidget):
         pg.PlotWidget.__init__(self)
         #p1 the main plotItem/canvas
         #p2 secondary viewbox for EDS preview lines
+        #p3 third viewbox for EDS marked lines
         self.p1 = self.plotItem
         self.p1.setLabels(left='cts', bottom='keV')
         self.p2 = pg.ViewBox()
+        self.p3 = pg.ViewBox()
         self.p1.scene().addItem(self.p2)
         self.p2.setXLink(self.p1)
+        self.p3.setXLink(self.p1)
+        self.p3.setYLink(self.p1)
         self.updateViews()
         self.set_kv(kv)
         self.p1.vb.sigResized.connect(self.updateViews)
         self.setXRange(0.45, self.kv)
         self.p1.setLimits(yMin=0, xMin=-0.5)
+        self.p3.setLimits(yMin=0)
         self.p2.setLimits(yMin=0)
         self.p2.setYRange(0,1)
         self.prev_text_size = 12
@@ -193,11 +264,15 @@ class EDSCanvas(pg.PlotWidget):
         self.p2.setGeometry(self.p1.vb.sceneBoundingRect())
         self.p2.linkedViewChanged(self.p1.vb, self.p2.XAxis)
     
-    def previewLines(self, element, kv=None):
-        if kv == None:
+    def previewLines(self, element, kv=None, lines=[]):
+        if kv is None:
             kv = self.kv
         self.p2.clear()
-        lines = xu.xray_lines_for_plot(element, kv)
+        if len(lines) == 0:
+            lines = xu.xray_lines_for_plot(element, kv)
+        else:
+            #TODO
+            pass
         for i in lines:
             line = pg.PlotCurveItem([i[1], i[1]],
                                     [0, i[2]],
@@ -212,11 +287,31 @@ class EDSCanvas(pg.PlotWidget):
                 color:{3};">{0}<sub>{1}</sub></body>""".format(
                                 element, utfize(i[0]),
                                 self.prev_text_size, html_color),
-                               anchor=(0., 0.))
+                               anchor=(0., 1.))
             self.p2.addItem(text)
             text.setPos(i[1], i[2])
+            
+    def previewOneLine(self, element, line):
+        print(line)
+        energy = xu.xray_energy(element, line)
+        gr_line = pg.PlotCurveItem([energy,  energy],
+                        [0,  xu.xray_weight(element, line)], 
+                        pen=self.prev_marker_pen)
+        self.p2.addItem(gr_line)
+        #html_color = 'rgba({0}, {1}, {2}, {3})'.format(
+        #    self.prev_text_color.red(),
+        #    self.prev_text_color.green(),
+        #    self.prev_text_color.blue(),
+        #    self.prev_text_color.alpha())
+        #text = pg.TextItem(html="""<body style="font-size:{2}pt;
+        #    color:{3};">{0}<sub>{1}</sub></body>""".format(
+        #                       element, utfize(line),
+        #                       self.prev_text_size, html_color),
+        #                   anchor=(0., 1.))
+        #self.p2.addItem(text)
+        #text.setPos(i[1], i[2])
     
-    def clearPreview(self, element):
+    def clearPreview(self):
         self.p2.clear()
         
     def addLines(self, element, kv=None):
@@ -226,11 +321,11 @@ class EDSCanvas(pg.PlotWidget):
         pass
 
 
-class CustomToolButton(QtGui.QToolButton):
+class CustomToolButton(Qt.QToolButton):
     
     def __init__(self, parent = None):
-        QtGui.QToolButton.__init__(self, parent)
-        self.setPopupMode(QtGui.QToolButton.MenuButtonPopup)
+        Qt.QToolButton.__init__(self, parent)
+        self.setPopupMode(Qt.QToolButton.MenuButtonPopup)
     
     def set_action_to_default(self):
         action = self.sender()
@@ -239,19 +334,19 @@ class CustomToolButton(QtGui.QToolButton):
             self.setToolTip(action.text())
 
 
-class EDSSpectraGUI(QtGui.QMainWindow):
+class EDSSpectraGUI(Qt.QMainWindow):
     def __init__(self, parent=None, icon_size=None, pet_opacity=None):
-        QtGui.QMainWindow.__init__(self, parent)
+        Qt.QMainWindow.__init__(self, parent)
         self.resize(550,500)
-        self.toolbar = QtGui.QToolBar('tools', parent=self)
+        self.toolbar = Qt.QToolBar('tools', parent=self)
         self._pet_opacity = pet_opacity
         if icon_size is not None:
             self.toolbar.setIconSize(QtCore.QSize(icon_size,
                                                 icon_size))
         self.addToolBar(QtCore.Qt.RightToolBarArea, self.toolbar)
-        self.centralwidget = QtGui.QWidget()
+        self.centralwidget = Qt.QWidget()
         self.setCentralWidget(self.centralwidget)
-        self.horizontalLayout = QtGui.QHBoxLayout(self.centralwidget)
+        self.horizontalLayout = Qt.QHBoxLayout(self.centralwidget)
         self._setup_toolbar()
         self.canvas = EDSCanvas()
         self._setup_connections()
@@ -264,22 +359,25 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
         self.actionFullscreen.triggered.connect(self.go_fullscreen)
         self.actionWindowed.triggered.connect(self.go_windowed)
+        self.pet.someButtonRightClicked.connect(self.lineSelector.set_element_lines)
+        self.lineSelector.lineView.entered.connect(self.preview_hovered_lines)
+        self.lineSelector.lineView.mouseLeft.connect(self.canvas.clearPreview)
         
     def _setup_toolbar(self):
-        self.fullscreen_button =QtGui.QToolButton()
+        self.fullscreen_button =Qt.QToolButton()
         self.toolbar.addWidget(self.fullscreen_button)
-        self.actionFullscreen = QtGui.QAction(self)
-        self.actionFullscreen.setIcon(QtGui.QIcon('gui/icons/tango_fullscreen.svg'))
-        self.actionWindowed = QtGui.QAction(self)
-        self.actionWindowed.setIcon(QtGui.QIcon('gui/icons/windowed.svg'))
+        self.actionFullscreen = Qt.QAction(self)
+        self.actionFullscreen.setIcon(Qt.QIcon('eds/icons/tango_fullscreen.svg'))
+        self.actionWindowed = Qt.QAction(self)
+        self.actionWindowed.setIcon(Qt.QIcon('eds/icons/windowed.svg'))
         self.fullscreen_button.setDefaultAction(self.actionFullscreen)
         #add spacer:
-        self._empty2 = QtGui.QWidget()
-        self._empty2.setSizePolicy(QtGui.QSizePolicy.Expanding,
-                                   QtGui.QSizePolicy.Expanding)
+        self._empty2 = Qt.QWidget()
+        self._empty2.setSizePolicy(Qt.QSizePolicy.Expanding,
+                                   Qt.QSizePolicy.Expanding)
         self.toolbar.addWidget(self._empty2)
-        self.actionElementTable = QtGui.QAction(self)
-        self.actionElementTable.setIcon(QtGui.QIcon('gui/icons/pt.svg'))
+        self.actionElementTable = Qt.QAction(self)
+        self.actionElementTable.setIcon(Qt.QIcon('eds/icons/pt.svg'))
         #self.actionElementTable.setCheckable(True)
         self.toolbar.addAction(self.actionElementTable)
         self._setup_pet()
@@ -289,26 +387,26 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self._setup_auto()
         self.toolbar.addWidget(self.auto_button)
         self.config_button = CustomToolButton(self)
-        self.config_button.setIcon(QtGui.QIcon('gui/icons/tango_preferences_system.svg'))
+        self.config_button.setIcon(Qt.QIcon('eds/icons/tango_preferences_system.svg'))
         self._setup_config()
         self.toolbar.addWidget(self.config_button)
-        self._empty1 = QtGui.QWidget()
-        self._empty1.setSizePolicy(QtGui.QSizePolicy.Expanding,
-                                   QtGui.QSizePolicy.Expanding)
+        self._empty1 = Qt.QWidget()
+        self._empty1.setSizePolicy(Qt.QSizePolicy.Expanding,
+                                   Qt.QSizePolicy.Expanding)
         self.toolbar.addWidget(self._empty1)
         
         
     def _setup_auto(self):
-        menu = QtGui.QMenu('auto range')
-        self.auto_all = QtGui.QAction(QtGui.QIcon('gui/icons/auto_all.svg'),
+        menu = Qt.QMenu('auto range')
+        self.auto_all = Qt.QAction(Qt.QIcon('eds/icons/auto_all.svg'),
                                  'all', self.auto_button)
-        self.auto_width = QtGui.QAction(QtGui.QIcon('gui/icons/auto_width.svg'),
+        self.auto_width = Qt.QAction(Qt.QIcon('eds/icons/auto_width.svg'),
                                    'width', self.auto_button)
-        self.auto_height = QtGui.QAction(QtGui.QIcon('gui/icons/auto_height.svg'),
+        self.auto_height = Qt.QAction(Qt.QIcon('eds/icons/auto_height.svg'),
                                     'height', self.auto_button)
-        self.auto_custom = QtGui.QAction(QtGui.QIcon('gui/icons/auto_custom.svg'),
+        self.auto_custom = Qt.QAction(Qt.QIcon('eds/icons/auto_custom.svg'),
                                     'custom', self.auto_button)
-        self.custom_conf = QtGui.QAction('custom config.', self.auto_button)
+        self.custom_conf = Qt.QAction('custom config.', self.auto_button)
         action_list = [self.auto_all, self.auto_width, self.auto_height,
                        self.auto_custom, self.custom_conf]
         for i in action_list[:-1]:
@@ -318,11 +416,11 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self.auto_button.setDefaultAction(self.auto_all)
         
     def _setup_config(self):
-        menu = QtGui.QMenu('config')
-        self.config_preview = QtGui.QAction(QtGui.QIcon('gui/icons/tango_preferences_system.svg'),
+        menu = Qt.QMenu('config')
+        self.config_preview = Qt.QAction(Qt.QIcon('eds/icons/tango_preferences_system.svg'),
                                        'preview style',
                                        self.config_button)
-        self.config_burned = QtGui.QAction(QtGui.QIcon('gui/icons/tango_preferences_system.svg'),
+        self.config_burned = Qt.QAction(Qt.QIcon('eds/icons/tango_preferences_system.svg'),
                                        'burned style',
                                        self.config_button)
         action_list = [self.config_preview, self.config_burned]
@@ -333,30 +431,36 @@ class EDSSpectraGUI(QtGui.QMainWindow):
         self.config_button.setDefaultAction(self.config_preview)
         
     def _setup_pet(self):
-        self.dock_pet_win = QtGui.QDockWidget('Periodic table', self)
-        
+        self.dock_pet_win = Qt.QDockWidget('Periodic table', self)
+        self.dock_line_win = Qt.QDockWidget('Line selection', self)
         self.pet = pet.ElementTableGUI(self.dock_pet_win)
-        self.pet.hv_value = QtGui.QDoubleSpinBox()
+        self.lineSelector = LineEnabler(self.dock_line_win)
+        self.pet.hv_value = Qt.QDoubleSpinBox()
         self.pet.hv_value.setValue(15.)
         self.pet.hv_value.setSuffix(" kV")
-        self.pet.hv_value.setToolTip(
-"""set HV value which restricts x axis and
-influences heights of preview lines as function
-of effectivness (2.7 rule)""")
+        self.pet.hv_value.setToolTip('set HV value which restricts x axis and influences\n' +
+                ' heights of preview lines as function\n' +
+                ' of effectivness (2.7 rule)')
         self.pet.hv_value.setRange(0.1, 1e4)
         self.pet.setCellWidget(8, 0, self.pet.hv_value)
-        #self.dock_pet_win = QtGui.QDockWidget(self)
+        #self.dock_pet_win = Qt.QDockWidget(self)
         self.dock_pet_win.setWidget(self.pet)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dock_pet_win)
         self.dock_pet_win.setAllowedAreas(QtCore.Qt.NoDockWidgetArea)
         self.dock_pet_win.setFloating(True)
+        self.dock_line_win.setWidget(self.lineSelector)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dock_line_win)
+        self.dock_line_win.setAllowedAreas(QtCore.Qt.NoDockWidgetArea)
+        self.dock_line_win.setFloating(True)
         if self._pet_opacity:
             self.dock_pet_win.setWindowOpacity(self._pet_opacity)
+        self.dock_line_win.hide()
         self.dock_pet_win.hide()
         
-    def add_table(self, name):
-        self.tableView[name] = QtGui.QTableView(self.tabWidget)
-        self.tabWidget.addTab(self.tableView[name], name)
+    #deprecated:
+    #def add_table(self, name):
+    #    self.tableView[name] = Qt.QTableView(self.tabWidget)
+    #    self.tabWidget.addTab(self.tableView[name], name)
         
     def show_pet(self):
         #self.pet.setWindowOpacity(0.9)
@@ -383,3 +487,32 @@ of effectivness (2.7 rule)""")
         self.setGeometry(self.windowed_geometry)
         self.fullscreen_button.removeAction(self.actionWindowed)
         self.fullscreen_button.setDefaultAction(self.actionFullscreen)
+        
+    def preview_hovered_lines(self, item):
+        self.canvas.clearPreview()
+        
+        if item is None:
+            self.canvas.clearPreview()
+            return
+        
+        h_item = self.lineSelector.lineView.model().getNode(item)  # hovered item/node
+        path = h_item.get_tree_path().split(' ')
+        
+        if 'line' in h_item.name:
+            item_type = 'family'
+        elif 'line' in h_item._parent.name:
+            item_type = 'line'
+        else:
+            item_type = 'element'
+            
+        if item_type == 'line':
+            element = path[-3]
+            line = path[-1]
+            self.canvas.previewOneLine(element, line)
+        elif item_type == 'family':
+            element = path[-2]
+            for i in h_item._children:
+                self.canvas.previewOneLine(element, i.name)
+        elif item_type == 'element':
+            self.canvas.previewLines(element)
+        

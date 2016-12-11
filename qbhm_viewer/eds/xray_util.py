@@ -26,7 +26,7 @@ def overvoltage(energy, hv):
     """
     return reduced xray line hight using
     very oversimplified model for HV -> Xray intensity
-    which is fast and course approximation toward the
+    which is fast and coarse approximation but not the
     real model.
     it gives maximum peak at 2.7 or (exp(1)) ratio of
     aceleration voltage"""
