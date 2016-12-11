@@ -23,8 +23,7 @@ import pyqtgraph as pg
 from . import xray_util as xu
 from .node import ElementLineTreeModel, SimpleDictNode
 
-from . import element_table_Qt5 as pet
-pet.debug_flag = 0
+from . import element_table_Qt5
 
 import json
 
@@ -43,6 +42,30 @@ def utfize(text):
     """replace the a,b,c latin letters used by ms-dos retards to greek α, β, γ
     """
     return ''.join(dos_greek[s] if s in dos_greek else s for s in text)
+
+class XRayElementTable(element_table_Qt5.ElementTableGUI):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.setSpan(0, 3, 1, 3)  # for preview option
+        self.setSpan(1, 3, 1, 3)  # for line intensity filter
+        self.preview = Qt.QTableWidgetItem('preview')
+        self.setItem(0, 3, self.preview)
+        self.previewCheck = self.item(0, 3)
+        self.previewCheck.setCheckState(QtCore.Qt.Checked)
+        self.hv_value = Qt.QDoubleSpinBox()
+        self.hv_value.setValue(15.)
+        self.hv_value.setSuffix(" kV")
+        self.hv_value.setToolTip(''.join(['set HV value which restricts x',
+                                          'axis and influences\n heights of',
+                                          'preview lines as function\n',
+                                          ' of effectivness (2.7 rule)']))
+        self.hv_value.setRange(0.1, 1e4)
+        self.setCellWidget(1, 3, self.hv_value)
+        self.itemChanged.connect(self.setPreviewEnabled)
+    
+    def setPreviewEnabled(self):
+        self.preview_enabled = self.previewCheck.checkState()
+        
 
 class AutoEditor(Qt.QDialog):
     """widget for entering min max x and y for
@@ -353,8 +376,8 @@ class EDSSpectraGUI(Qt.QMainWindow):
         self.horizontalLayout.addWidget(self.canvas)
         
     def _setup_connections(self):
-        self.pet.enableElementPrev.connect(self.canvas.previewLines)
-        self.pet.disableElementPrev.connect(self.canvas.clearPreview)
+        self.pet.elementHoveredOver.connect(self.canvas.previewLines)
+        self.pet.elementHoveredOff.connect(self.canvas.clearPreview)
         self.config_preview.triggered.connect(self.canvas.tweek_preview_style)
         self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
         self.actionFullscreen.triggered.connect(self.go_fullscreen)
@@ -433,17 +456,8 @@ class EDSSpectraGUI(Qt.QMainWindow):
     def _setup_pet(self):
         self.dock_pet_win = Qt.QDockWidget('Periodic table', self)
         self.dock_line_win = Qt.QDockWidget('Line selection', self)
-        self.pet = pet.ElementTableGUI(self.dock_pet_win)
+        self.pet = XRayElementTable(parent=self.dock_pet_win)
         self.lineSelector = LineEnabler(self.dock_line_win)
-        self.pet.hv_value = Qt.QDoubleSpinBox()
-        self.pet.hv_value.setValue(15.)
-        self.pet.hv_value.setSuffix(" kV")
-        self.pet.hv_value.setToolTip('set HV value which restricts x axis and influences\n' +
-                ' heights of preview lines as function\n' +
-                ' of effectivness (2.7 rule)')
-        self.pet.hv_value.setRange(0.1, 1e4)
-        self.pet.setCellWidget(8, 0, self.pet.hv_value)
-        #self.dock_pet_win = Qt.QDockWidget(self)
         self.dock_pet_win.setWidget(self.pet)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.dock_pet_win)
         self.dock_pet_win.setAllowedAreas(QtCore.Qt.NoDockWidgetArea)
