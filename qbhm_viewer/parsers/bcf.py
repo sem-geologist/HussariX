@@ -346,4 +346,4 @@ class HyperMap(object):
         self.energy_scale = sp_meta.meta.energy[:self.hypermap.shape[0]]
 
     def calc_max_peak_spectrum(self):
-        pass
+        return np.max(self.hypermap, axis=(1,2))

@@ -18,7 +18,7 @@
 
 from math import log, exp
 import periodictable as pt
-from .misc.elements import elements
+from .. misc.elements import elements
 
 e = exp(1)
 

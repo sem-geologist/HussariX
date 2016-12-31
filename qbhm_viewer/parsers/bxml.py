@@ -31,7 +31,7 @@ from periodictable import elements
 
 from math import log
 
-from utils import xray_util as xu
+from .. eds import xray_util as xu
 
 
 class Container(object):

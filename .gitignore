@@ -6,7 +6,7 @@ _eric5project/
 _eric4project/
 .ropeproject/
 _ropeproject/
-.directory/
+*.directory
 *.pyc
 *.pyo
 *.orig

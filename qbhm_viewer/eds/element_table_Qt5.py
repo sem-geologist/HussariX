@@ -17,7 +17,7 @@
 # If not, see <http://www.gnu.org/licenses/>.
 #
 
-from PyQt5 import QtCore, Qt
+from PyQt5 import QtCore, Qt, QtGui
 import re
 
 #the periodic table possitions in gui:
@@ -188,6 +188,7 @@ class ElementTableGUI(Qt.QTableWidget):
         self._setup_etc()
         self.resize(550, 300)
         self._set_clear_all()
+        self.setSizeAdjustPolicy(QtGui.QAbstractScrollArea.AdjustToContents)
 
     def _setup_etc(self):
         self.setShowGrid(False)

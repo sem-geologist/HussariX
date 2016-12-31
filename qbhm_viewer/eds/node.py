@@ -161,7 +161,7 @@ class ElementLineTreeModel(QtCore.QAbstractItemModel):
         node = index.internalPointer()
         if index.column() == 0:
             if role == QtCore.Qt.DisplayRole:
-                return node.name
+                return utfize(node.name)
         
             if role == QtCore.Qt.CheckStateRole:
                 if node.state == True:
