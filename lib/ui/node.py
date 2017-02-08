@@ -1,7 +1,7 @@
 # -*- coding: utf8 -*-
 
 import json
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore
 from ..misc import xray_util as xu
 
 dos_greek = {'a': 'α', 'b': 'β', 'g': 'γ'}
