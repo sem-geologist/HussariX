@@ -35,10 +35,9 @@ or see <http://www.gnu.org/licenses/>.
 import struct
 import numpy as np
 from io import BytesIO
-import collections
 
 from datetime import datetime, timedelta
-import os, sys
+
 
 def filetime_to_datetime(filetime):
     """Return recalculated windows filetime to unix time."""
@@ -146,7 +145,7 @@ class CamecaBase(object):
         self.changes = []
         for i in range(n_changes):
             filetime, change_len = struct.unpack('<Qi',fbio.read(12))
-            comment = fb.read(change_len).decode()
+            comment = fbio.read(change_len).decode()
             self.changes.append([filetime_to_datetime(filetime),
                                  comment])
 

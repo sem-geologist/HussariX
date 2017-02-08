@@ -28,9 +28,9 @@ class Spectra:
                                         fillLevel=0,
                                         fillBrush=pg.mkBrush(None))
     
-    def _setup_connections(self):
-        self.sigHovered.connect(highlight_eds)
-        self.sigLeft.connect(unlight_eds)
+    #def _setup_connections(self):
+    #    self.sigHovered.connect(self.highlight_eds)
+    #    self.sigLeft.connect(self.unlight_eds)
         
     def highlight_eds(self):
         self.original_pen = self.pg_curve.opts['pen']

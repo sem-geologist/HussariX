@@ -125,6 +125,6 @@ def xray_weight(elem, ln):
     return elements[elem]['Atomic_properties']['Xray_lines'][ln]['weight']
 
 
-def to_oxide_mass(self, elem, compound, mass):
-        comp = pt.formula(compound)
-        return mass / comp.mass_fraction[pt.elements.symbol(elem)]
+def to_oxide_mass(elem, compound, mass):
+    comp = pt.formula(compound)
+    return mass / comp.mass_fraction[pt.elements.symbol(elem)]

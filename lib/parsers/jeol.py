@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtWidgets, Qt, QtGui
+from PyQt5 import QtCore, Qt, QtGui
 
 import pyqtgraph as pg
 
@@ -189,7 +189,7 @@ class JeolImage:
         if file_magic != 52:
             raise IOError(
                 'Jeol image file {} have not expected magic number {}'.format(
-                    filename, file_magic))
+                    self.filename, file_magic))
         self.fileformat = streamy.read(32).rstrip(b'\x00').decode("utf-8")
         header, header_len, data = unpack('<III', streamy.read(12))
         streamy.seek(header+12)
