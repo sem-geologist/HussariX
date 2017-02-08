@@ -35,6 +35,7 @@ or see <http://www.gnu.org/licenses/>.
 import struct
 import numpy as np
 from io import BytesIO
+import os
 
 from datetime import datetime, timedelta
 

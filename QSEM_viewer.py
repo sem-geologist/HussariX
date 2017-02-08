@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui, Qt, QtWidgets
+from PyQt5 import QtGui, Qt, QtWidgets
 
 from lib.ui import mainWindowUI
 
@@ -81,7 +81,8 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
             self.treeSampleView.setModel(self.sample_models[0])
             self._postponed_connections()
             
-    def set_view(self, new_item, prev_item):
+    def set_view(self, *args):
+        new_item = *args[0]
         self.image_wdg.canvas.clear()
         self.spectra_wdg.canvas.clear()
         view = self.sample_models[0].data(new_item, 0x0100)
@@ -100,7 +101,6 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         self.image_wdg.scale_bar.bar.update()
         
 if __name__ == "__main__":
-    import sys
     app = QtWidgets.QApplication(sys.argv)
     main_window = MainWindow()
     main_window.show()
