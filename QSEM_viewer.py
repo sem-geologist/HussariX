@@ -82,7 +82,7 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
             self._postponed_connections()
             
     def set_view(self, *args):
-        new_item = *args[0]
+        new_item = args[0]
         self.image_wdg.canvas.clear()
         self.spectra_wdg.canvas.clear()
         view = self.sample_models[0].data(new_item, 0x0100)
