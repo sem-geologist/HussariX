@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from ..ui import CustomPGWidgets as cpg
-from ..generic import eds
+from ..generic import spectra
 
 # Jeol types (type abbrevations used in python struct):
 jTYPE = {1: 'B', 2: 'H', 3: 'i', 4: 'f',
@@ -213,7 +213,7 @@ class JeolImage:
         #self.pg_image_item.setRect(QtCore.QRectF(*self.parent.positionmm2))
         
         
-class JeolEDS(eds.Spectra):
+class JeolEDS(spectra.Spectra):
     def __init__(self, dictionary, parent):
         self.parent = parent
         for key in dictionary:
@@ -230,9 +230,9 @@ class JeolEDS(eds.Spectra):
             self.data = np.fromstring(fn.read(array_size*4), dtype=np.uint32)
             self.channel_count = array_size
         self._gen_scale(self.channel_count)
+        spectra.Spectra.__init__(self)
         #self.make_marker()
         #self.gen_pg_curve()
-        
     
     def make_marker(self):
         posx = self.parent.width / 2 - self.positionmm2[0] / 1000  #in m

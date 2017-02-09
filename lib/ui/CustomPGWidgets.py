@@ -4,7 +4,7 @@ from PyQt5 import QtCore, QtGui, QtSvg
 import pyqtgraph as pg
 
 
-default_pen = pg.mkPen((75, 255, 255), width=2)
+default_pen = pg.mkPen((255, 255, 75), width=2)
 default_hover_pen = pg.mkPen((255, 50, 50), width=2)
 default_select_pen = pg.mkPen((255, 255, 255), width=2)
 
@@ -145,7 +145,7 @@ class selectableMarker:
             self.savedPen = self.pen()
         self.setPen(default_hover_pen)
         #self.sigHovered.emit()
-        self.internal_pointer.highlight_eds()
+        self.internal_pointer.highlight_spectra()
         ev.accept()
 
     def hoverLeaveEvent(self, ev):
@@ -153,19 +153,21 @@ class selectableMarker:
             self.setPen(default_select_pen)
         else:
             self.setPen(self.savedPen)
-        self.internal_pointer.unlight_eds()
+        self.internal_pointer.unlight_spectra()
         #self.sigLeft.emit()
         ev.accept()
     
-    def unselect(self):
-        self.setPen(self.savedPen)
-        self.selected = False
-    
     def mouseClickEvent(self, ev):
         if ev.button() == QtCore.Qt.LeftButton:
-            self.setPen(default_select_pen)
+            
             #self.sigClicked.emit(self.internal_pointer)
-            self.selected = True
+            if self.selected:
+                self.selected = False
+            else:
+                self.selected = True
+                self.setPen(default_select_pen)
+                self.internal_pointer.select_spectra()
+            
             ev.accept()
         else:
             ev.ignore()
@@ -187,8 +189,6 @@ class selectableRectangle(selectableMarker, QtGui.QGraphicsRectItem):
         self.geometry = QtCore.QRectF(*args)
         QtGui.QGraphicsRectItem.__init__(self, *args)
         selectableMarker.__init__(self, data, *args)
-        print(self.boundingRect())
-        print(self.shape().boundingRect())
         
     def boundingRect(self):
         #self.prepareGeometryChange()
