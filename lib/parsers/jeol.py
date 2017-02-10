@@ -265,7 +265,10 @@ class JeolSampleViewListModel(QtCore.QAbstractListModel):
         self.sample = jeol_sample
 
     def rowCount(self, parent):
-        return len(self.sample.views)
+        try:
+            return len(self.sample.views)
+        except AttributeError:   # empty sample container
+            return 0
 
     def data(self, index, role):
         if role == QtCore.Qt.ToolTipRole:

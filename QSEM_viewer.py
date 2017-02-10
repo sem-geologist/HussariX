@@ -30,6 +30,7 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         self.sample_models = {}
         self._setup_connections()
         self.current_view = None
+        self.current_sample_index = None
     
     def _setup_widgets(self):
         self.spectra_wdg = swidget.EDSSpectraGUI(icon_size=24,
@@ -61,7 +62,14 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         self.actionLoad.triggered.connect(self.load_project)
         
     def _postponed_connections(self):
-        self.sampleView.selectionModel().currentChanged.connect(self.set_view)
+        self.sampleView.selectionModel().currentChanged.disconnect()
+        self.projectBox.currentIndexChanged.connect(self.change_view_model)
+        self.change_view_model(0)
+        
+    def change_view_model(self, index):
+         self.sampleView.setModel(self.sample_models[index])
+         self.sampleView.selectionModel().currentChanged.connect(self.set_view)
+         self.current_sample_index = index
         
     def load_project(self):
         
@@ -76,16 +84,21 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
             for i in range(len(self.project.samples)):
                 self.sample_models[i] = jeol.JeolSampleViewListModel(
                     self.project.samples[i])
-                self.projectBox.addItem('Sample '+str(i))
+                self.projectBox.addItem(' '.join(['Sample', str(i)+':',
+                                                  self.project.samples[i].memo]))
             self.sampleView.setModel(self.sample_models[0])
             self.treeSampleView.setModel(self.sample_models[0])
             self._postponed_connections()
-            
+    
+    def clear_views(self):
+        self.image_wdg.canvas.clear()
+        self.spectra_wdg.canvas.clear()
+    
     def set_view(self, *args):
         new_item = args[0]
         self.image_wdg.canvas.clear()
         self.spectra_wdg.canvas.clear()
-        view = self.sample_models[0].data(new_item, 0x0100)
+        view = self.sample_models[self.current_sample_index].data(new_item, 0x0100)
         self.current_view = view
         size = 10 ** (int(log10(view.width)) - 1)
         self.image_wdg.canvas.addItem(view.def_image.pg_image_item)
@@ -93,12 +106,6 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
             self.image_wdg.canvas.addItem(i.marker)
             self.spectra_wdg.canvas.addItem(i.pg_curve)
         self.image_wdg.scale_bar.updateBar()
-        self.image_wdg.scale_bar.change_scale(size)
-        self.image_wdg.scale_bar.update()
-        self.image_wdg.canvas.vb.update()
-        self.image_wdg.canvas.update()
-        self.image_wdg.pg_graphics_layout.update()
-        self.image_wdg.scale_bar.bar.update()
         
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
