@@ -67,9 +67,9 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         self.change_view_model(0)
         
     def change_view_model(self, index):
-         self.sampleView.setModel(self.sample_models[index])
-         self.sampleView.selectionModel().currentChanged.connect(self.set_view)
-         self.current_sample_index = index
+        self.sampleView.setModel(self.sample_models[index])
+        self.sampleView.selectionModel().currentChanged.connect(self.set_view)
+        self.current_sample_index = index
         
     def load_project(self):
         
@@ -105,6 +105,7 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         for i in view.eds_list:
             self.image_wdg.canvas.addItem(i.marker)
             self.spectra_wdg.canvas.addItem(i.pg_curve)
+        self.image_wdg_scale_bar.change_scale(scale)
         self.image_wdg.scale_bar.updateBar()
         
 if __name__ == "__main__":

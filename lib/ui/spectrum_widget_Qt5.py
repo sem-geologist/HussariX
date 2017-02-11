@@ -265,7 +265,7 @@ class EDSCanvas(pg.PlotWidget):
         self.p2.setXLink(self.p1)
         self.p3.setXLink(self.p1)
         self.p3.setYLink(self.p1)
-        self.bottom_axis = b_axis = self.p1.axes['bottom']['item']
+        self.bottom_axis = self.p1.axes['bottom']['item']
         self.updateViews()
         self.x_axis_mode = initial_mode
         self.set_kv(kv)

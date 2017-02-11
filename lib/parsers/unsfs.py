@@ -336,12 +336,20 @@ class SFS_reader(object):
             for c in temp_item_list:
                 if not c.is_dir:
                     c.setup_compression_metadata()
-        # Shufling items from flat list into dictionary tree:
+        
+        final_tree = self._flat_lists_to_dict(paths, temp_item_list)
+        # and finaly Virtual file system:
+        self.vfs = final_tree
+    
+    @staticmethod
+    def _flat_lists_to_dict(paths, items):
+        """Shufle sfs items from flat list into dictionary tree
+        """
         while not all(g[-1] == -1 for g in paths):
             for f in range(len(paths)):
                 if paths[f][-1] != -1:
                     paths[f].extend(paths[paths[f][-1]])
-        names = [j.name for j in temp_item_list]
+        names = [j.name for j in items]
         names.append('root')  # temp root item in dictionary
         for p in paths:
             for r in range(len(p)):
@@ -349,7 +357,7 @@ class SFS_reader(object):
         for p in paths:
             p.reverse()
         root = {}
-        for i in range(len(temp_item_list)):
+        for i in range(len(items)):
             dir_pointer = root
             for j in paths[i]:
                 if j in dir_pointer:
@@ -357,13 +365,12 @@ class SFS_reader(object):
                 else:
                     dir_pointer[j] = {}
                     dir_pointer = dir_pointer[j]
-            if temp_item_list[i].is_dir:
-                dir_pointer[temp_item_list[i].name] = {}
+            if items[i].is_dir:
+                dir_pointer[items[i].name] = {}
             else:
-                dir_pointer[temp_item_list[i].name] = temp_item_list[i]
-        # and finaly Virtual file system:
-        self.vfs = root['root']
-
+                dir_pointer[items[i].name] = items[i]
+        return root['root']
+    
     def _check_the_compresion(self, temp_item_list):
         """parse, check and setup the self.compression"""
 
