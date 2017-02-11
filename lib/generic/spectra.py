@@ -1,6 +1,8 @@
 import numpy as np
 import pyqtgraph as pg
 
+from ..ui import CustomPGWidgets as cpg
+
 #TODO read those vals from config files
 HIGHLIGHT_PEN = pg.mkPen('r', width=2)
 HIGHLIGHT_BRUSH = pg.mkBrush((255,255,75,50))
@@ -30,9 +32,15 @@ class Spectra:
                                         fillLevel=0,                  # prepare to be filled
                                         fillBrush=pg.mkBrush(None))   # but fill not
     
-    #def _setup_connections(self):
-    #    self.sigHovered.connect(self.highlight_eds)
-    #    self.sigLeft.connect(self.unlight_eds)
+    def gen_marker(self, *args, marker_type=None):
+        if marker_type == 'translated_marker':
+            self.marker = cpg.selectablePoint(self, *args)
+        elif marker_type == 'rectangle':
+            self.marker = cpg.selectableRectangle(self, *args)
+        elif marker_type == 'ellipse':
+            self.marker = cpg.selectableEllipse(self, *args)
+        elif marker_type == 'free_polygon':
+            self.marker = cpg.selectablePolygon(self, *args)
         
     def highlight_spectra(self):
         self.original_pen = self.pg_curve.opts['pen']

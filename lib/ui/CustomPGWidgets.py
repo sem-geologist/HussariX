@@ -1,5 +1,5 @@
 
-from PyQt5 import QtCore, QtGui, QtSvg
+from PyQt5 import QtCore, QtGui
 
 import pyqtgraph as pg
 
@@ -191,7 +191,6 @@ class selectableRectangle(selectableMarker, QtGui.QGraphicsRectItem):
         selectableMarker.__init__(self, data, *args)
         
     def boundingRect(self):
-        #self.prepareGeometryChange()
         return self.geometry
     
     def shape(self):
@@ -205,8 +204,17 @@ class selectableEllipse(selectableMarker, QtGui.QGraphicsEllipseItem):
      (left_top: x, y, width, height)"""
         
     def __init__(self, data, *args):
+        self.geometry = QtCore.QRectF(*args)
         QtGui.QGraphicsEllipseItem.__init__(self, *args)
         selectableMarker.__init__(self, data, *args)
+        
+    def boundingRect(self):
+        return self.geometry
+    
+    def shape(self):
+        path = QtGui.QPainterPath()
+        path.addEllipse(self.boundingRect())
+        return path
         
         
 class selectablePoint(selectableMarker, QtGui.QGraphicsPathItem):
@@ -217,12 +225,9 @@ class selectablePoint(selectableMarker, QtGui.QGraphicsPathItem):
     def __init__(self, data, *args):
         self.geometry = args[0]
         QtGui.QGraphicsPathItem.__init__(self, *args)
-        #print(self.boundingRect())
         selectableMarker.__init__(self, data, *args)
-        #print(self.boundingRect())
         
     def boundingRect(self):
-        #self.prepareGeometryChange()
         return self.geometry.boundingRect()
     
     def shape(self):

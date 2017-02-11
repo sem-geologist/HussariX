@@ -8,8 +8,7 @@ import os
 from datetime import datetime, timedelta
 import numpy as np
 
-from ..ui import CustomPGWidgets as cpg
-from ..generic import spectra
+from ..generic import spectra, image
 
 # Jeol types (type abbrevations used in python struct):
 jTYPE = {1: 'B', 2: 'H', 3: 'i', 4: 'f',
@@ -17,6 +16,7 @@ jTYPE = {1: 'B', 2: 'H', 3: 'i', 4: 'f',
          9: 'f', 10: 'd', 11: 's', 12: 's'}
 # val 0 means it is dict
 #val jType 11, is most probably boolean... weird it is in between arrays...
+
 
 
 def aggregate(stream_obj):
@@ -160,11 +160,6 @@ class JeolSampleView:
             self.point_marker.moveTo(*i[0])
             self.point_marker.lineTo(*i[1])
             
-    #def get_translated_marker_point(self, x_offset, y_offset):
-    #    x = self.width / 2 - x_offset
-    #    y = self.height / 2 - y_offset
-    #    return self.point_marker.translated(x, y)
-    
     def set_default_image(self):
         self.def_image = self.image_list[0]
         self.def_image.gen_image_item(self.height, self.width)
@@ -173,7 +168,7 @@ class JeolSampleView:
         return 'JeolSampleView, title: {}'.format(self.memo)
 
 
-class JeolImage:
+class JeolImage(image.Image):
     def __init__(self, dictionary, parent):
         self.parent = parent
         for key in dictionary:
@@ -195,23 +190,12 @@ class JeolImage:
         streamy.seek(header+12)
         self.header = aggregate(streamy)
         streamy.seek(data+12)
-        self.data = aggregate(streamy)
-        s = self.data['Image']['Size']
-        self.data['Image']['Bits'].resize((s[1], s[0]))
+        self.metadata = aggregate(streamy)
+        s = self.metadata['Image']['Size']
+        self.metadata['Image']['Bits'].resize((s[1], s[0]))
+        self.image_array = self.metadata['Image']['Bits']
         self.gen_icon()
-        
-    def gen_icon(self):
-        qimage = Qt.QImage(self.data['Image']['Bits'],
-                  self.data['Image']['Bits'].shape[1],
-                  self.data['Image']['Bits'].shape[0],
-                  Qt.QImage.Format_Grayscale8)
-        self.icon = Qt.QIcon(Qt.QPixmap(qimage))
-        
-    def gen_image_item(self, height, width):
-        self.pg_image_item = pg.ImageItem(self.data['Image']['Bits'])
-        self.pg_image_item.setRect(QtCore.QRectF(0, height, width, -height))
-        #self.pg_image_item.setRect(QtCore.QRectF(*self.parent.positionmm2))
-        
+
         
 class JeolEDS(spectra.Spectra):
     def __init__(self, dictionary, parent):
@@ -231,8 +215,6 @@ class JeolEDS(spectra.Spectra):
             self.channel_count = array_size
         self._gen_scale(self.channel_count)
         spectra.Spectra.__init__(self)
-        #self.make_marker()
-        #self.gen_pg_curve()
     
     def make_marker(self):
         posx = self.parent.width / 2 - self.positionmm2[0] / 1000  #in m
@@ -241,11 +223,11 @@ class JeolEDS(spectra.Spectra):
             if self.parent.point_marker is None:
                 self.parent.create_point_marker()
             path = self.parent.point_marker.translated(posx, posy)
-            self.marker = cpg.selectablePoint(self, path)
+            self.gen_marker(path, marker_type='translated_marker')
         else:  # rect
             lenth = (self.positionmm2[0] - self.positionmm2[2]) / 1000
             height = (self.positionmm2[3] - self.positionmm2[1]) / 1000
-            self.marker = cpg.selectableRectangle(self, posx, posy, lenth, height)
+            self.gen_marker(posx, posy, lenth, height, marker_type='rectangle')
 
 
 class JeolThingy:
@@ -273,7 +255,7 @@ class JeolSampleViewListModel(QtCore.QAbstractListModel):
     def data(self, index, role):
         if role == QtCore.Qt.ToolTipRole:
             item = self.sample.views[index.row()]
-            tooltip = """Mag: {}X
+            tooltip = """Mag: ✕{}
 WD: {:.2f}
 HV: {:.2f}
 N of EDS: {}
