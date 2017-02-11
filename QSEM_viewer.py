@@ -105,7 +105,7 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         for i in view.eds_list:
             self.image_wdg.canvas.addItem(i.marker)
             self.spectra_wdg.canvas.addItem(i.pg_curve)
-        self.image_wdg_scale_bar.change_scale(scale)
+        self.image_wdg.scale_bar.change_scale(size)
         self.image_wdg.scale_bar.updateBar()
         
 if __name__ == "__main__":
