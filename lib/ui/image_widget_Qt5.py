@@ -24,3 +24,12 @@ class SEMImageGUI(cw.FullscreenableWidget):
         self.scale_bar = cpgw.CustomScaleBar(0.0001)
         self.scale_bar.setParentItem(self.canvas.vb)
         self.scale_bar.anchor((1, 1), (1, 1), offset=(-20, -20))
+        
+    def set_new_image(self, new_image_item):
+        for i in self.canvas.items:
+            if type(i) == pg.ImageItem:
+                self.canvas.removeItem(i)
+        self.canvas.addItem(new_image_item)
+        new_image_item.setZValue(-30.0)
+        
+            

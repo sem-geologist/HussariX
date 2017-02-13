@@ -65,6 +65,8 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         self.sampleView.selectionModel().currentChanged.disconnect()
         self.projectBox.currentIndexChanged.connect(self.change_view_model)
         self.change_view_model(0)
+        self.sampleView.customContextMenuRequested.connect(
+            self.show_view_item_menu)
         
     def change_view_model(self, index):
         self.sampleView.setModel(self.sample_models[index])
@@ -79,6 +81,8 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
                                      'Open SEM project file',
                                      home,
                                      file_ext)
+        self.projectBox.disconnect()
+        self.projectBox.clear()
         if da_file[1] == SEM_PROJECT_TYPE[0]: #jeol
             self.project = jeol.JeolProject(da_file[0])
             for i in range(len(self.project.samples)):
@@ -93,6 +97,59 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
     def clear_views(self):
         self.image_wdg.canvas.clear()
         self.spectra_wdg.canvas.clear()
+    
+    #def raiseContextMenu(self, ev):
+        #menu = self.getContextMenus()
+        
+        ## Let the scene add on to the end of our context menu
+        ## (this is optional)
+        ##menu = self.scene().addParentContextMenus(self, menu, ev)
+        
+        #pos = ev.screenPos()
+        #menu.popup(QtCore.QPoint(pos.x(), pos.y()))
+        #return True
+
+    ## This method will be called when this item's _children_ want to raise
+    ## a context menu that includes their parents' menus.
+    #def getViewContextMenus(self, event=None):
+        #if self.menu is None:
+            #self.menu = QtGui.QMenu()
+            #self.menu.setTitle("axis options..")
+                        
+            #scale = QtGui.QWidgetAction(self.menu)
+            #groupBox = QtGui.QGroupBox()
+            #verticalLayout = QtGui.QVBoxLayout(groupBox)
+            #self.energyButton.setParent(groupBox)
+            #verticalLayout.addWidget(self.energyButton)
+            #self.thetaButton.setParent(groupBox)
+            #verticalLayout.addWidget(self.thetaButton)
+            #scale.setDefaultWidget(groupBox)
+            #self.menu.addAction(scale)
+            #self.menu.scale = scale
+            #self.menu.groupBox = groupBox
+        #return self.menu
+    
+    
+    def show_view_item_menu(self, point):
+        
+        index = self.sampleView.indexAt(point)
+        view = self.sample_models[self.current_sample_index].data(index, 0x0100)
+        if index.isValid() and len(view.image_list) > 1:
+            print('context_menu_requested')
+            menu = QtGui.QMenu()
+            menu.setTitle('set primary image...')
+            for i in view.image_list:
+                print(i.metadata['Image']['Title'])
+                action = QtGui.QAction(i.metadata['Image']['Title'])
+                func = lambda : self.image_wdg.set_new_image(i.pg_image_item)
+                action.triggered.connect(func)
+                menu.addAction(action)
+            
+                #button = QtGui.QRadioButton(i.memo)
+                #button.setParent(groupBox)
+                #verticalLayout.addWidget(button)
+            #menu.addAction(image)
+            menu.exec(self.sampleView.mapToGlobal(point))
     
     def set_view(self, *args):
         new_item = args[0]

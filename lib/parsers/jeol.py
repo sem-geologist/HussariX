@@ -1,7 +1,5 @@
 from PyQt5 import QtCore, Qt, QtGui
 
-import pyqtgraph as pg
-
 from struct import unpack, calcsize
 from io import BytesIO
 import os
@@ -128,7 +126,12 @@ class JeolSampleView:
                     self.classify_item(dictionary['ViewData'][str(view)])
         self.make_hw()
         self.set_default_image()
+        self.make_image_items()
         self.make_eds_interactive()
+        
+    def make_image_items(self):
+        for i in self.image_list:
+            i.gen_image_item(self.height, self.width)
         
     def make_eds_interactive(self):
         for i in self.eds_list:
@@ -148,21 +151,27 @@ class JeolSampleView:
         self.height = self.positionmm2[3] / 1000
         self.width =  -self.positionmm2[2] / 1000
         
-    def create_point_marker(self):
+    def create_point_marker(self, scale_down=16):
+        """create point marker (cross marke with 
+        open middle part).
+        Parameters:
+        scale_down -- (default=16) parameter which 
+        controls marker size. the value is the fraction of
+        image height.
+        """
         self.point_marker = QtGui.QPainterPath()
         coords = np.asarray([[[-0.5, 0], [-0.1, 0]],
           [[0, 0.5], [0, 0.1]],
           [[0, -0.5], [0, -0.1]],
           [[0.5, 0], [0.1, 0]]])
-        scale = self.height / 15
+        scale = self.height / scale_down
         coords *= scale
         for i in coords:
             self.point_marker.moveTo(*i[0])
             self.point_marker.lineTo(*i[1])
             
-    def set_default_image(self):
-        self.def_image = self.image_list[0]
-        self.def_image.gen_image_item(self.height, self.width)
+    def set_default_image(self, index=-1):
+        self.def_image = self.image_list[index]
     
     def __repr__(self):
         return 'JeolSampleView, title: {}'.format(self.memo)
