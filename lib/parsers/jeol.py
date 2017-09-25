@@ -221,11 +221,12 @@ class JeolEDS(spectra.Spectra):
             fn.seek(454)
             array_size = unpack('<I', fn.read(4))[0]
             self.data = np.fromstring(fn.read(array_size*4), dtype=np.uint32)
-            self.channel_count = array_size
-        self._gen_scale(self.channel_count)
+            self.chnl_cnt = array_size
+        self.gen_scale()
         spectra.Spectra.__init__(self)
     
     def make_marker(self):
+        #in case of jeol marker is produced in Jeol spectra class
         posx = self.parent.width / 2 - self.positionmm2[0] / 1000  #in m
         posy = self.parent.height / 2 - self.positionmm2[3] / 1000 
         if self.positionmm2[0] == self.positionmm2[2]:  # point

@@ -2,6 +2,7 @@
 #from PyQt5 import QtCore, Qt, QtGui, QtWidgets
 import pyqtgraph as pg
 
+from PyQt5 import QtCore, QtGui, QtWidgets
 from . import CustomWidgets as cw
 from . import CustomPGWidgets as cpgw
 
@@ -24,6 +25,7 @@ class SEMImageGUI(cw.FullscreenableWidget):
         self.scale_bar = cpgw.CustomScaleBar(0.0001)
         self.scale_bar.setParentItem(self.canvas.vb)
         self.scale_bar.anchor((1, 1), (1, 1), offset=(-20, -20))
+        self._setup_pet()
         
     def set_new_image(self, new_image_item):
         for i in self.canvas.items:
@@ -31,5 +33,14 @@ class SEMImageGUI(cw.FullscreenableWidget):
                 self.canvas.removeItem(i)
         self.canvas.addItem(new_image_item)
         new_image_item.setZValue(-30.0)
+    
+    def _setup_pet(self):
+        self.dock_layer_win = QtWidgets.QDockWidget('Signals', self)
+        self.dock_layer_win.setSizePolicy(QtGui.QSizePolicy.Minimum,
+                                        QtGui.QSizePolicy.Minimum)
+        #self.pet = XRayElementTable(parent=self.dock_pet_win)
+        #self.dock_layer_win.setWidget(self.pet)
+        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,
+                           self.dock_layer_win)
         
             

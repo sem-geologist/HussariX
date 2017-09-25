@@ -31,10 +31,11 @@ from periodictable import elements
 
 from math import log
 
-from .. eds import xray_util as xu
+from .. misc import xray_util as xu # TODO: This should go away after proper implementation 
+from ..generic import spectra, image
 
 
-class Container(object):
+class Container(object):  #TODO: Boo
     pass
 
 
@@ -53,8 +54,8 @@ class EDXSpectrumMeta(object):
                       spectrum.TRTHeaderedClass.ClassInstance[2].ElevationAngle)
         self.azimutAngle = float(
                       spectrum.TRTHeaderedClass.ClassInstance[2].AzimutAngle)
-        self.offset = float(spectrum.ClassInstance[0].CalibAbs)
-        self.scale = float(spectrum.ClassInstance[0].CalibLin)
+        self.x_offset = float(spectrum.ClassInstance[0].CalibAbs)
+        self.x_res = float(spectrum.ClassInstance[0].CalibLin)
         self.chnlCnt = int(spectrum.ClassInstance[0].ChannelCount)
         self.date = str(spectrum.ClassInstance[0].Date)
         self.time = str(spectrum.ClassInstance[0].Time)
@@ -87,9 +88,9 @@ class EDXSpectrumMeta(object):
                                 self.scale * self.chnlCnt + self.offset,
                                 self.scale)
 
-
+#TODO: revamp the thing
 class BasicEDXSpectrum(object):
-    def __init__(self, spectrum, name='noname'):
+    def __init__(self, spectrum):
         """
         Wrap the objectified bruker EDS spectrum xml part
         to the python object, leaving all the xml and bruker clutter behind
@@ -102,33 +103,60 @@ class BasicEDXSpectrum(object):
             raise IOError('Not valid objectified xml passed',
                           ' to Bruker EDXSpectrum class')
 
-        try:
-            self.name = str(spectrum.attrib['Name'])
+        self.name =  spectrum.attrib.get('Name', 'noname')
             if self.name.endswith('.spx') or self.name.endswith('.xls'):
                 self.name = self.name[:-4]
-        except KeyError:
-            _logger.warning('spectrum have no name...')
-            self.name = name
-
-        try:
-            self.real_time = int(
-                            spectrum.TRTHeaderedClass.ClassInstance.RealTime)
-            self.life_time = int(
-                            spectrum.TRTHeaderedClass.ClassInstance.LifeTime)
-            self.dead_time = int(
-                            spectrum.TRTHeaderedClass.ClassInstance.DeadTime)
-        except AttributeError:
-            _logger.warning('spectrum have no dead time records...')
-        self.data = np.fromstring(str(spectrum.Channels), dtype='Q', sep=",")
-        self.meta = EDXSpectrumMeta(spectrum)
+        self.metadata = {}
+        self._parse_header(spectrum)
+        self._parse_spectra(spectrum)
+        
         self._estimate_zero_peak_fwhm()
         self._estimate_abc_for_2_sigmas()
         self.elements = []
-
+    
+    def _parse_header(self, spectrum):
+        TRTHeader = spectrum.TRTHeaderedClass
+        hardware_header = TRTHeader.xpath(
+            "ClassInstance[@Type='TRTSpectrumHardwareHeader']")[0]
+        detector_header = TRTHeader.xpath(
+            "ClassInstance[@Type='TRTDetectorHeader']")[0]
+        esma_header = TRTHeader.xpath(
+            "ClassInstance[@Type='TRTESMAHeader']")[0]
+        
+        #set and parse hardware:
+        self.metadata['hardware'] = dictionarize(hardware_header)
+        self.real_time = self.metadata['hardware'].get('RealTime')
+        self.live_time = self.metadata['hardware'].get('LifeTime')
+        self.zero_position = self.metadata['hardware']['ZeroPeakPosition']
+        
+        self.metadata['detector'] = dictionarize(detector_header)
+        
+         # decode silly hidden detector layer info:
+        det_l_str = self.detector_metadata['DetLayers']
+        dec_det_l_str = codecs.decode(det_l_str.encode('ascii'), 'base64')
+        mini_xml = objectify.fromstring(unzip_block(dec_det_l_str))
+        self.detector_metadata['DetLayers'] = {}  # Overwrite with dict
+        for i in mini_xml.getchildren():
+            self.detector_metadata['DetLayers'][i.tag] = dict(i.attrib)
+            
+         # map stuff from esma xml branch:
+        self.esma_metadata = dictionarize(esma_header)
+        self.hv = self.esma_metadata.get('PrimaryEnergy')
+        
+    def _parse_spectra(self, spectra):
+        spectrum_header = spectrum.xpath(
+            "ClassInstance[@Type='TRTSpectrumHeader']")[0]
+        self.metadata['spectrum'] = dictionarize(spectrum_header)
+        self.x_offest = self.metadata['spectrum']['CalibAbs']
+        self.x_res = self.metadata['spectrum']['CalibLin']
+        self.chnl_cnt = self.metadata['spectrum']['ChannelCount']
+        self.gen_scale()
+        self.data = np.fromstring(spectrum.Channels.text, dtype='Q', sep=",")
+        
     def _estimate_zero_peak_fwhm(self):
         """estimate full width at half maximum for bruker reference 0.0kV peak"""
-        zpp = self.meta.zero_position  # zero peak position
-        zero_peak = UnivariateSpline(self.meta.energy[:2 * zpp],
+        zpp = self.zero_position  # zero peak position
+        zero_peak = UnivariateSpline(self.scale[:2 * zpp],
                                      self.data[:2 * zpp] -
                                          np.max(self.data[zpp - 3:zpp + 3]) / 2)
         self.fwhm_zero = np.diff(zero_peak.roots())[0]
@@ -158,6 +186,7 @@ class BasicEDXSpectrum(object):
     def make_roi(self, energy):
         """make 2 sigma ROI (list of min and max energy)"""
         width = self.calc_width(energy)
+        ### TODO: everything goes below to universal spectra class
         return [energy - width / 2, energy + width / 2]
 
     def set_elements(self, element_list):
@@ -169,23 +198,16 @@ class BasicEDXSpectrum(object):
     def remove_element(self, element):
         self.elements.remove(element)
 
-    def initial_roi(self, element):
-        pass
-
-    def calc_counts(self, element):
-        pass
-
-
+#TODO rewrite below:
 class AnalysedEDXSpectrum(BasicEDXSpectrum):
     def __init__(self, spectrum):
         BasicEDXSpectrum.__init__(self, spectrum)
         self._parse_elements(spectrum)
-        self.results = {}
         self._parse_results(spectrum)
-        self.roi_results = {}
         self._parse_roi_results(spectrum)
 
     def _parse_results(self, spectrum):
+        self.results = {}
         try:
             for j in spectrum.xpath("ClassInstance[@Type='TRTResult']/Result"):
                 children = j.getchildren()
@@ -205,6 +227,7 @@ class AnalysedEDXSpectrum(BasicEDXSpectrum):
             _logger.info('no element selection present in the spectra..')
 
     def _parse_roi_results(self, spectrum):
+        self.roi_results = {}
         try:
             for j in spectrum.xpath(
                                  "ClassInstance[@Type='TRTResult']/RoiResults"):

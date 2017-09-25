@@ -67,23 +67,22 @@ class HyperHeader(object):
         except KeyError:
             self.name = 'Undefinded'
             _logger.info("hypermap have no name. Giving it 'Undefined' name")
-        self.datetime = datetime.strptime(' '.join([str(root.Header.Date),
-                                                    str(root.Header.Time)]),
+        self.datetime = datetime.strptime(' '.join([root.Header.Date.pyval,
+                                                    root.Header.Time.pyval]),
                                           "%d.%m.%Y %H:%M:%S")
         self.version = int(root.Header.FileVersion)
-        #create containers:
+        # create containers:
         self.sem = Container()
         self.stage = Container()
-        self.image = Container()
-        #fill the sem and stage attributes:
+        # fill the sem and stage attributes:
         self._set_sem(root)
-        self._set_image(root)
+        self._set_images(root)
         self.elements = {}
         self._set_elements(root)
-        self.line_counter = np.fromstring(str(root.LineCounter),
+        self.line_counter = np.fromstring(root.LineCounter.text,
                                           dtype=np.uint16, sep=',')
-        self.channel_count = int(root.ChCount)
-        self.mapping_count = int(root.DetectorCount)
+        self.channel_count = root.ChCount.pyval
+        self.mapping_count = root.DetectorCount.pyval
         self.channel_factors = {}
         self.spectra_data = {}
         self._set_sum_edx(root)
@@ -94,26 +93,30 @@ class HyperHeader(object):
         """
         semData = root.xpath("ClassInstance[@Type='TRTSEMData']")[0]
         # sem acceleration voltage, working distance, magnification:
-        self.sem.hv = float(semData.HV)  # in kV
-        self.sem.wd = float(semData.WD)  # in mm
-        self.sem.mag = float(semData.Mag)  # in times
+        self.sem.hv = semData.HV.pyval  # in kV
+        self.sem.wd = semData.WD.pyval  # in mm
+        self.sem.mag = semData.Mag.pyval  # in times
         # image/hypermap resolution in um/pixel:
-        self.image.x_res = float(semData.DX) / 1.0e6  # in meters
-        self.image.y_res = float(semData.DY) / 1.0e6  # in meters
-        semStageData = root.xpath("ClassInstance[@Type='TRTSEMStageData']")[0]
-        # stage position data in um cast to m (that data anyway is not used
-        # by hyperspy):
         try:
-            self.stage.x = float(semStageData.X) / 1.0e6  # in meters
-            self.stage.y = float(semStageData.Y) / 1.0e6  # in meters
+            self.x_res = semData.DX.pyval / 1.0e6  # in meters
+            self.y_res = semData.DY.pyval / 1.0e6  # in meters
+            self.units = 'm'
+        except AttributeError:
+            self.x_res = self.y_res = 1.0 # in pixels
+            self.units = 'pix'
+        semStageData = root.xpath("ClassInstance[@Type='TRTSEMStageData']")[0]
+        # stage position data in um cast to m:
+        try:
+            self.stage.x = semStageData.X.pyval / 1.0e6  # in meters
+            self.stage.y = semStageData.Y.pyval / 1.0e6  # in meters
         except AttributeError:
             self.stage.x = self.stage.y = None
         try:
-            self.stage.z = float(semStageData.Z) / 1.0e6  # in meters
+            self.stage.z = semStageData.Z.pyval / 1.0e6  # in meters
         except AttributeError:
             self.stage.z = None
         try:
-            self.stage.rotation = float(semStageData.Rotation)  # in degrees
+            self.stage.rotation = semStageData.Rotation.pyval  # in degrees
         except AttributeError:
             self.stage.rotation = None
         DSPConf = root.xpath("ClassInstance[@Type='TRTDSPConfiguration']")[0]
@@ -346,4 +349,4 @@ class HyperMap(object):
         self.energy_scale = sp_meta.meta.energy[:self.hypermap.shape[0]]
 
     def calc_max_peak_spectrum(self):
-        return np.max(self.hypermap, axis=(1,2))
+        return np.max(self.hypermap, axis=(0,1))
