@@ -5,16 +5,17 @@ This library reads data produced by Cameca(TM) Peaksight(TM) software.
 
 It is developed independantly from Cameca or Ametek inc.
 Development is based on the RE of binary data formats which
-is legaly considered Fair Use in the EU.
+is legaly considered Fair Use in the EU, particularly for
+interoperability; see EU Directive 2009/24.
 
 LICENSE:
 
-Cameca SX parser library is free software: you can redistribute it and/or modify
+This library is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-Cameca SX parser library is distributed in the hope that it will be useful,
+This library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -29,17 +30,27 @@ import numpy as np
 from io import BytesIO
 import os
 
+
 from datetime import datetime, timedelta
+
+from enum import IntEnum
+
+
+# ---------------- #
+# helper functions #
+# ---------------- #
 
 
 def filetime_to_datetime(filetime):
-    """Return recalculated windows filetime to unix time."""
+    """convert retarded windows filetime and return as unix time."""
     return datetime(1601, 1, 1) + timedelta(microseconds=filetime / 10)
+
 
 def mod_date(filename):
     """Return datetime of file last moddification"""
     t = os.path.getmtime(filename)
     return datetime.fromtimestamp(t)
+
 
 def get_xtal(full_xtal_name):
     """get basic crystal name.
@@ -49,307 +60,457 @@ def get_xtal(full_xtal_name):
         if i in full_xtal_name:
             return i
 
+
 def read_c_hash_string(stream):
-    str_len = unpack('<i', stream.read(4))[0]
+    """read the C# string and return python string.
+    Requires stream in byte mode (e.g. BytesIO, open(filename)),
+    with position at string preceeding string lenght counter.
+    """
+    str_len = unpack('<I', stream.read(4))[0]
     return stream.read(str_len).decode()
 
 
-class CamecaBase(object):
-    cam_file_types = {1: 'WDS setup',
-                      2: 'Image/maping setup',
-                      3: 'Calibration setup',
-                      4: 'Quanti setup',
-                      5: 'unknown',  # What is this???
-                      6: 'WDS results',
-                      7: 'Image/maping results',
-                      8: 'Calibration results',
-                      9: 'Quanti results',
-                      10: 'Peak overlap table'}
-    
-    cameca_lines = {1: 'Kβ', 2: 'Kα',
-                    3: 'Lγ4', 4:'Lγ3', 5: 'Lγ2', 6: 'Lγ',
-                    7: 'Lβ9', 8: 'Lβ10', 9: 'Lβ7', 10: 'Lβ2',
-                    11: 'Lβ6', 12: 'Lβ3', 13: 'Lβ4', 14: 'Lβ',
-                    15: 'Lα', 16: 'Lν', 17: 'Ll',
-                    18: 'Mγ', 19: 'Mβ', 20: 'Mα', 21: 'Mζ', 22: 'Mζ2',
-                    23: 'M1N2', 24: 'M1N3', 25: 'M2N1', 26: 'M2N4',
-                    27: 'M2O4', 28: 'M3N1', 29: 'M3N4', 30: 'M3O1',
-                    31: 'M3O4', 32: 'M4O2',
-                    100: 'sKα1', 101: 'sKα2', 102: 'sKα3', 103: 'sKα4',
-                    104: 'sKα5', 105: 'sKα6', 106: 'sKβ1'}
-    
-    #it could be used lists, however, dict is much faster to lookup
-    cam_elements = {0: 'n', 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B',
-                    6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na',
-                    12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S',
-                    17: 'Cl', 18: 'Ar', 19: 'K', 20: 'Ca', 21: 'Sc',
-                    22: 'Ti', 23: 'V', 24: 'Cr', 25: 'Mn', 26: 'Fe',
-                    27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn', 31: 'Ga',
-                    32: 'Ge', 33: 'As', 34: 'Se', 35: 'Br', 36: 'Kr',
-                    37: 'Rb', 38: 'Sr', 39: 'Y', 40: 'Zr', 41: 'Nb',
-                    42: 'Mo', 43: 'Tc', 44: 'Ru', 45: 'Rh', 46: 'Pd',
-                    47: 'Ag', 48: 'Cd', 49: 'In', 50: 'Sn', 51: 'Sb',
-                    52: 'Te', 53: 'I', 54: 'Xe', 55: 'Cs', 56: 'Ba',
-                    57: 'La', 58: 'Ce', 59: 'Pr', 60: 'Nd', 61: 'Pm',
-                    62: 'Sm', 63: 'Eu', 64: 'Gd', 65: 'Tb', 66: 'Dy',
-                    67: 'Ho', 68: 'Er', 69: 'Tm', 70: 'Yb', 71: 'Lu',
-                    72: 'Hf', 73: 'Ta', 74: 'W', 75: 'Re', 76: 'Os',
-                    77: 'Ir', 78: 'Pt', 79: 'Au', 80: 'Hg', 81: 'Tl',
-                    82: 'Pb', 83: 'Bi', 84: 'Po', 85: 'At', 86: 'Rn',
-                    87: 'Fr', 88: 'Ra', 89: 'Ac', 90: 'Th', 91: 'Pa',
-                    92: 'U', 93: 'Np', 94: 'Pu', 95: 'Am', 96: 'Cm',
-                    97: 'Bk', 98: 'Cf', 99: 'Es', 100: 'Fm', 101: 'Md',
-                    102: 'No', 103: 'Lr'}
-    
-    dts_def_types = {0: 'point', 1: 'line stage', 2: 'line beam',
-                     3: 'grid stage', 4: 'grid beam', 5: 'polygon stage',
-                     6: 'polygon beam', 7: 'free points'}
+version_error_str = ' '.join(['{0} version {1} was encountered at address {2}',
+                              'which is not supported.'
+                              'Aborting parsing of the file...'])
 
-    @classmethod
-    def to_definition_type(cls, node_type):
-        """return the string representation of cameca aquisition definition"""
-        return cls.dts_def_types[node_type]
-    
-    @classmethod
-    def to_type(cls, sx_type):
-        """return the string representation of cameca file type
-        from given integer code"""
-        return cls.cam_file_types[sx_type]
-        
-    @classmethod
-    def to_element(cls, number):
-        """return atom name for given atom number"""
-        return cls.cam_elements[number]
-  
-    @classmethod
-    def to_line(cls, number):
-        """ return stringof x-ray line from given cameca int code"""
-        return cls.cameca_lines[number]
-    
+
+def eval_struct_version(stream, accepted=[], item='struct'):
+    position = stream.tell()
+    version = unpack('<I', stream.read(4))[0]
+    if version not in accepted:
+        raise NotImplementedError(
+            version_error_str.format(item, hex(version), hex(position)))
+    return version
+
+
+# ---------------------------- #
+# known or partly known enums: #
+# ---------------------------- #
+
+
+class FileType(IntEnum):
+    WDS_SETUP = 1
+    IMAGE_MAPPING_SETUP = 2
+    CALIBRATION_SETUP = 3
+    QUANTI_SETUP = 4
+    # what is 5?
+    WDS_RESULTS = 6
+    IMAGE_MAPPING_RESULT = 7
+    CALIBRATION_RESULT = 8
+    QUANTI_RESULT = 9
+    PEAK_OVERLAP_TABLE = 10
+
+
+class XRayLines(IntEnum):
+    Kβ, Kα = 1, 2
+    Lγ4, Lγ3, Lγ2, Lγ = 3, 4, 5, 6
+    Lβ9, Lβ10, Lβ7, Lβ2, Lβ6, Lβ3, Lβ4, Lβ = range(7, 15)
+    Lα, Lν, Ll = 15, 16, 17
+    Mγ, Mβ, Mα, Mζ, Mζ2 = 18, 19, 20, 21, 22
+    M1N2, M1N3, M2N1, M2N4, M2O4, M3N1, M3N4, M3O1, M3O4, M4O2 = range(23, 33)
+    sKα1, sKα2, sKα3, sKα4, sKα5, sKα6, sKβ1 = range(100, 107)
+
+
+class AtomicNumber(IntEnum):
+    n, H, He, Li, Be, B, C, N, O = range(0, 9)
+    F, Ne, Na, Mg, Al, Si, P, S, Cl = range(9, 18)
+    Ar, K, Ca, Sc, Ti, V, Cr, Mn, Fe = range(18, 27)
+    Co, Ni, Cu, Zn, Ga, Ge, As, Se, Br = range(27, 36)
+    Kr, Rb, Sr,  Y, Zr, Nb, Mo, Tc, Ru = range(36, 45)
+    Rh, Pd, Ag, Cd, In, Sn, Sb, Te, I = range(45, 54)
+    Xe, Cs, Ba, La, Ce, Pr, Nd, Pm, Sm = range(54, 63)
+    Eu, Gd, Tb, Dy, Ho, Er, Tm, Yb, Lu = range(63, 72)
+    Hf, Ta, W, Re, Os, Ir, Pt, Au, Hg = range(72, 81)
+    Tl, Pb, Bi, Po, At, Rn, Fr, Ra, Ac = range(81, 90)
+    Th, Pa, U, Np, Pu, Am, Cm, Bk, Cf = range(90, 99)
+    Es, Fm, Md, No, Lr = range(99, 104)
+
+
+class DatasetDefType(IntEnum):
+    POINT, LINE_STAGE, LINE_BEAM = 0, 1, 2
+    GRID_STAGE, GRID_BEAM, POLYGON_MASKED_STAGE_RASTER = 3, 4, 5
+    POLYGON_MASKED_BEAM_RASTER, FREE_POINTS = 6, 7
+
+
+class ResElemSource(IntEnum):
+    # Kudos to Cameca for exposing those through drop-down menu
+    Undefined, WDS, EDS, VIDEO = 0, 1, 2, 3
+    Other, QtiDiff, QtiStoch, QtiMatrix = 4, 5, 6, 7
+    ImOve, ImPhcl, ImPhid, ImQtiWdsBkgdMeas = 8, 9, 10, 11
+    ImQtiWdsBkgdComputed, ImQtiWt, ImQtiAt, ImQtiSum = 12, 13, 14, 15
+    ImQtiAge, ImQtiOxy, ImXonVideo, Camera = 16, 17, 18, 19
+    WdsComputed, EdsBkgd = 20, 21
+
+
+class VideoSignalType(IntEnum):
+    SE = 0
+    Fara = 1
+    BSE = 0x02  # 0x02 as BSE is on SX100, but not on SXFive
+    Abs = 3
+    # 4?
+    CL = 5
+    BSE_Z = 0x3F000002  # BSE Z on SxFive
+    BSE_T = 0x38070002  # all signal types with lowest bits as 0x02 are BSE?
+    # more BSE ?
+
+
+class ArrayDataType(IntEnum):
+    UINT8 = 0
+    # 1-6 ??? dafck? int8, uint16, int16, uint32, int32 ?
+    FLOAT32 = 7
+    RGBX = 8
+
+
+# ------------------------ #
+# Basic cameca file class: #
+# ------------------------ #
+
+
+class CamecaDataFile(object):
     def open_the_file(self, filename):
         self.filename = filename
         with open(filename, 'br') as fn:
-            #file bytes 
+            # file bytes
             fbio = BytesIO()
             fbio.write(fn.read())
         self.file_basename = os.path.basename(filename).rsplit('.', 1)[0]
         fbio.seek(0)
         return fbio
-        
-    
+
     def _read_the_header(self, fbio):
         """parse the header data into base cameca object atributes
         arguments:
         fbio -- file BytesIO object
         """
-        a, b, c, d = unpack('<B3sii', fbio.read(12))
+        a, b = unpack('<B3s', fbio.read(4))
         if b != b'fxs':
             raise IOError('The file is not a cameca peaksight software file')
         self.cameca_bin_file_type = a
-        self.file_type = self.to_type(a)
-        self.file_version = c
-        self.file_comment = fbio.read(d).decode()
+        self.file_type = FileType(a)
+        self.file_version = eval_struct_version(fbio, [3, 4], 'file')
+        self.file_comment = read_c_hash_string(fbio)
         fbio.seek(0x1C, 1)  # some spacer with unknown values
         n_changes = unpack('<i', fbio.read(4))[0]
         self.changes = []
         for i in range(n_changes):
-            filetime, change_len = unpack('<Qi',fbio.read(12))
+            filetime, change_len = unpack('<Qi', fbio.read(12))
             comment = fbio.read(change_len).decode()
             self.changes.append([filetime_to_datetime(filetime),
                                  comment])
-        if self.file_version not in [3, 4]:  # not supported version:
-            raise IOError(''.join(['Only file versions of 3 and 4',
-                                   'is supported, this file is version ',
-                                   str(self.file_version)]))
         if self.file_version == 4:
             fbio.seek(0x08, 1)  # some additional spacer
 
-
-class CamecaDataFile(CamecaBase):
-
     def check_the_dataset_container(self, fbio):
-        container_version = unpack('<i', fbio.read(4))[0]
-        if container_version not in  [0x0B, 0x0D]:
-            raise RuntimeError(' '.join([
-                'unrecognised dataset structure version:',
-                'instead of expected 0x0B or 0x0D, the value',
-                str(container_version),
-                'was encountered at address: ',
-                str(fbio.tell() - 4)]))
-        self.dataset_container_version = container_version
-        fbio.seek(20, 1)  # skip some unknown junk
+        self.dataset_container_version = eval_struct_version(
+            fbio, accepted=[0x0B, 0x0D], item='dataset struct')
+        keys = ['focus_freq', 'verify_xtal_after_flip',
+                'verify_xtal_before_start', 'bgnd_meas_every_nth',
+                'waiting_time']
+        values = unpack('<i?3x?3x2i', fbio.read(20))
+        self.global_opts = dict(zip(keys, values))
 
     def parse_datasets(self, fbio):
         print('n_item_offset: ', fbio.tell())
         self.number_of_items = unpack('<i', fbio.read(4))[0]
         self.datasets = []
         for i in range(self.number_of_items):
-            self.datasets.append(self.parse_data_item(fbio))
-            
-    def parse_data_item(self, fbio):
+            self.datasets.append(self._parse_data_set(fbio))
+
+    def _parse_data_set(self, fbio):
         "Abstract method"
-        raise NotImplementedError("This is abstract method")
+        raise NotImplementedError("This is an abstract method")
 
 
-class CamecaImage(CamecaDataFile):
-    
-    def __init__(self, filename):
-        fbio = self.open_the_file(filename)
-        self._read_the_header(fbio)
-        if self.cameca_bin_file_type != 7:
-            raise IOError(' '.join(['The file header shows it is not',
-                                    'Cameca Image file, but',
-                                    str(self.file_type)]))
-        #fbio.seek(36, 1)  # skip junk
-        #self.stage_x, self.stage_y, self.beam_x, self.beam_y,\
-        #self.res, _, self.width, self.height = unpack('iiiiffII',fbio.read(8*4))
-        #fbio.seek(552)
-        #img_str = fbio.read(self.width*self.height)
-        #self.img = np.fromstring(img_str, dtype=np.uint8).reshape(self.height, self.width)
-        self.check_the_dataset_container(fbio)
-        self.parse_datasets(fbio)
-        
-        def parse_data_item(self, fbio):
-            return ImageDatasetItem(fbio, self)
+# --------------------------  #
+# Derived data file classes:  #
+# --------------------------  #
 
 
 class CamecaWDS(CamecaDataFile):
     def __init__(self, filename):
         fbio = self.open_the_file(filename)
         self._read_the_header(fbio)
-        if self.cameca_bin_file_type != 6:
+        if self.cameca_bin_file_type != FileType.WDS_RESULTS:
             raise IOError(' '.join(['The file header shows it is not WDS',
                                     'file, but',
                                     self.file_type]))
         self.check_the_dataset_container(fbio)
         self.parse_datasets(fbio)
 
-    def parse_data_item(self, fbio):
+    def _parse_data_set(self, fbio):
         return WDSDatasetItem(fbio, self)
 
 
-class DatasetItem(CamecaBase):
-    
-    result_source = {1: 'WDS',
-                     2: 'EDS',
-                     3: 'Video',
-                     6: 'Stochiometry',
-                     7: 'Matrix',
-                     0x13: 'Camera'}
-    
-    """keys and struct str for first 68 bytes:"""
-    item_structs = {'WDS' : [['atom_number',
-                       'line', 'order', 'spect_no',
-                       'xtal4', '2D', 'K', 'unkwn4',
-                       'kV', 'current', 'peak_pos',
-                       'bias', 'gain', 'dtime', 'blin',
-                       'window', 'mode'], '<4I4s2fi2f7i'],
-                    'EDS': [['atom_number', 'line', 'kV', 'current'],
+class CamecaImage(CamecaDataFile):
+
+    def __init__(self, filename):
+        fbio = self.open_the_file(filename)
+        self._read_the_header(fbio)
+        if self.cameca_bin_file_type != FileType.IMAGE_MAPPING_RESULT:
+            raise IOError(' '.join(['The file header shows it is not',
+                                    'Cameca Image file, but',
+                                    str(self.file_type)]))
+        self.check_the_dataset_container(fbio)
+        self.parse_datasets(fbio)
+
+    def _parse_data_set(self, fbio):
+        return ImageDatasetItem(fbio, self)
+
+
+class CamecaQuanti(CamecaDataFile):
+
+    def __init__(self, filename):
+        fbio = self.open_the_file(filename)
+        self._read_the_header(fbio)
+        if self.cameca_bin_file_type != FileType.QUANTI_RESULT:
+            raise IOError(
+                ' '.join(['The file header shows it is not Quanti',
+                          'file, but',
+                          self.file_type]))
+        self.check_the_dataset_container(fbio)
+        self.parse_datasets(fbio)
+
+    def _parse_data_set(self, fbio):
+        return QuantiDatasetItem(fbio, self)
+
+
+# ---------------- #
+# Dataset classes: #
+# ---------------- #HyMap
+
+
+class DatasetItem(object):
+    """Basic Dataset Item class"""
+    # keys and struct str for first 68 bytes:
+    item_structs = {ResElemSource.WDS.value: [[
+                        'atom_number', 'line', 'order', 'spect_no',
+                        'xtal4', '2D', 'K', 'unkwn4',
+                        'HV', 'current', 'peak_pos',
+                        'bias', 'gain', 'dtime', 'blin',
+                        'window', 'mode'], '<4I4s2fi2f7i'],
+                    ResElemSource.ImQtiWdsBkgdMeas.value: [[
+                        'atom_number',
+                        'line', 'order', 'spect_no',
+                        'xtal4', '2D', 'K', 'unkwn4',
+                        'HV', 'current', 'peak_pos',
+                        'bias', 'gain', 'dtime', 'blin',
+                        'window', 'mode'], '<4I4s2fi2f7i'],
+                    ResElemSource.EDS.value: [[
+                        'atom_number', 'line', 'HV', 'current'],
                             '<2I24x2f28x'],
-                    'Video': [['channel', 'signal', 'kV', 'current'],
+                    ResElemSource.EdsBkgd.value: [[
+                        'atom_number', 'line', 'HV', 'current'],
+                            '<2I24x2f28x'],
+                    ResElemSource.VIDEO.value: [[
+                        'channel', 'signal', 'HV', 'current'],
                               '<2I24x2f28x'],
-                    'Stochiometry': [['atom_number'], '<I64x'],
-                    'Matrix': [['atom_number'], '<I64x']}
-    
+                    ResElemSource.QtiStoch.value: [['atom_number'],
+                                                   '<I64x'],
+                    ResElemSource.QtiMatrix.value: [['atom_number'],
+                                                    '<I64x'],
+                    'etc': [['par1', 'par2', 'par3', 'par4', 'par5',
+                             'par6', 'par6', 'par7', 'HV', 'current',
+                             'par10', 'par11', 'par11', 'par12', 'par13',
+                             'pra14', 'par15', 'par16', 'par17'],
+                            '<4I4s2fi2f7i']}
+
     def __init__(self, fbio, parent):
         self.parent = parent
-        struct_type = unpack('<i', fbio.read(4))[0]
-        if struct_type not in  [0x11, 0x12]:
-            raise IOError(' '.join(['The file reader expected the item with',
-                                    'struct 0x11 or 0x12, not',
-                                    str(struct_type),
-                                    'at address:',
-                                    str(fbio.tell()-4)]))
-        self.struct_head = struct_type
-        field_names = ['definition_node','x_axis', 'y_axis', 'beam_x', 'beam_y',
-                       'resolution_x', 'resolution_y', 'width', 'height']
+        self.dataset_struct_version = eval_struct_version(
+            fbio, accepted=[0x11, 0x12])
+        field_names = ['definition_node', 'x_axis', 'y_axis', 'beam_x',
+                       'beam_y', 'resolution_x', 'resolution_y', 'width',
+                       'height']
         values = unpack('<5i2f2i', fbio.read(36))
         self.metadata = dict(zip(field_names, values))
-        fbio.seek(12, 1) # skip some unknown values
-        field_names = ['accumulation_times', 'dwell_time']
-        values = unpack('<if', fbio.read(8))
+        fbio.seek(12, 1)  # skip some unknown values
+        field_names = ['accumulation_times', 'dwell_time', 'unkn_val1']
+        values = unpack('<ifi', fbio.read(12))
         self.metadata.update(dict(zip(field_names, values)))
-        fbio.seek(4, 1) # skip some unknown values
         self.metadata['z_axis'] = list(unpack('<49i', fbio.read(49*4)))
-        fbio.seek(40, 1) # skip some unknown flags
+        fbio.seek(40, 1)  # skip dataset config flags:
+        """ TODO:
+        4bytes - unknown
+        4bytes - unknown
+        uint32 - beam_measurement_freq
+        4bytes - unknown
+        4bytes - unknown
+        4bytes - unknown
+        4bytes - unknown
+        uint32 - focus_freq
+        uint32 - load_setup_every_nth
+        4bytes - unknown
+        """
         self.metadata['condition_file'] = read_c_hash_string(fbio)
-
-    @classmethod
-    def to_result_source(cls, num_repr):
-        """return the the string representation of cameca result source"""
-        return cls.result_source[num_repr]
+        self.n_of_items = unpack('<i', fbio.read(4))[0]
+        self.items = [self.read_item(fbio) for i in range(self.n_of_items)]
+        self.comment = read_c_hash_string(fbio)
 
     @classmethod
     def read_start_of_item(cls, fbio):
         """begining of data item is very similar in-between data types"""
-        field_names = ['struct_version', 'source_type']
-        values = unpack('<2i', fbio.read(8))
-        if values[0] != 3:
-            raise NotImplementedError(' '.join(['Parsing item struct of vers.',
-                                    str(values[0]),
-                                    'is not implemented. ']))
-        if values[1] not in cls.result_source:
-            raise NotImplementedError(' '.join(['Item of source type:',
-                                    str(values[1]),
-                                    'is not implemented. ',
-                                    'The error encountered at address: ',
-                                    str(fbio.tell()-4)]))
-        item = dict(zip(field_names, values))
-        if values[1] != 0x13:
-            field_names, fmt_struct = cls.item_structs[cls.to_result_source(values[1])]
-            values = unpack(fmt_struct, fbio.read(68))
-            item.update(dict(zip(field_names, values)))
+        print('start_of_item at:', fbio.tell())
+        item = {}
+        item['struct_v'] = eval_struct_version(fbio, accepted=[3, ])
+        stype = eval_struct_version(fbio, accepted=list(ResElemSource),
+                                    item='source type')
+        item['source_type'] = stype
+        if stype in cls.item_structs:
+            field_names, fmt_struct = cls.item_structs[stype]
         else:
-            fbio.seek(68, 1)
-        fbio.seek(16, 1)  # skip junk
+            field_names, fmt_struct = cls.item_structs['etc']
+        values = unpack(fmt_struct, fbio.read(68))
+        item.update(dict(zip(field_names, values)))
+        fbio.seek(16, 1)  # skip junk; TODO Is this shit of dynamic lenght?
         for i in range(unpack('<i', fbio.read(4))[0]):
             fbio.seek(12, 1)  # skip more junk
         return item
 
+    @staticmethod
+    def parse_outer_metadata(fbio, coordinates=False):
+        version, dt = unpack('<IQ', fbio.read(12))
+        if version not in [5, 6]:
+            raise IOError(
+                'encountered post- metadata version is not supported')
+        item = {'version': version, 'datetime': filetime_to_datetime(dt)}
+        if coordinates:
+            keys = ['x_axis', 'y_axis', 'z_axis']
+            values = unpack('<3f', fbio.read(12))
+            item.update(dict(zip(keys, values)))
+        else:
+            fbio.seek(12, 1)
+        if version == 5:
+            fbio.seek(76, 1)
+        elif version == 6:
+            fbio.seek(100, 1)
+        return item
+
+    def read_item(self, fbio):
+        "Abstract method"
+        raise NotImplementedError("This is abstract method")
+
 
 class ImageDatasetItem(DatasetItem):
-    
-    img_data_t = {0: np.uint8,  # uint16?, int16?, uint32?, int32?
-                  7: np.float32,  # 32bit double
-                  8: np.uint8}   # RGB; other uint64, float64?? 
-    
+    img_data_t = {ArrayDataType.UINT8: np.dtype('u1'),      # uint8
+                  # uint16?, int16?, uint32?, int32?
+                  # what can fill 1-6 positions?
+                  ArrayDataType.FLOAT32: np.dtype('f4'),    # float32
+                  ArrayDataType.RGBX: np.dtype('4u1')       # RGB(X) -> RGBA
+                  # other uint64, float64??
+                  }
+
     def __init__(self, fbio, parent=None):
         DatasetItem.__init__(self, fbio, parent)
-        n_of_items = unpack('<i', fbio.read(4))[0]
-        self.data = []
-        for i in range(n_of_items):
-            self.data.append(self.read_item(fbio))
-        self.comment = read_c_hash_string(fbio)
-        #TODO skip unknown data
-    
+        # skip unknown data
+        if self.dataset_struct_version == 0x11:
+            fbio.seek(164, 1)
+        elif self.dataset_struct_version == 0x12:
+            fbio.seek(168, 1)
+        self.ref_data = self.parse_outer_metadata(fbio)
+        fbio.seek(52, 1)
+        # skip additional junk for image:
+        fbio.seek(28, 1)
+        read_c_hash_string(fbio)  # some crap
+        fbio.seek(309, 1)
+
     def read_item(self, fbio):
         item = self.read_start_of_item(fbio)
-        #TODO
-    
+        data_struct_version = eval_struct_version(fbio, accepted=[5])
+        field_names = ['definition_node', 'x_axis', 'y_axis', 'beam_x',
+                       'beam_y', 'resolution_x', 'resolution_y', 'width',
+                       'height', 'z_axis', 'img_cameca_dtype', 'dwell_time']
+        print('item_definition starts at:', fbio.tell())
+        values = unpack('<5i2f2I2if', fbio.read(48))
+        item.update(dict(zip(field_names, values)))
+        # skip section of three values 0,255.0,0 or 0,0, 255.0;
+        # as dtype=3f? grey levels?
+        if item['definition_node'] not in [DatasetDefType.LINE_BEAM,
+                                           DatasetDefType.LINE_STAGE]:
+            item['accumulation_n'], item['data_size'] = unpack('<I4xI12x',
+                                                               fbio.read(24))
+            item['data_size'] -= 12
+        else:
+            item['data_size'] = unpack('<4xI', fbio.read(8))[0]
+        print('array starts at:', fbio.tell())
+        self.read_array(fbio, item)
+        print('position after data:', fbio.tell())
+        fbio.seek(56, 1)  # skip unknown
+        item['lut_name'] = read_c_hash_string(fbio)
+        item['signal_name'] = read_c_hash_string(fbio)
+        fbio.seek(52, 1)  # skip unknown
+        item['img_rotation'] = unpack('<f', fbio.read(4))[0]
+        fbio.seek(8, 1)  # skip unknown junk
+        return item
+
+    def read_array(self, fbio, item):
+        data_size = item['data_size']
+        print('array_size:', data_size)
+        pixels = item['width'] * item['height']
+        dtype = self.img_data_t[item['img_cameca_dtype']]
+        print('estimated size of one slice: ', pixels * dtype.itemsize)
+        print(item['width'], item['height'], dtype.itemsize)
+        if item['definition_node'] in [DatasetDefType.LINE_BEAM,
+                                       DatasetDefType.LINE_STAGE]:
+            item['data'] = np.fromstring(fbio.read(pixels * dtype.itemsize),
+                                         dtype=dtype)
+        else:
+            item['data'] = np.fromstring(fbio.read(pixels * dtype.itemsize),
+                                         dtype=dtype * item['width'])
+            if item['img_cameca_dtype'] == ArrayDataType.FLOAT32:
+                print('reading subsets: ', item['accumulation_n'])
+                imgs = []
+                # When signal is Video, it fills much more subsets
+                # than declared with accumulation_n!;
+                # the only safe way is deduce number of  arrays
+                # programaticaly
+                for i in range(data_size // (pixels * dtype.itemsize) - 1):
+                    imgs.append(
+                        np.fromstring(fbio.read(pixels * dtype.itemsize),
+                                      dtype=dtype * item['width']))
+                item['subcounting_data'] = imgs
+
 
 class WDSDatasetItem(DatasetItem):
     def __init__(self, fbio, parent=None):
         DatasetItem.__init__(self, fbio, parent)
-        n_of_items = unpack('<i', fbio.read(4))[0]
-        self.data = []
-        for i in range(n_of_items):
-            self.data.append(self.read_item(fbio))
-        self.comment = read_c_hash_string(fbio)
-        if self.struct_head == 0x12:
-            fbio.seek(344, 1)  # skip unknown flags v4
-        elif self.struct_head == 0x11:
-            fbio.seek(316, 1)  # skip unknown flags v3
-    
+        # skip unknown:
+        if self.dataset_struct_version == 0x11:
+            fbio.seek(164, 1)
+        elif self.dataset_struct_version == 0x12:
+            fbio.seek(168, 1)
+        self.ref_data = self.parse_outer_metadata(fbio)
+        fbio.seek(52, 1)
+
     def read_item(self, fbio):
         item = self.read_start_of_item(fbio)
         field_names = ['data_struct_version', 'wds_start_pos',
                        'steps', 'step_size', 'dwell_time',
                        'beam_size?', 'data_array_size']
-        values = unpack('<3I2f2i', fbio.read(28))
+        values = unpack('<3I2f2I', fbio.read(28))
         item.update(dict(zip(field_names, values)))
         size = item['data_array_size']
         item['data'] = np.fromstring(fbio.read(size), dtype=np.float32)
-        fbio.seek(124, 1)  # skip some unknown values/flags
+        fbio.seek(4, 1)  # skip some unknown value/flag
+        item['signal_name'] = read_c_hash_string(fbio)
+        fbio.seek(104, 1)  # skip some unknown values/flags
+        item['annotated_lines'] = self.read_line_table(fbio)
+        fbio.seek(8, 1)  # skip some unknown values/flags
         return item
 
+    @staticmethod
+    def read_line_table(fbio):
+        n_lines = unpack('<I', fbio.read(4))[0]
+        lines = [list(unpack('<5I', fbio.read(20))) for i in range(n_lines)]
+        return lines
 
+
+class QuantiDatasetItem(DatasetItem):
+    def __init__(self, fbio, parent=None):
+        DatasetItem.__init__(self, fbio, parent)
+
+    def read_item(self, fbio):
+        item = self.read_start_of_item(fbio)
+        item['item_container_v'] = eval_struct_version(fbio, [0x0E, 0x0F])
+        fbio.seek(4, 1)  # skip some unknown value/flag
+        
