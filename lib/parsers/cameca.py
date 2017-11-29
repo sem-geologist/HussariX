@@ -42,7 +42,7 @@ from enum import IntEnum
 
 
 def filetime_to_datetime(filetime):
-    """convert retarded windows filetime and return as unix time."""
+    """convert retarded windows filetime to python/unix time."""
     return datetime(1601, 1, 1) + timedelta(microseconds=filetime / 10)
 
 
@@ -64,7 +64,7 @@ def get_xtal(full_xtal_name):
 def read_c_hash_string(stream):
     """read the C# string and return python string.
     Requires stream in byte mode (e.g. BytesIO, open(filename)),
-    with position at string preceeding string lenght counter.
+    with pointer at string preceeding string-lenght counter.
     """
     str_len = unpack('<I', stream.read(4))[0]
     return stream.read(str_len).decode()
@@ -277,7 +277,7 @@ class CamecaQuanti(CamecaDataFile):
 
 # ---------------- #
 # Dataset classes: #
-# ---------------- #HyMap
+# ---------------- #
 
 
 class DatasetItem(object):
@@ -369,11 +369,10 @@ class DatasetItem(object):
 
     @staticmethod
     def parse_outer_metadata(fbio, coordinates=False):
-        version, dt = unpack('<IQ', fbio.read(12))
-        if version not in [5, 6]:
-            raise IOError(
-                'encountered post- metadata version is not supported')
-        item = {'version': version, 'datetime': filetime_to_datetime(dt)}
+        version = eval_struct_version(fbio, [5, 6])
+        dt = unpack('<Q', fbio.read(8))[0]
+        item = {'version': version,
+                'datetime': filetime_to_datetime(dt)}
         if coordinates:
             keys = ['x_axis', 'y_axis', 'z_axis']
             values = unpack('<3f', fbio.read(12))
@@ -469,6 +468,8 @@ class ImageDatasetItem(DatasetItem):
                         np.fromstring(fbio.read(pixels * dtype.itemsize),
                                       dtype=dtype * item['width']))
                 item['subcounting_data'] = imgs
+            if item['img_cameca_dtype'] == ArrayDataType.RGBX:
+                item['data'][:, :, 3] = 255  # set X into A - an alpha channel
 
 
 class WDSDatasetItem(DatasetItem):
@@ -506,6 +507,16 @@ class WDSDatasetItem(DatasetItem):
 
 
 class QuantiDatasetItem(DatasetItem):
+    # TODO:
+    quanti_keys = {0x0A: ['fara_meas', 'peak_cnt', 'peak_time',
+                          'bkg_cnt', 'bkg1_cnt', 'bkg2_cnt',
+                          'Ix/Istd', 'Ix/Ipure', 'weight',
+                          'n_weight', 'atomic', 'oxides',
+                          'det_lim', 'std_dev', 'Z', 'A', 'F',  # ...<17f
+                          'non_def1', 'non_def2', 'non_def3',   # IfI
+                          'peak_pulses', 'bkg1_pulses', 'bkg2_pulses']}  # 3I
+    quanti_structs = {0x0A: '<17fIfI3I'}
+
     def __init__(self, fbio, parent=None):
         DatasetItem.__init__(self, fbio, parent)
 
@@ -513,4 +524,7 @@ class QuantiDatasetItem(DatasetItem):
         item = self.read_start_of_item(fbio)
         item['item_container_v'] = eval_struct_version(fbio, [0x0E, 0x0F])
         fbio.seek(4, 1)  # skip some unknown value/flag
-        
+        item['dts_data_size'] = unpack('<I', fbio.read(4))[0]
+        item['intern_cont_v'] = eval_struct_version(fbio, [0x0A, 0x0B])
+
+
