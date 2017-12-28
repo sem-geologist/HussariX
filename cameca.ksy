@@ -4,13 +4,11 @@ meta:
     - qtiDat
     - imgDat
     - wdsDat
-  imports:
-    - cameca_common
   endian: le
 
 seq:
   - id: sxf_header
-    type: cameca_common.sxf_head
+    type: sxf_head
   - id: sxf_data
     type: sxf_main
 
@@ -120,7 +118,64 @@ types:
         size: 4
         encoding: ASCII
         
-enums:    
+  sxf_head:
+    seq:
+      - id: file_type
+        type: u1
+        enum: file_type
+      - id: magic
+        size: 3
+        contents: fxs
+      - id: sxf_version
+        type: u4
+      - id: comment
+        type: c_hash_string
+      - id: unknown
+        size: 0x1C
+      - id: file_changes
+        type: changes
+      - id: unkn_v4
+        size: 8
+        if: sxf_version >= 4
+        
+  c_hash_string:
+    seq:
+      - id: str_len
+        type: u4
+      - id: text
+        type: str
+        size: str_len
+        encoding: ASCII
+  
+  changes:
+    seq:
+      - id: n_of_changes
+        type: u4
+      - id: changes
+        type: change
+        repeat: expr
+        repeat-expr: n_of_changes
+        
+  change:
+    seq:
+      - id: filetime
+        type: u8
+      - id: change
+        type: c_hash_string
+        
+enums:
+  file_type:
+    1: wds_setup
+    2: image_mapping_setup
+    3: calibration_setup
+    4: quanti_setup
+    # what is 5?
+    6: wds_results
+    7: image_mapping_result
+    8: calibration_result
+    9: quanti_result
+    10: overlap_table
+
   dataset_type:
     0: point
     1: line_stage
