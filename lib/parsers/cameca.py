@@ -290,8 +290,7 @@ class DatasetItem(object):
                         'bias', 'gain', 'dtime', 'blin',
                         'window', 'mode'], '<4I4s2fi2f7i'],
                     ResElemSource.ImQtiWdsBkgdMeas.value: [[
-                        'atom_number',
-                        'line', 'order', 'spect_no',
+                        'atom_number', 'line', 'order', 'spect_no',
                         'xtal4', '2D', 'K', 'unkwn4',
                         'HV', 'current', 'peak_pos',
                         'bias', 'gain', 'dtime', 'blin',
