@@ -42,7 +42,7 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
         self.spectraTab.setLayout(spec_layout)
         spec_layout.addWidget(self.spectra_wdg)
         self.spectra_wdg.setParent(self.spectraTab)
-
+        print(self.spectraTab)
         self.image_wdg = iwidget.SEMImageGUI(icon_size=24)
         img_layout = QtGui.QHBoxLayout()
         img_layout.setContentsMargins(0,0,0,0)
@@ -83,7 +83,10 @@ class MainWindow(mainWindowUI.Ui_MainWindow,
                                      'Open SEM project file',
                                      HOME,
                                      file_ext)
-        self.projectBox.disconnect()
+        try:
+            self.projectBox.disconnect()
+        except:
+            pass
         self.projectBox.clear()
         if da_file[1] == SEM_PROJECT_TYPE[0]: #jeol
             self.project = jeol.JeolProject(da_file[0])

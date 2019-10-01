@@ -33,7 +33,7 @@ class FullscreenableWidget(QtWidgets.QMainWindow):
             self.toolbar.setIconSize(QtCore.QSize(icon_size,
                                                   icon_size))
         self.addToolBar(QtCore.Qt.RightToolBarArea, self.toolbar)
-        
+
         self.actionFullscreen = Qt.QAction(self)
         self.actionFullscreen.setIcon(
             Qt.QIcon(path.join(icon_path, 'tango_fullscreen.svg')))
@@ -41,10 +41,10 @@ class FullscreenableWidget(QtWidgets.QMainWindow):
         self.actionWindowed = Qt.QAction(self)
         self.actionWindowed.setIcon(Qt.QIcon(path.join(icon_path,
                                                        'windowed.svg')))
-        #signalling:
+        # signalling:
         self.actionFullscreen.triggered.connect(self.go_fullscreen)
         self.actionWindowed.triggered.connect(self.go_windowed)
-        
+
     def go_fullscreen(self):
         self.windowed_flags = self.windowFlags()
         self.windowed_geometry = self.geometry()
@@ -58,11 +58,12 @@ class FullscreenableWidget(QtWidgets.QMainWindow):
         self.toolbar.insertAction(self.actionFullscreen,
                                   self.actionWindowed)
         self.toolbar.removeAction(self.actionFullscreen)
-        
+
     def go_windowed(self):
         self.showNormal()
         if 'windowed_parent' in self.__dict__:
-            self.windowed_parent_layout.insertWidget(self.index_in_layout, self)
+            self.windowed_parent_layout.insertWidget(self.index_in_layout,
+                                                     self)
             self.setParent(self.windowed_parent)
             del self.windowed_parent
         self.setGeometry(self.windowed_geometry)
@@ -74,24 +75,25 @@ class FullscreenableWidget(QtWidgets.QMainWindow):
 class LeavableTreeView(QtWidgets.QTreeView):
     """Customised QTreeView to emit signal when mouse leaves
     emits mouseLeft signal
-    """    
-    mouseLeft = QtCore.pyqtSignal() 
-    
+    """
+    mouseLeft = QtCore.pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
-        
+
     def leaveEvent(self, event):
         self.mouseLeft.emit()
         super().leaveEvent(event)
-        
+
+
 class CustomToolButton(QtWidgets.QToolButton):
-    
-    def __init__(self, parent = None):
+
+    def __init__(self, parent=None):
         QtWidgets.QToolButton.__init__(self, parent)
         self.setPopupMode(QtWidgets.QToolButton.MenuButtonPopup)
-        #self.setPopupMode(QtWidgets.QToolButton.DelayedPopup)
-    
+        # self.setPopupMode(QtWidgets.QToolButton.DelayedPopup)
+
     def set_action_to_default(self):
         action = self.sender()
         if action != self.defaultAction():

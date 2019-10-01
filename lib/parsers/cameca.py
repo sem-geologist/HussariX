@@ -29,12 +29,15 @@ from struct import unpack
 import numpy as np
 from io import BytesIO
 import os
+from PyQt5 import QtCore
+from copy import deepcopy
 
 
 from datetime import datetime, timedelta
 
 from enum import IntEnum
 
+from ..generic import spectra
 
 # ---------------- #
 # helper functions #
@@ -188,7 +191,7 @@ class CamecaDataFile(object):
             raise IOError('The file is not a cameca peaksight software file')
         self.cameca_bin_file_type = a
         self.file_type = FileType(a)
-        self.file_version = eval_struct_version(fbio, [3, 4], 'file')
+        self.file_version = eval_struct_version(fbio, [3, 4, 5], 'file')
         self.file_comment = read_c_hash_string(fbio)
         fbio.seek(0x1C, 1)  # some spacer with unknown values
         n_changes = unpack('<i', fbio.read(4))[0]
@@ -198,8 +201,10 @@ class CamecaDataFile(object):
             comment = fbio.read(change_len).decode()
             self.changes.append([filetime_to_datetime(filetime),
                                  comment])
-        if self.file_version == 4:
+        if self.file_version >= 4:
             fbio.seek(0x08, 1)  # some additional spacer
+        if self.file_version >= 5:
+            fbio.seek(0x08, 1)  # something, common value=40.0
 
     def check_the_dataset_container(self, fbio):
         self.dataset_container_version = eval_struct_version(
@@ -211,11 +216,17 @@ class CamecaDataFile(object):
         self.global_opts = dict(zip(keys, values))
 
     def parse_datasets(self, fbio):
-        print('n_item_offset: ', fbio.tell())
+        # print('n_item_offset: ', fbio.tell())
         self.number_of_items = unpack('<i', fbio.read(4))[0]
         self.datasets = []
         for i in range(self.number_of_items):
             self.datasets.append(self._parse_data_set(fbio))
+
+    def aggregate(self):
+        unique_comment = set([i.comment for i in self.datasets])
+        agg_data = [sum(filter(lambda x: x.comment == i, self.datasets))
+                    for i in unique_comment]
+        self.datasets = agg_data
 
     def _parse_data_set(self, fbio):
         "Abstract method"
@@ -349,7 +360,7 @@ class DatasetItem(object):
     @classmethod
     def read_start_of_item(cls, fbio):
         """begining of data item is very similar in-between data types"""
-        print('start_of_item at:', fbio.tell())
+        # print('start_of_item at:', fbio.tell())
         item = {}
         item['struct_v'] = eval_struct_version(fbio, accepted=[3, ])
         stype = eval_struct_version(fbio, accepted=list(ResElemSource),
@@ -481,6 +492,7 @@ class WDSDatasetItem(DatasetItem):
             fbio.seek(168, 1)
         self.ref_data = self.parse_outer_metadata(fbio)
         fbio.seek(52, 1)
+        self.enabled = 0
 
     def read_item(self, fbio):
         item = self.read_start_of_item(fbio)
@@ -497,6 +509,24 @@ class WDSDatasetItem(DatasetItem):
         item['annotated_lines'] = self.read_line_table(fbio)
         fbio.seek(8, 1)  # skip some unknown values/flags
         return item
+
+    def __add__(self, other):
+        if len(self.items) != len(other.items):
+            raise TypeError("Can't add those itmes, as they have different number of spectras")
+        new = deepcopy(self)
+        n_items = len(self.items)
+        for i in range(n_items):
+            new.items[i]['data'] = self.items[i]['data'] + other.items[i]['data']
+        return new
+
+    def __radd__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+    def __repr__(self):
+        return 'WDSDataItem; comment: {}'.format(self.comment)
 
     @staticmethod
     def read_line_table(fbio):
@@ -527,3 +557,30 @@ class QuantiDatasetItem(DatasetItem):
         item['intern_cont_v'] = eval_struct_version(fbio, [0x0A, 0x0B])
 
 
+class CamecaWDSListModel(QtCore.QAbstractListModel):
+    def __init__(self, cameca_wds, parent=None):
+        QtCore.QAbstractListModel.__init__(self, parent)
+        self.collection = cameca_wds
+
+    def rowCount(self, parent):
+        try:
+            return len(self.collection.datasets)
+        except AttributeError:   # empty sample container
+            return 0
+
+    def data(self, index, role):
+        if role == QtCore.Qt.DisplayRole:
+            return self.collection.datasets[index.row()].comment
+        if role == QtCore.Qt.CheckStateRole:
+            return self.collection.datasets[index.row()].enabled
+
+    def setData(self, index, value, role):
+        if not index.isValid() or role != QtCore.Qt.CheckStateRole:
+            return False
+        self.collection.datasets[index.row()].enabled = value
+        self.dataChanged.emit(index, index)
+        return True
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable |\
+            QtCore.Qt.ItemIsUserCheckable

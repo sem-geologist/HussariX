@@ -19,4 +19,13 @@ tmp/
 __pycache__/
 *.DS_Store
 .ipynb_checkpoints
-*.ipynb
+spectra/
+Quanti
+Image_Profiles/
+SX100/
+dataset_RE/
+mapping_samples
+qbhm_viewer/
+*.impDat
+*.xlsx
+*.qtiDat

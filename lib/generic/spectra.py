@@ -27,16 +27,16 @@ class Spectra:
     def e_at_channel(self, channel):
         return channel * self.res + self.x_offset
     
-    def gen_pg_curve(self, starting_pos=0.02, cuttof=15.):
+    def gen_pg_curve(self, starting_pos=0.02, cutoff=15.):
         st_chan = self.channel_at_e(starting_pos)
         if (st_chan < min(self.x_scale)) or (st_chan > max(self.x_scale)):
             st_chan = 0
-        end_chan = self.channel_at_e(cuttof)
+        end_chan = self.channel_at_e(cutoff)
         if (end_chan < min(self.x_scale)) or (end_chan > max(self.x_scale)):
             end_chan = -1
         self.pg_curve = pg.PlotDataItem(self.x_scale[st_chan:end_chan],
                                         self.data[st_chan:end_chan],
-                                        pen=pg.mkPen(255,255,125),    # TODO custom color schemes
+                                        pen=pg.mkPen(255, 255, 125),    # TODO custom color schemes
                                         fillLevel=0,                  # prepare to be filled
                                         fillBrush=pg.mkBrush(None))   # but fill not
     
