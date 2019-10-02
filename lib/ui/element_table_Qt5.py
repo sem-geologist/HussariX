@@ -153,9 +153,10 @@ class ElementTableGUI(Qt.QWidget):
     additionally to native QtGui.QTableWidget provides
     such signals:
 
-    elementHoveredOver -- emits element abbrevation when
-        mouse hovers over the button.
-    elementHoveredOff -- emits element abrevation at mouse
+    elementConsidered -- signal which emits element abbrevation
+        when mouse hovers over the button, or the coresponding
+        button gets focus, or is emitted by text input interface.
+    elementUnconsidered -- emits element abrevation at mouse
         leaves the button area
     enableElement -- emits the element abbrevation when button
         changes to checked possition.
@@ -171,8 +172,8 @@ class ElementTableGUI(Qt.QWidget):
     """
 
     # preview slots:
-    elementHoveredOver = QtCore.pyqtSignal(str)
-    elementHoveredOff = QtCore.pyqtSignal(str)
+    elementConsidered = QtCore.pyqtSignal(str)
+    elementUnconsidered = QtCore.pyqtSignal(str)
     # button press slots:
     enableElement = QtCore.pyqtSignal(str)
     disableElement = QtCore.pyqtSignal(str)
@@ -240,7 +241,7 @@ class ElementTableGUI(Qt.QWidget):
             positive_text = ptext
             negative_text = ''
         return positive_text, negative_text
-    
+
     def toggle_elements(self):
         positive_text, negative_text = self.separateText()
         # clear text interface:
@@ -324,9 +325,9 @@ class ElementTableGUI(Qt.QWidget):
     def previewToggler(self, button):
         # if button.isEnabled():
         if button.hoverState:
-            self.elementHoveredOver.emit(button.text())
+            self.elementConsidered.emit(button.text())
         else:
-            self.elementHoveredOff.emit(button.text())
+            self.elementUnconsidered.emit(button.text())
 
     # @QtCore.pyqtSlot(QtCore.QObject)
     def elementToggler(self, button):

@@ -105,15 +105,18 @@ class XRayElementTable(element_table_Qt5.ElementTableGUI):
         self.preview_edge.setToolTip('preview absorption edges')
         self.preview_edge.setMinimumSize(16, 16)
         self.siegbahn = Qt.QCheckBox('Siegbahn')
-        self.siegbahn.setToolTip("""checked - Siegbahn notation (limited lines)
-unchecked - IUPAC notatation (all known lines)""")
+        self.siegbahn.setToolTip("checked - Siegbahn notation "
+                                 "(limited lines)\n"
+                                 "unchecked - IUPAC notatation "
+                                 "(all known lines)")
         self.siegbahn.setMinimumSize(16, 16)
         self.hv_value = Qt.QDoubleSpinBox()
         self.hv_value.setMinimumSize(16, 16)
         self.hv_value.setSuffix(" kV")
-        self.hv_value.setToolTip("""HV value which restricts x axis (max) and
-approximates the heights of preview lines as
-a function of effectivness (2.7 rule)""")
+        self.hv_value.setToolTip("HV value restricts x axis (max) and\n"
+                                 "approximates the heights of preview "
+                                 "lines as\na function of effectivness "
+                                 "of excitation\n(2.7 rule)")
         self.hv_value.setRange(0.1, 1e4)
         # add those parameters to the groupbox:
         self.preview_group = Qt.QGroupBox('on hover:')
@@ -135,9 +138,8 @@ a function of effectivness (2.7 rule)""")
         self.orders_interface = Qt.QLineEdit()
         self.orders_interface.setMinimumSize(16, 16)
         self.layout().addWidget(self.orders_interface, 0, 12, 1, 5)
-        self.orders_interface.setToolTip(
-            "orders of diffracted lines\n"
-            "to be previewed")
+        self.orders_interface.setToolTip("orders of diffracted lines\n"
+                                         "to be previewed")
         self.orders = set([1])
         self.orders_interface.setText('1')
         self.orders_interface.setClearButtonEnabled(True)
@@ -502,7 +504,7 @@ class EDSCanvas(pg.PlotWidget):
             kv = self.kv
         if siegbahn is None:
             siegbahn = self.siegbahn
-        self.p2.clear()
+        #self.p2.clear()
         self.p2.setZValue(9999)
         css_color = colorCSS(self.prev_text_color)
         if lines is None:
@@ -657,9 +659,9 @@ class EDSSpectraGUI(cw.FullscreenableWidget):
         self.actionClearMarker = menu.addAction('Remove cursors')
 
     def _setup_connections(self):
-        self.pet.elementHoveredOver.connect(self.canvas.previewLines)
-        self.pet.elementHoveredOver.connect(self.canvas.previewEdges)
-        self.pet.elementHoveredOff.connect(self.canvas.clearPreview)
+        self.pet.elementConsidered.connect(self.canvas.previewEdges)
+        self.pet.elementConsidered.connect(self.canvas.previewLines)
+        self.pet.elementUnconsidered.connect(self.canvas.clearPreview)
         self.config_preview.triggered.connect(
             self.canvas.tweek_preview_style)
         self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
@@ -687,16 +689,16 @@ class EDSSpectraGUI(cw.FullscreenableWidget):
     @QtCore.pyqtSlot(bool)
     def preview_toggle(self, state):
         if state:
-            self.pet.elementHoveredOver.connect(self.canvas.previewLines)
+            self.pet.elementConsidered.connect(self.canvas.previewLines)
         else:
-            self.pet.elementHoveredOver.disconnect(self.canvas.previewLines)
+            self.pet.elementConsidered.disconnect(self.canvas.previewLines)
 
     @QtCore.pyqtSlot(bool)
     def preview_edges_toggle(self, state):
         if state:
-            self.pet.elementHoveredOver.connect(self.canvas.previewEdges)
+            self.pet.elementConsidered.connect(self.canvas.previewEdges)
         else:
-            self.pet.elementHoveredOver.disconnect(self.canvas.previewEdges)
+            self.pet.elementConsidered.disconnect(self.canvas.previewEdges)
 
     def _setup_toolbar(self):
         # add spacer:
