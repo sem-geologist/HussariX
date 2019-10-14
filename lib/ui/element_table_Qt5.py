@@ -97,6 +97,22 @@ element_regex = r"C[laroudse]?|Os?|N[eaibdps]?|S[icernbm]?|" +\
 geo_regex = '(?:%s)' % '|'.join(geo_groups.keys())
 
 
+def separate_text(ptext):
+    "Sparate text into positive and negative (with '-' sign)"
+    if '-' in ptext:
+        first_level = re.findall(r"[-]|[A-Z a-z,;]*", ptext)
+        if first_level.index('-') == 0:
+            positive_text = ''
+            negative_text = first_level[1]
+        else:
+            positive_text = first_level[0]
+            negative_text = first_level[first_level.index('-') + 1]
+    else:
+        positive_text = ptext
+        negative_text = ''
+    return positive_text, negative_text
+
+
 def parse_elements(text):
         parsed = []
         geo_list = re.findall(geo_regex, text)
@@ -109,6 +125,8 @@ def parse_elements(text):
 
 class HoverableButton(Qt.QPushButton):
     hoverChanged = QtCore.pyqtSignal()
+    gainedFocus = QtCore.pyqtSignal()
+    lostFocus = QtCore.pyqtSignal()
 
     def __init__(self, name, partly_disabled=True):
         Qt.QAbstractButton.__init__(self)
@@ -118,6 +136,14 @@ class HoverableButton(Qt.QPushButton):
         self.setCheckable(True)
         self.hoverState = False
         self.orig_size = self.geometry()
+
+    def focusInEvent(self, event):
+        self.gainedFocus.emit()
+        super().focusInEvent(event)
+
+    def focusOutEvent(self, event):
+        self.lostFocus.emit()
+        super().focusOutEvent(event)
 
     def enterEvent(self, event):
         if self.isEnabled() or self.partly_disabled:
@@ -205,6 +231,7 @@ class ElementTableGUI(Qt.QWidget):
         self.textInterface.setMinimumSize(16, 16)
         self.layout().addWidget(self.textInterface, 8, 9, 1, 9)
         self.textInterface.returnPressed.connect(self.toggle_elements)
+        self.textInterface.textChanged.connect(self.consider_element)
         self.textInterface.setToolTip(
             "text interface.\n"
             "Input abbrevations of elements:\n"
@@ -227,23 +254,9 @@ class ElementTableGUI(Qt.QWidget):
         item = self.layout().itemAtPosition(*index)
         return item.widget()
 
-    def separateText(self):
-        ptext = str(self.textInterface.text())
-        if '-' in ptext:
-            first_level = re.findall(r"[-]|[A-Z a-z,;]*", ptext)
-            if first_level.index('-') == 0:
-                positive_text = ''
-                negative_text = first_level[1]
-            else:
-                positive_text = first_level[0]
-                negative_text = first_level[first_level.index('-') + 1]
-        else:
-            positive_text = ptext
-            negative_text = ''
-        return positive_text, negative_text
-
     def toggle_elements(self):
-        positive_text, negative_text = self.separateText()
+        ptext = self.textInterface.text()
+        positive_text, negative_text = separate_text(ptext)
         # clear text interface:
         self.textInterface.clear()
         # parse what to add first:
@@ -252,6 +265,13 @@ class ElementTableGUI(Qt.QWidget):
         # parse what to remove:
         negative_list = parse_elements(negative_text)
         self.toggle_off(negative_list)
+
+    def consider_element(self, text):
+        positive_text = separate_text(text)[0]
+        positive_list = parse_elements(positive_text)
+        self.elementUnconsidered.emit('')
+        for i in positive_list:
+            self.elementConsidered.emit(i)
 
     def toggle_on(self, toggle_list):
         for i in toggle_list:
@@ -280,6 +300,10 @@ class ElementTableGUI(Qt.QWidget):
         self.signalMapper2.mapped[Qt.QWidget].connect(self.elementToggler)
         self.signalMapper3 = QtCore.QSignalMapper(self)
         self.signalMapper3.mapped[Qt.QWidget].connect(self.emit_right_clicked)
+        self.signalMapper4 = QtCore.QSignalMapper(self)
+        self.signalMapper4.mapped[Qt.QWidget].connect(self.focus_on_toggler)
+        self.signalMapper5 = QtCore.QSignalMapper(self)
+        self.signalMapper5.mapped[Qt.QWidget].connect(self.focus_off_toggler)
         for i in pt_indexes:
             pt_button = HoverableButton(i)
             pt_button.setMinimumSize(16, 16)
@@ -294,9 +318,13 @@ class ElementTableGUI(Qt.QWidget):
             pt_button.toggled.connect(self.signalMapper2.map)
             pt_button.customContextMenuRequested.connect(
                 self.signalMapper3.map)
+            pt_button.gainedFocus.connect(self.signalMapper4.map)
+            pt_button.lostFocus.connect(self.signalMapper5.map)
             self.signalMapper.setMapping(pt_button, pt_button)
             self.signalMapper2.setMapping(pt_button, pt_button)
             self.signalMapper3.setMapping(pt_button, pt_button)
+            self.signalMapper4.setMapping(pt_button, pt_button)
+            self.signalMapper5.setMapping(pt_button, pt_button)
         line = Qt.QFrame()
         line.setFrameShape(Qt.QFrame.HLine)
         line.setFrameShadow(Qt.QFrame.Sunken)
@@ -328,6 +356,12 @@ class ElementTableGUI(Qt.QWidget):
             self.elementConsidered.emit(button.text())
         else:
             self.elementUnconsidered.emit(button.text())
+
+    def focus_on_toggler(self, button):
+        self.elementConsidered.emit(button.text())
+
+    def focus_off_toggler(self, button):
+        self.elementUnconsidered.emit(button.text())
 
     # @QtCore.pyqtSlot(QtCore.QObject)
     def elementToggler(self, button):
