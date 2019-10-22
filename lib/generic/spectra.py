@@ -3,10 +3,10 @@ import pyqtgraph as pg
 
 from ..ui import CustomPGWidgets as cpg
 
-#TODO read those vals from config files
+# TODO read those vals from config files
 HIGHLIGHT_PEN = pg.mkPen('r', width=2)
-HIGHLIGHT_BRUSH = pg.mkBrush((255,255,75,50))
-SELECT_BRUSH = pg.mkBrush((255,255,75))
+HIGHLIGHT_BRUSH = pg.mkBrush((255, 255, 75, 50))
+SELECT_BRUSH = pg.mkBrush((255, 255, 75))
 NO_BRUSH = pg.mkBrush(None)
 
 class Spectra:
@@ -49,18 +49,18 @@ class Spectra:
             self.marker = cpg.selectableEllipse(self, *args)
         elif marker_type == 'free_polygon':
             self.marker = cpg.selectablePolygon(self, *args)
-        
+
     def highlight_spectra(self):
         self.original_pen = self.pg_curve.opts['pen']
         self.pg_curve.setPen(HIGHLIGHT_PEN)
         if not self.selected:
             self.pg_curve.setBrush(HIGHLIGHT_BRUSH)
-    
+
     def unlight_spectra(self):
         self.pg_curve.setPen(self.original_pen)
         if not self.selected:
             self.pg_curve.setBrush(NO_BRUSH)
-        
+
     def select_spectra(self):
         if self.selected:
             self.pg_curve.setBrush(NO_BRUSH)
@@ -68,7 +68,7 @@ class Spectra:
         else:
             self.pg_curve.setBrush(SELECT_BRUSH)
             self.selected = True
-            
+ 
     def set_curve_color(self, *colors):
         pass
     

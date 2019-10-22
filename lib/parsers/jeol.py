@@ -77,19 +77,18 @@ def mstimestamp_to_datetime(msstamp):
 
 class JeolProject:
     def __init__(self, filename):
-        streamy = BytesIO()
+        ram_stream = BytesIO()
         self.proj_dir = os.path.dirname(filename)
         with open(filename, 'br') as fn:
-            streamy.write(fn.read())
+            ram_stream.write(fn.read())
         # skipp leading zeros 12 bytes:
-        streamy.seek(12)
-        data = aggregate(streamy)
+        ram_stream.seek(12)
+        data = aggregate(ram_stream)
         self.version = data['Version']
         self.file_type = data['FileType']
         self.memo = data['Memo']
-        self.samples = []
-        for i in data['SampleInfo']:
-            self.samples.append(JeolSample(i, data['SampleInfo'][i], self))
+        self.samples = [JeolSample(i, data['SampleInfo'][i], self)
+                        for i in data['SampleInfo']]
 
 
 class JeolSample:
@@ -208,6 +207,7 @@ class JeolImage(image.Image):
 
 class JeolEDS(spectra.Spectra):
     def __init__(self, dictionary, parent):
+        self.spectra_type = 'eds'
         self.parent = parent
         for key in dictionary:
             setattr(self, key.lower(), dictionary[key])
@@ -226,7 +226,7 @@ class JeolEDS(spectra.Spectra):
         spectra.Spectra.__init__(self)
 
     def make_marker(self):
-        # in case of jeol marker is produced in Jeol spectra class
+        # for jeol format the marker is produced in Jeol spectra class
         # in meters:
         posx = self.parent.width / 2 - self.positionmm2[0] / 1000
         posy = self.parent.height / 2 - self.positionmm2[3] / 1000

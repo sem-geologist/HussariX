@@ -372,7 +372,7 @@ class DatasetItem(object):
             field_names, fmt_struct = cls.item_structs['etc']
         values = unpack(fmt_struct, fbio.read(68))
         item.update(dict(zip(field_names, values)))
-        fbio.seek(16, 1)  # skip junk; TODO Is this shit of dynamic lenght?
+        fbio.seek(16, 1)  # skip junk; TODO: Have this crap a dynamic lenght?
         for i in range(unpack('<i', fbio.read(4))[0]):
             fbio.seek(12, 1)  # skip more junk
         return item
