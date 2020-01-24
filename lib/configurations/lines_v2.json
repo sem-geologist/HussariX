@@ -1,0 +1,2507 @@
+{
+    "Bi": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "I": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Li": {
+        "K_line": {
+            "Ka3": true
+        }
+    },
+    "F": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "Pm": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Lu": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Br": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Sm": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "V": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Ag": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb5": true
+        },
+        "M_line": {
+            "Mz": true,
+            "Mg": true
+        }
+    },
+    "W": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Hf": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "C": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "At": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Zr": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "K": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Sb": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Kr": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Cs": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Np": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Ce": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Pa": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Fr": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Nd": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Si": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Sr": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "P": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Co": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Al": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Yb": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Er": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Cr": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "As": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Pr": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Dy": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Mo": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Cm": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Rb": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Os": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Se": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Ne": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "H": {},
+    "Mn": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Be": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "Tc": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Ti": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Ar": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Ac": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Cf": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Rn": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Ta": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Y": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Cu": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Ge": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Ba": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "N": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "Th": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Sc": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Gd": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Eu": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "He": {},
+    "Ga": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lg3": true,
+            "La1": true,
+            "La2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Xe": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Ca": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Sn": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb5": true
+        },
+        "M_line": {
+            "Mz": true,
+            "Mg": true
+        }
+    },
+    "Nb": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Zn": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Re": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Tb": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "B": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "S": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Bk": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Cd": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb5": true
+        },
+        "M_line": {
+            "Mz": true,
+            "Mg": true
+        }
+    },
+    "Cl": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "O": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "La": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Mg": {
+        "L_line": {
+            "Ln": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true,
+            "Kb3": true,
+            "Kb1": true
+        }
+    },
+    "Hg": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Ra": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Pb": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Pt": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Rh": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb5": true
+        },
+        "M_line": {
+            "Mz": true,
+            "Mg": true
+        }
+    },
+    "In": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb5": true
+        },
+        "M_line": {
+            "Mz": true,
+            "Mg": true
+        }
+    },
+    "Tl": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Ni": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Te": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Am": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "U": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Au": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Fe": {
+        "L_line": {
+            "Ln": true,
+            "Lb1": true,
+            "La2": true,
+            "La1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb1": true
+        }
+    },
+    "Ir": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Tm": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Pu": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Na": {
+        "K_line": {
+            "Ka1": true,
+            "Ka2": true,
+            "Ka3": true
+        }
+    },
+    "Ho": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    },
+    "Pd": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb5": true
+        },
+        "M_line": {
+            "Mz": true,
+            "Mg": true
+        }
+    },
+    "Ru": {
+        "L_line": {
+            "Lg2": true,
+            "Ln": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Lb1": true,
+            "Ll": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb5": true,
+            "Kb2": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb3": true,
+            "Kb1": true
+        },
+        "M_line": {
+            "Mz": true
+        }
+    },
+    "Po": {
+        "L_line": {
+            "Lg1": true,
+            "Ln": true,
+            "Lb2,15": true,
+            "Lb6": true,
+            "La1": true,
+            "La2": true,
+            "Lg3": true,
+            "Ll": true,
+            "Lb5": true,
+            "Lg2": true,
+            "Lb1": true,
+            "Lg6": true,
+            "Lb3": true,
+            "Lb4": true
+        },
+        "K_line": {
+            "Ka3": true,
+            "Kb4": true,
+            "Kb1": true,
+            "Kb3": true,
+            "Ka2": true,
+            "Ka1": true,
+            "Kb5": true,
+            "Kb2": true
+        },
+        "M_line": {
+            "Ma": true,
+            "Mz": true,
+            "Mb": true,
+            "Mg": true
+        }
+    }
+}
