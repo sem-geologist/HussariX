@@ -277,7 +277,7 @@
           <enum>QAbstractScrollArea::AdjustToContentsOnFirstShow</enum>
          </property>
          <property name="editTriggers">
-          <set>QAbstractItemView::EditKeyPressed</set>
+          <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
          </property>
          <property name="selectionMode">
           <enum>QAbstractItemView::ExtendedSelection</enum>

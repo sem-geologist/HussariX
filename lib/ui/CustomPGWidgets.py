@@ -3,7 +3,6 @@ from PyQt5 import QtCore, QtGui
 
 import pyqtgraph as pg
 
-
 default_pen = pg.mkPen((255, 255, 75), width=2)
 default_hover_pen = pg.mkPen((255, 50, 50), width=2)
 default_select_pen = pg.mkPen((255, 255, 255), width=2)
@@ -87,7 +86,6 @@ class CustomAxisItem(pg.AxisItem):
         # allow to inherit from multiple QObject subclasses.
         pg.AxisItem.__init__(self, *args, **kwargs)
         self.energyButton = QtGui.QRadioButton('Energy')
-        self.energyButton.setChecked(True)
         self.thetaButton = QtGui.QRadioButton('sin(θ)')
 
     # On right-click, raise the context menu

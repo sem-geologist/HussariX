@@ -29,6 +29,10 @@ class FullscreenableWidget(QtWidgets.QMainWindow):
         QtWidgets.QMainWindow.__init__(self, parent)
         self.toolbar = Qt.QToolBar('tools', parent=self)
         self.toolbar.setContentsMargins(0, 0, 0, 0)
+        pallete = self.palette()
+        w_lightness = pallete.window().color().lightness()
+        wt_lightness = pallete.windowText().color().lightness()
+        self.dark_mode = True if wt_lightness > w_lightness else False
         if icon_size is not None:
             self.toolbar.setIconSize(QtCore.QSize(icon_size,
                                                   icon_size))
@@ -36,14 +40,20 @@ class FullscreenableWidget(QtWidgets.QMainWindow):
 
         self.actionFullscreen = Qt.QAction(self)
         self.actionFullscreen.setIcon(
-            Qt.QIcon(path.join(icon_path, 'tango_fullscreen.svg')))
+            Qt.QIcon(self.gen_ico_path('fullscreen.svg')))
         self.toolbar.addAction(self.actionFullscreen)
         self.actionWindowed = Qt.QAction(self)
-        self.actionWindowed.setIcon(Qt.QIcon(path.join(icon_path,
-                                                       'windowed.svg')))
+        self.actionWindowed.setIcon(
+            Qt.QIcon(self.gen_ico_path('fullscreen_exit.svg')))
         # signalling:
         self.actionFullscreen.triggered.connect(self.go_fullscreen)
         self.actionWindowed.triggered.connect(self.go_windowed)
+
+    def gen_ico_path(self, icon_base_name):
+        ic_basename = icon_base_name
+        if self.dark_mode:
+            ic_basename = ic_basename[:-4] + '_dark.svg'
+        return path.join(icon_path, ic_basename)
 
     def go_fullscreen(self):
         self.windowed_flags = self.windowFlags()

@@ -9,24 +9,25 @@ HIGHLIGHT_BRUSH = pg.mkBrush((255, 255, 75, 50))
 SELECT_BRUSH = pg.mkBrush((255, 255, 75))
 NO_BRUSH = pg.mkBrush(None)
 
+
 class Spectra:
-    #required attributes:
-    #self.x_offset, self.data, self.x_res
-    #produces:
-    #self.marker, self.x_scale,
+    # required attributes:
+    # self.x_offset, self.data, self.x_res
+    # produces:
+    # self.marker, self.x_scale,
     def __init__(self):
         self.selected = False
-    
+
     def gen_scale(self):
         max_channel = self.x_res * self.chnl_cnt + self.x_offset
         self.x_scale = np.arange(self.x_offset, max_channel, self.x_res)
-    
+
     def channel_at_e(self, energy):
         return int((energy - self.x_offset) // self.x_res)
-    
+
     def e_at_channel(self, channel):
         return channel * self.res + self.x_offset
-    
+
     def gen_pg_curve(self, starting_pos=0.02, cutoff=15.):
         st_chan = self.channel_at_e(starting_pos)
         if (st_chan < min(self.x_scale)) or (st_chan > max(self.x_scale)):

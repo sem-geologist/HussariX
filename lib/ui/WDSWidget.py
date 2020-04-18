@@ -122,7 +122,7 @@ class Ui_WDSScanWidget(object):
         self.spectraTreeView.setSizePolicy(sizePolicy)
         self.spectraTreeView.setMinimumSize(QtCore.QSize(150, 0))
         self.spectraTreeView.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContentsOnFirstShow)
-        self.spectraTreeView.setEditTriggers(QtWidgets.QAbstractItemView.EditKeyPressed)
+        self.spectraTreeView.setEditTriggers(QtWidgets.QAbstractItemView.DoubleClicked|QtWidgets.QAbstractItemView.EditKeyPressed|QtWidgets.QAbstractItemView.SelectedClicked)
         self.spectraTreeView.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.spectraTreeView.setObjectName("spectraTreeView")
         self.selectionLayout.addWidget(self.spectraTreeView, 1, 0, 1, 2)

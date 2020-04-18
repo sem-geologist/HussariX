@@ -29,15 +29,14 @@ from struct import unpack
 import numpy as np
 from io import BytesIO
 import os
-from PyQt5 import QtCore
-from copy import deepcopy
+from copy import copy
 
 
 from datetime import datetime, timedelta
 
 from enum import IntEnum
 
-from ..generic import spectra
+# from ..generic import spectra
 
 # ---------------- #
 # helper functions #
@@ -90,6 +89,10 @@ def eval_struct_version(stream, accepted=[], item='struct'):
 # ---------------------------- #
 # known or partly known enums: #
 # ---------------------------- #
+
+class BackgroundType(IntEnum):
+    LINEAR = 1
+    EXPONENTIAL = 2
 
 
 class FileType(IntEnum):
@@ -160,7 +163,7 @@ class VideoSignalType(IntEnum):
 
 class ArrayDataType(IntEnum):
     UINT8 = 0
-    # 1-6 ??? dafck? int8, uint16, int16, uint32, int32 ?
+    # 1-6 ??? what is it? int8, uint16, int16, uint32, int32 ?
     FLOAT32 = 7
     RGBX = 8
 
@@ -170,17 +173,7 @@ class ArrayDataType(IntEnum):
 # ------------------------ #
 
 
-class CamecaDataFile(object):
-    def open_the_file(self, filename):
-        self.filename = filename
-        with open(filename, 'br') as fn:
-            # file bytes
-            fbio = BytesIO()
-            fbio.write(fn.read())
-        self.file_basename = os.path.basename(filename).rsplit('.', 1)[0]
-        fbio.seek(0)
-        return fbio
-
+class CamecaBase(object):
     def _read_the_header(self, fbio):
         """parse the header data into base cameca object atributes
         arguments:
@@ -195,7 +188,7 @@ class CamecaDataFile(object):
         self.file_comment = read_c_hash_string(fbio)
         fbio.seek(0x1C, 1)  # some spacer with unknown values
         n_changes = unpack('<i', fbio.read(4))[0]
-        self.changes = []
+        self.changes = list()
         for i in range(n_changes):
             filetime, change_len = unpack('<Qi', fbio.read(12))
             comment = fbio.read(change_len).decode()
@@ -205,6 +198,166 @@ class CamecaDataFile(object):
             fbio.seek(0x08, 1)  # some additional spacer
         if self.file_version >= 5:
             fbio.seek(0x08, 1)  # something, common value=40.0
+
+
+# ---------------------- #
+# Cameca QtiSet classes  #
+# ---------------------- #
+
+
+class CamecaQtiSetup(CamecaBase):
+    def __init__(self, filename):
+        with open(filename, 'br') as fn:
+            self._read_the_header(fn)
+            fn.seek(12, 1)
+            self.n_sub_setups = unpack('<I', fn.read(4))[0]
+            self.sub_setups_position = fn.tell()
+            fn.seek(0)
+            self.raw_str_up_to_subsetups = fn.read(self.sub_setups_position)
+            self.subsetups = list()
+            for i in range(self.n_sub_setups):
+                self.subsetups.append(CamecaSubSetup(fn, self.file_version, i))
+            self.raw_str_after_subsetups = fn.read()
+
+
+class CamecaSubSetup:
+    def __init__(self, stream, sxf_version, subsetup_index):
+        self.subsetup_index = subsetup_index
+        initial_position = stream.tell()
+        self.version, _ = unpack('<2I', stream.read(8))
+        self.condition_name = read_c_hash_string(stream)
+        stream.seek(20, 1)
+        keys = ['heat', 'hv', 'I_emission', 'XHI', 'YHI', 'XLO', 'YLO',
+                'aper_x', 'aper_y', 'c1', 'c2', 'unkn1', 'current_set',
+                'b_focus', 'unkn2', 'unkn3', 'b_focus2', 'size', 'asti_amp',
+                'asti_deg']
+        values = unpack('<20i', stream.read(80))
+        self.hardware_opts = dict(zip(keys, values))
+        stream.seek(424, 1)
+        self.n_measurements = unpack('<I', stream.read(4))[0]
+        final_position = stream.tell()
+        stream.seek(initial_position)
+        self.raw_string = stream.read(final_position - initial_position)
+        self.spectrometers = dict()
+        self.measurements = list()
+        for index in range(self.n_measurements):
+            measurement = CamPeakSetup(stream, index, sxf_version)
+            self.measurements.append(measurement)
+            self.assign_to_spectrometer(measurement)
+
+    def assign_to_spectrometer(self, measurement):
+        spect = measurement.spect_no
+        if spect not in self.spectrometers:
+            self.spectrometers[spect] = []
+        measurement.index_in_spec = len(self.spectrometers[spect])
+        self.spectrometers[spect].append(measurement)
+
+    def __repr__(self):
+        a = "Condition #{}:\n".format(self.subsetup_index)
+        for i in sorted(self.spectrometers.keys()):
+            a = a + '\t' + repr(self.spectrometers[i]) + '\n'
+        return a
+
+
+class CamPeakSetup:
+    def __init__(self, stream, index, sxf_version):
+        self.flat_index = index
+        self.index_in_spec = None
+        self.values_had_changed = list()
+        self.subcounting_needs_to_be_removed = False
+        initial_position = stream.tell()
+        element, line, spect_no, xtal = unpack('<3I4s', stream.read(16))
+        self.element = AtomicNumber(element)
+        self.line = XRayLines(line)
+        self.spect_no = spect_no
+        self.XTAL = xtal.decode()[::-1]
+        stream.seek(8, 1)
+        self.calibration_file = read_c_hash_string(stream)
+        stream.seek(12, 1)
+        self.internal_peak_position = stream.tell() - initial_position
+        keys = ['peak_position', 'peak_time', 'offset_bg1', 'offset_bg2',
+                'slope', 'bg_time', 'bias', 'gain', 'dead_time',
+                'b_line', 'window', 'pha_mode', 'bg_prec']
+        values = unpack('<If2i2f6If', stream.read(52))
+        self.meas_set = dict(zip(keys, values))
+        stream.seek(12, 1)
+        self.meas_set['bg_type'] = unpack('<I', stream.read(4))[0]
+        self.peak_position = self.meas_set['peak_position']
+        self.offset_bg1 = self.meas_set['offset_bg1']
+        self.offset_bg2 = self.meas_set['offset_bg2']
+        self.slope = self.meas_set['slope']
+        self.background_type = self.meas_set['bg_type']
+        stream.seek(180, 1)
+        self.subcounting_pointer = stream.tell() - initial_position
+        self.meas_set['subcounting'] = unpack('<I', stream.read(4))[0]
+        self.subcounting = self.meas_set['subcounting']
+        stream.seek(156, 1)
+        if sxf_version >= 4:
+            stream.seek(4, 1)
+        final_position = stream.tell()
+        self.raw_io = BytesIO()
+        stream.seek(initial_position)
+        self.raw_io.write(stream.read(final_position - initial_position))
+
+    def __repr__(self):
+        return '<{}{} measured at {} on spect {}>'.format(self.element.name,
+                                                          self.line.name,
+                                                          self.XTAL,
+                                                          self.spect_no)
+
+    def reset_to_original(self):
+        self.values_had_changed = list()
+        self.meas_set['peak_position'] = self.peak_position
+        self.meas_set['offset_bg1'] = self.offset_bg1
+        self.meas_set['offset_bg2'] = self.offset_bg2
+        self.meas_set['slope'] = self.slope
+        self.meas_set['bg_type'] = self.background_type
+
+    def flag_a_change(self, change):
+        if change not in self.values_had_changed:
+            self.values_had_changed.append(change)
+
+    def set_peak_position(self, peak_pos):
+        self.meas_set['peak_position'] = peak_pos
+        self.flag_a_change('peak_position')
+
+    def set_bkg1(self, bkg1):
+        self.meas_set['offset_bg1'] = bkg1
+        self.flag_a_change('offset_bg1')
+
+    def set_bkg2(self, bkg2):
+        self.meas_set['offset_bg2'] = bkg2
+        self.flag_a_change('offset_bg2')
+
+    def set_slope(self, slope):
+        self.meas_set['slop'] = slope
+        self.flag_a_change('slope')
+
+    def set_bg_type(self, bg_type):
+        self.meas_set['bg_type'] = bg_type
+        self.flag_a_change('bg_type')
+
+    def check_if_subcounting(self):
+        if self.subcounting == 1 and self.index_in_spec > 0:
+            self.subcounting = 0
+        self.subcounting_needs_to_be_removed = True
+
+
+# ---------------------------- #
+#   Cameca Data File parsers   #
+# ---------------------------- #
+
+
+class CamecaDataFile(CamecaBase):
+    def open_the_file(self, filename):
+        self.filename = filename
+        with open(filename, 'br') as fn:
+            # file bytes
+            fbio = BytesIO()
+            fbio.write(fn.read())
+        self.file_basename = os.path.basename(filename).rsplit('.', 1)[0]
+        fbio.seek(0)
+        return fbio
 
     def check_the_dataset_container(self, fbio):
         self.dataset_container_version = eval_struct_version(
@@ -222,14 +375,9 @@ class CamecaDataFile(object):
         for i in range(self.number_of_items):
             self.datasets.append(self._parse_data_set(fbio))
 
-    def aggregate(self):
-        unique_comment = set([i.comment for i in self.datasets])
-        agg_data = [sum(filter(lambda x: x.comment == i, self.datasets))
-                    for i in unique_comment]
-        self.datasets = agg_data
-
     def _parse_data_set(self, fbio):
-        "Abstract method"
+        """Abstract method: Qti, img, wds (and cal) have different dataset
+         structures"""
         raise NotImplementedError("This is an abstract method")
 
 
@@ -248,9 +396,21 @@ class CamecaWDS(CamecaDataFile):
                                     self.file_type]))
         self.check_the_dataset_container(fbio)
         self.parse_datasets(fbio)
+        self.check_state = 0  # NOTE this is ugly hack for QtTree model GUI
 
     def _parse_data_set(self, fbio):
         return WDSDatasetItem(fbio, self)
+
+    def aggregate(self):
+        unique_comment = set([i.comment for i in self.datasets])
+        agg_data = [sum(filter(lambda x: x.comment == i, self.datasets))
+                    for i in unique_comment]
+        self.datasets = agg_data
+
+    def get_set_of_xtal_spect_combinations(self):
+        return sorted(set([i.spect_xtal_setup
+                           for dataset in self.datasets
+                           for i in dataset.items]))
 
 
 class CamecaImage(CamecaDataFile):
@@ -286,23 +446,23 @@ class CamecaQuanti(CamecaDataFile):
         return QuantiDatasetItem(fbio, self)
 
 
-# ---------------- #
-# Dataset classes: #
-# ---------------- #
+# ---------------------------- #
+# Generalized Dataset classes: #
+# ---------------------------- #
 
 
 class DatasetItem(object):
-    """Basic Dataset Item class"""
+    """Basic Dataset Item class; This is inherited by all datasets"""
     # keys and struct str for first 68 bytes:
     item_structs = {ResElemSource.WDS.value: [[
                         'atom_number', 'line', 'order', 'spect_no',
-                        'xtal4', '2D', 'K', 'unkwn4',
+                        'xtal4', 'two_D', 'K', 'unkwn4',
                         'HV', 'current', 'peak_pos',
                         'bias', 'gain', 'dtime', 'blin',
                         'window', 'mode'], '<4I4s2fi2f7i'],
                     ResElemSource.ImQtiWdsBkgdMeas.value: [[
                         'atom_number', 'line', 'order', 'spect_no',
-                        'xtal4', '2D', 'K', 'unkwn4',
+                        'xtal4', 'two_D', 'K', 'unkwn4',
                         'HV', 'current', 'peak_pos',
                         'bias', 'gain', 'dtime', 'blin',
                         'window', 'mode'], '<4I4s2fi2f7i'],
@@ -326,10 +486,12 @@ class DatasetItem(object):
                             '<4I4s2fi2f7i']}
 
     def __init__(self, fbio, parent):
-        self.parent = parent
+        self.parent = parent  # NOTE this is an ugly hack for
+        # an easier hierarchical encapsulation of the object
+        # inside QAbstractItemModel derivatives.
         self.dataset_struct_version = eval_struct_version(
             fbio, accepted=[0x11, 0x12])
-        field_names = ['definition_node', 'x_axis', 'y_axis', 'beam_x',
+        field_names = ['definition_node', 'stage_x', 'stage_y', 'beam_x',
                        'beam_y', 'resolution_x', 'resolution_y', 'width',
                        'height']
         values = unpack('<5i2f2i', fbio.read(36))
@@ -372,9 +534,9 @@ class DatasetItem(object):
             field_names, fmt_struct = cls.item_structs['etc']
         values = unpack(fmt_struct, fbio.read(68))
         item.update(dict(zip(field_names, values)))
-        fbio.seek(16, 1)  # skip junk; TODO: Have this crap a dynamic lenght?
+        fbio.seek(16, 1)  # unknown_flag u4; unknown_stuff 12bytes
         for i in range(unpack('<i', fbio.read(4))[0]):
-            fbio.seek(12, 1)  # skip more junk
+            fbio.seek(12, 1)  # skip undefined blocks
         return item
 
     @staticmethod
@@ -482,6 +644,45 @@ class ImageDatasetItem(DatasetItem):
                 item['data'][:, :, 3] = 255  # set X into A - an alpha channel
 
 
+class WDSSpectrometerScan:
+    def __init__(self, **parameters):
+        self.__dict__.update(parameters)
+        self.element = AtomicNumber(self.atom_number)
+        self.xtal = self.xtal4[::-1].partition(b'\0')[0].decode()
+        self.final_pos = int(self.start_pos +
+                             self.step_size * self.steps)
+        self.sin_theta_10k = np.arange(self.start_pos,
+                                       self.final_pos,
+                                       self.step_size)
+        self.spect_xtal_setup = (self.spect_no, self.xtal)
+
+    def __repr__(self):
+        return '<WDS scan [{}-{}] on spect. {}: {}>'.format(
+            self.start_pos,
+            self.final_pos,
+            self.spect_no,
+            self.xtal)
+
+    def gen_for_plot(self, function, **kwargs):
+        return function(self.sin_theta_10k, self.data, **kwargs)
+
+    def is_same_dimention(self, other):
+        if (self.steps != other.steps) or\
+                (self.start_pos != other.start_pos) or\
+                (self.spect_no != other.spect_no) or\
+                (self.xtal != other.xtal):
+            return False
+        return True
+
+    def __add__(self, other):
+        if self.is_same_dimention(other):
+            new = copy(self)
+            new.data = self.data + other.data
+            return new
+        else:
+            raise TypeError("spectras can't be sumed as dimentions differ")
+
+
 class WDSDatasetItem(DatasetItem):
     def __init__(self, fbio, parent=None):
         DatasetItem.__init__(self, fbio, parent)
@@ -492,13 +693,15 @@ class WDSDatasetItem(DatasetItem):
             fbio.seek(168, 1)
         self.ref_data = self.parse_outer_metadata(fbio)
         fbio.seek(52, 1)
-        self.enabled = 0
+        self.enabled = 0  # this is UGLY hack for QTreeModel
+        self.spect_xtal_setups = [
+            i.spect_xtal_setup for i in self.items]
 
     def read_item(self, fbio):
         item = self.read_start_of_item(fbio)
-        field_names = ['data_struct_version', 'wds_start_pos',
+        field_names = ['data_struct_version', 'start_pos',
                        'steps', 'step_size', 'dwell_time',
-                       'beam_size?', 'data_array_size']
+                       'beam_size', 'data_array_size']
         values = unpack('<3I2f2I', fbio.read(28))
         item.update(dict(zip(field_names, values)))
         size = item['data_array_size']
@@ -507,16 +710,25 @@ class WDSDatasetItem(DatasetItem):
         item['signal_name'] = read_c_hash_string(fbio)
         fbio.seek(104, 1)  # skip some unknown values/flags
         item['annotated_lines'] = self.read_line_table(fbio)
-        fbio.seek(8, 1)  # skip some unknown values/flags
-        return item
+        fbio.seek(4, 1)  # skip some unknown values/flags
+        extra_ending_flag = unpack('I', fbio.read(4))[0]
+        if extra_ending_flag == 1:
+            item['comment'] = read_c_hash_string(fbio)
+            fbio.seek(12, 1)
+            item['color'] = fbio.read(4)
+            fbio.seek(24, 1)
+        return WDSSpectrometerScan(**item)
 
     def __add__(self, other):
         if len(self.items) != len(other.items):
-            raise TypeError("Can't add those itmes, as they have different number of spectras")
-        new = deepcopy(self)
+            raise TypeError(
+                "Can't add: items have different number of spectras")
+        new = copy(self)
         n_items = len(self.items)
         for i in range(n_items):
-            new.items[i]['data'] = self.items[i]['data'] + other.items[i]['data']
+            new.items[i] = self.items[i] + other.items[i]
+        if self.comment != other.comment:
+            new.comment = '{} + {}'.format(self.comment, other.comment)
         return new
 
     def __radd__(self, other):
@@ -526,7 +738,7 @@ class WDSDatasetItem(DatasetItem):
             return self.__add__(other)
 
     def __repr__(self):
-        return 'WDSDataItem; comment: {}'.format(self.comment)
+        return '<WDSDatasetItem; comment: {}>'.format(self.comment)
 
     @staticmethod
     def read_line_table(fbio):
@@ -555,32 +767,3 @@ class QuantiDatasetItem(DatasetItem):
         fbio.seek(4, 1)  # skip some unknown value/flag
         item['dts_data_size'] = unpack('<I', fbio.read(4))[0]
         item['intern_cont_v'] = eval_struct_version(fbio, [0x0A, 0x0B])
-
-
-class CamecaWDSListModel(QtCore.QAbstractListModel):
-    def __init__(self, cameca_wds, parent=None):
-        QtCore.QAbstractListModel.__init__(self, parent)
-        self.collection = cameca_wds
-
-    def rowCount(self, parent):
-        try:
-            return len(self.collection.datasets)
-        except AttributeError:   # empty sample container
-            return 0
-
-    def data(self, index, role):
-        if role == QtCore.Qt.DisplayRole:
-            return self.collection.datasets[index.row()].comment
-        if role == QtCore.Qt.CheckStateRole:
-            return self.collection.datasets[index.row()].enabled
-
-    def setData(self, index, value, role):
-        if not index.isValid() or role != QtCore.Qt.CheckStateRole:
-            return False
-        self.collection.datasets[index.row()].enabled = value
-        self.dataChanged.emit(index, index)
-        return True
-
-    def flags(self, index):
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable |\
-            QtCore.Qt.ItemIsUserCheckable
