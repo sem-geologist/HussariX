@@ -30,6 +30,8 @@ class CustomViewBox(pg.ViewBox):
 
     def scaleBy(self, s=None, center=None, x=None, y=None):
         """copied from pyqtgraph, with minimal modification
+        to bound low y at current low-y position;
+        to change low y viewbox needs to be panned.
         """
         if s is not None:
             scale = pg.Point(s)
@@ -52,6 +54,7 @@ class CustomViewBox(pg.ViewBox):
             scale[0] = scale[1]
 
         vr = self.targetRect()
+        current_top = vr.top()  # Qt is having top at the bottom
         if center is None:
             center = pg.Point(vr.center())
         else:
@@ -67,26 +70,37 @@ class CustomViewBox(pg.ViewBox):
         else:
             new_rect = QtCore.QRectF(tl, br)
             # ??? Why needs to be Top, it is intended to bound Bottom:
-            new_rect.moveTop(0.0)
+            # old_rectangle.top() gives bottom coordinates...
+            new_rect.moveTop(current_top)
             self.setRange(new_rect, padding=0)
 
 
 class CustomAxisItem(pg.AxisItem):
     """
-    This class draws a rectangular area. Right-clicking inside the area will
-    raise a custom context menu which also includes the context menus of
-    its parents.
+    This Customised AxisItem can be setup with actions,
+    which appear in the menu after right click.
     """
     def __init__(self, *args, **kwargs):
         # menu creation is deferred because it is expensive and often
         # the user will never see the menu anyway.
         self.menu = None
 
-        # note that the use of super() is often avoided because Qt does not
+        self.menu = None
         # allow to inherit from multiple QObject subclasses.
         pg.AxisItem.__init__(self, *args, **kwargs)
-        self.energyButton = QtGui.QRadioButton('Energy')
-        self.thetaButton = QtGui.QRadioButton('sin(θ)')
+        self.actions = None
+
+    def init_actions(self, actions, action_group):
+        self.actions = actions
+        self.action_group = action_group
+        action_group.triggered.connect(self.changeUnits)
+
+    def changeUnits(self, action):
+        if action._si_units:
+            units = action.text()
+        else:
+            units = None
+        self.setLabel(text=action._title, units=units)
 
     # On right-click, raise the context menu
     def mouseClickEvent(self, ev):
@@ -111,18 +125,8 @@ class CustomAxisItem(pg.AxisItem):
         if self.menu is None:
             self.menu = QtGui.QMenu()
             self.menu.setTitle("axis options..")
-
-            scale = QtGui.QWidgetAction(self.menu)
-            groupBox = QtGui.QGroupBox()
-            verticalLayout = QtGui.QVBoxLayout(groupBox)
-            self.energyButton.setParent(groupBox)
-            verticalLayout.addWidget(self.energyButton)
-            self.thetaButton.setParent(groupBox)
-            verticalLayout.addWidget(self.thetaButton)
-            scale.setDefaultWidget(groupBox)
-            self.menu.addAction(scale)
-            self.menu.scale = scale
-            self.menu.groupBox = groupBox
+            for i in self.actions:
+                self.menu.addAction(i)
         return self.menu
 
 

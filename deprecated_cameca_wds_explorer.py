@@ -49,9 +49,9 @@ class WDSScanViewer(WDSWidget.Ui_WDSScanWidget,
             self.wds_files_model.append_wds_files(wds_files)
             combinations = []
             for i in self.wds_files:
-                combinations.extend(i.get_set_of_xtal_spect_combinations())
-            self.combinations = sorted(set(combinations))
-            comb_text = ['{}: {}'.format(*i) for i in self.combinations]
+                combinations.extend(i.spect_xtal_unique_combinations)
+            self.combinations = sorted([i.combi_string for i in set(combinations)])
+            comb_text = self.combinations
             self.comb_model = QtCore.QStringListModel(comb_text)
             self.spectComboBox.setModel(self.comb_model)
             self.selection_model = self.spectraTreeView.selectionModel()

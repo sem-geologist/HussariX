@@ -2,7 +2,7 @@ from PyQt5 import QtGui, Qt, QtWidgets
 
 from lib.ui import mainWindowUI
 
-from lib.ui import spectrum_widget_Qt5 as swidget
+from lib.ui import SpectrumWidgets as swidget
 from lib.ui import image_widget_Qt5 as iwidget
 from lib.parsers import jeol
 

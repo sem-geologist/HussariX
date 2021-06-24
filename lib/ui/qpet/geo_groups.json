@@ -1,0 +1,103 @@
+{
+  "LITHOPHILE": [
+    "Na",
+    "K",
+    "Si",
+    "Al",
+    "Ti",
+    "Mg",
+    "Ca"
+  ],
+  "SIDEROPHILE": [
+    "Fe",
+    "Co",
+    "Ni",
+    "Pt",
+    "Re",
+    "Os"
+  ],
+  "CHALCOPHILE": [
+    "Cu",
+    "Ag",
+    "Zn",
+    "Pb",
+    "S"
+  ],
+  "LILE": [
+    "K",
+    "Rb",
+    "Cs",
+    "Ba"
+  ],
+  "HFSE": [
+    "Zr",
+    "Nb",
+    "Th",
+    "U"
+  ],
+  "MAJOR": [
+    "O",
+    "Na",
+    "K",
+    "Si",
+    "Al",
+    "Ti",
+    "Mg",
+    "Ca",
+    "Fe"
+  ],
+  "HALOGENS": [
+    "F",
+    "Cl",
+    "Br"
+  ],
+  "REE": [
+    "La",
+    "Ce",
+    "Pr",
+    "Nd",
+    "Pm",
+    "Sm",
+    "Eu",
+    "Gd",
+    "Tb",
+    "Dy",
+    "Ho",
+    "Er",
+    "Tm",
+    "Yb",
+    "Lu"
+  ],
+  "LREE": [
+    "La",
+    "Ce",
+    "Pr",
+    "Nd",
+    "Pm",
+    "Sm"
+  ],
+  "HREE": [
+    "Eu",
+    "Gd",
+    "Tb",
+    "Dy",
+    "Ho",
+    "Er",
+    "Tm",
+    "Yb",
+    "Lu"
+  ],
+  "COMMON": [
+    "O",
+    "Na",
+    "K",
+    "Si",
+    "Al",
+    "Ti",
+    "Mg",
+    "Ca",
+    "Cr",
+    "Mn",
+    "Fe"
+  ]
+}

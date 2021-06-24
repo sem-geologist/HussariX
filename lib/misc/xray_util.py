@@ -20,7 +20,7 @@
 # from xraydb import XrayDB
 from math import log, e, sqrt
 import periodictable as pt
-import scipy.constants as sc
+#import scipy.constants as sc
 from . elements import elements
 
 # atom_num = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
@@ -58,7 +58,12 @@ iupac_siegbahn = {'K-L3': 'Kα1', 'K-L2': 'Kα2', 'K-M3': 'Kβ1',
 
 siegbahn_names = list(iupac_siegbahn.values())
 
-x_ray_const = sc.h * sc.c / sc.eV * 1E12
+# import scipy.constants as sc
+# x_ray_const = sc.h * sc.c / sc.eV * 1E12
+# it would be crazy to depend on whole scipy just for a few constants
+# here the hardcoded value useful for energy <-> wavelenght/sin(theta)
+# transitions""
+x_ray_const = 1239841.9843320027
 # cached_xdb = {}
 # xdb = XrayDB()
 
