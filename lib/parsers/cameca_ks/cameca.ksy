@@ -132,6 +132,7 @@ types:
         type: u4
       - id: n_of_datasets
         type: u4
+        # DBG START
       - id: datasets
         type: dataset
         repeat: expr
@@ -146,7 +147,7 @@ types:
         size: 12
         if: _root.header.sxf_version >= 4
     -webide-representation: 'v{version:dec}, {n_of_datasets:dec} datasets'
-        
+       
   dataset:
     doc: |
       Dataset is constructed form header, main and footer parts;
@@ -163,11 +164,13 @@ types:
         type: c_sharp_string
       - id: reserved_0
         size: 32
-      - id: extra_wds_meta_flag
+      - id: n_extra_wds_stuff
+        doc: "looks similar to stuff per item"
         type: u4
-      - id: extra_unknown
+      - id: extra_wds_stuff
         type: wds_item_extra_ending  # what about other types?
-        if: extra_wds_meta_flag == 1
+        repeat: expr
+        repeat-expr: n_extra_wds_stuff
       - id: template_flag
         type: u4
       - id: reserved_tmp_sector_0
@@ -943,11 +946,12 @@ types:
         repeat-expr: n_of_annot_lines
       - id: reserved_4
         size: 4
-      - id: extra_ending_flag
+      - id: n_extra_ending
         type: u4
       - id: extra_ending
         type: wds_item_extra_ending
-        if: extra_ending_flag == 1
+        repeat: expr
+        repeat-expr: n_extra_ending
   
   quanti_wds_scan:
     seq:

@@ -97,6 +97,9 @@ class WdsScanSignal(Cameca.WdsScanSignal):
         super().__init__(*args, **kwargs)
         self._y_recalc_cps = None
         self._y_orig_cps = None
+        # Unfortunately this crap happens quite too often...
+        # thus needs be checked (as it is always float32, thus multiple by 4).
+        self.corrupted = self.steps * 4 != self.data_array_size
 
     @cached_property
     def x_100k_sin_theta(self):
@@ -127,7 +130,7 @@ class WdsScanSignal(Cameca.WdsScanSignal):
         calling .y_cps or .y_cps_per_nA would return pile-up corrected counts.
 
         Historically gas proportional counters are often interfaced with
-        inadequately designed electronics, which is uncapable to handle
+        inadequately designed electronics, which is incapable to handle
         very high pulse rates and so called peak-pileup makes only a fraction
         of pulses be counted.
         Classical correction for dead-time is not enough and
@@ -189,6 +192,7 @@ class CamecaBase(Cameca):
         self.file_basename = os.path.basename(filename).rsplit('.', 1)[0]
         # inject q_scruff for easy generation of Tree like QAbstractItemModel
         # without wrapper class.
+        # and plotting interactions
         # add check_states for recursivly checkable object tree:
         self.q_checked_state = 0
         self.q_children = self.content.datasets
@@ -200,6 +204,7 @@ class CamecaBase(Cameca):
             dataset.q_parent = self
             dataset.q_row_count = 0
             dataset.q_children = []
+            dataset.plot_items = []
 
     def min_max_timestamps(self):
         """traverse the struct and return min and max unix timestamps
@@ -236,7 +241,7 @@ class CamecaWDS(CamecaBase):
         """get set of spectrometer/XTAL combinations used at least for one
         WDS spectra in the file"""
         # deepcopy would be better, but won't work here
-        # due to circle reference and kaitai stuff
+        # due to circular references and kaitai stuff
         return {copy(i.signal_header)
                 for dts in self.content.datasets
                 for i in dts.items

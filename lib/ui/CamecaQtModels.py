@@ -3,10 +3,11 @@ from PyQt5.QtCore import (QAbstractItemModel,
                           QModelIndex,
                           Qt)
 from PyQt5.QtGui import QColor, QPixmap, QPainter, QPen
-from PyQt5.QtWidgets import QWidgetAction, QMenu, QLabel
-from colorcet import glasbey_light, glasbey_dark
-from .spectral_curve import SpectralCurveItem
+from PyQt5.QtCore import pyqtSignal as Signal
+# from colorcet import glasbey_light, glasbey_dark
+from .spectrum_curve import SpectrumCurveItem
 from ..parsers.cameca import CamecaWDS, Cameca, CamecaBase
+from ..misc.glasbey_colors import glasbey_light, glasbey_dark
 
 # note: in some cameca software versions it is user customisable
 cam_def_colors = {'PC0': QColor(182, 255, 182),
@@ -23,52 +24,15 @@ cam_def_colors = {'PC0': QColor(182, 255, 182),
 # font to use to write onto above colors (to stay dark in dark mode):
 k_text_col = QColor(0, 0, 0)
 
-glasbey_l_qcolors = [QColor(i) for i in glasbey_light * 4]
-glasbey_d_qcolors = [QColor(i) for i in glasbey_dark * 4]
+glasbey_l_qcolors = glasbey_light * 4
+glasbey_d_qcolors = glasbey_dark * 4
 # make it 4 x 254, so that there would be enought of colors
 
 
-def menu_linestyle_entry_generator(pen_style=Qt.SolidLine, width=2,
-                                   parent=None):
-    wa = QWidgetAction(parent)
-    label = QLabel(parent)
-    pix = QPixmap(74, 24)
-    pix.fill(Qt.transparent)
-    painter = QPainter(pix)
-    pen = QPen(QColor(255, 178, 75), width,
-               pen_style)
-    painter.setPen(pen)
-    painter.drawLine(0, 12, 74, 12)
-    painter.end()
-    label.setPixmap(pix)
-    wa.setDefaultWidget(label)
-    wa.pen = pen  # this attribute will hold the style
-    return wa
-
-
-# Construct the line style menu, which will be reused.
-
-
-line_pattern_menu = QMenu("line pattern")
-for i in [Qt.SolidLine, Qt.DotLine, Qt.DashLine, Qt.DashDotLine,
-          Qt.DashDotDotLine]:
-    line_pattern_menu.addAction(
-        menu_linestyle_entry_generator(pen_style=i, parent=line_pattern_menu))
-    line_pattern_menu.addSeparator()
-line_width_menu = QMenu("line width")
-for j in [1, 2, 3, 4, 5]:
-    line_width_menu.addAction(
-        menu_linestyle_entry_generator(width=j, parent=line_width_menu))
-    line_width_menu.addSeparator()
-
-line_style_menu = QMenu()
-line_style_menu.addMenu(line_pattern_menu)
-line_style_menu.addMenu(line_width_menu)
-
-
-class WDSPlotItem(SpectralCurveItem):
-    def __init__(self, dataset_item, canvas_widget=None):
-        SpectralCurveItem.__init__(self)
+class WDSPlotItem(SpectrumCurveItem):
+    def __init__(self, dataset_item, canvas_widget=None,
+                 pen_style=1, pen_width=1, alpha=200):
+        SpectrumCurveItem.__init__(self)
         self.canvas_widget = canvas_widget
         self.signal = dataset_item.signal
         self.signal_header = dataset_item.signal_header
@@ -77,14 +41,19 @@ class WDSPlotItem(SpectralCurveItem):
         if not hasattr(dts, 'q_custom_color'):
             dts.q_custom_color = glasbey_l_qcolors[dts.q_row] \
               if canvas_widget.dark_mode else glasbey_d_qcolors[dts.q_row]
-        self.setPen(self.dataset.q_custom_color)
+        color = QColor(self.dataset.q_custom_color)
+        color.setAlpha(alpha)
+        self.setPen(color, style=pen_style,
+                    width=pen_width)
         self.setVisible(self.dataset.q_checked_state)
         if not hasattr(self.dataset, 'plot_items'):  # need to inject ref.
             self.dataset.plot_items = []             # for highlighting and
         self.dataset.plot_items.append(self)         # visib. change signaling
-        self.set_spectral_data()
+        if self.canvas_widget is not None:
+            self.set_spectrum_data()
+            self.canvas_widget.addItem(self)
 
-    def set_spectral_data(self, x_mode=None, y_mode=None):
+    def set_spectrum_data(self, x_mode=None, y_mode=None):
         if x_mode is None:
             x_mode = self.canvas_widget.x_axis_mode
         if x_mode == 'cameca':
@@ -101,12 +70,15 @@ class WDSPlotItem(SpectralCurveItem):
             y = self.signal.y_cts
         elif y_mode == 'cpsna':
             y = self.signal.y_cps_per_nA
+        if x.shape[0] > y.shape[0]:
+            x = x[:y.shape[0]]
         self.setData(x=x, y=y)
 
-
-# class QtiSpectrometerSetupModel(QAbstractTableModel):
-#    def __init__(self, parent=None):
-#        super().__init__(parent)
+    def remove_from_model(self):
+        """actually remove from data container which is checked by model,
+        but model does not need to be informed as the contente of .plot_items
+        are checked only during check_box state changes"""
+        self.dataset.plot_items.remove(self)
 
 
 class DummyCamecaWDS(CamecaWDS):
@@ -121,11 +93,15 @@ class DummyCamecaWDS(CamecaWDS):
 
 
 class SpecXTALCombiModel(QAbstractListModel):
-    
+    # Custom signals:
+    combinationCheckedStateChanged = Signal(object, bool)
+    xtalFamilyChanged = Signal(str, float, float, str)
+
+    # Qt Custom/User Roles:
     SpectXtalCombinationRole = Qt.UserRole
     LineStyleRole = Qt.UserRole + 1
     LineWidthRole = Qt.UserRole + 2
-    
+
     def __init__(self, model, parent=None):
         QAbstractListModel.__init__(self, parent=parent)
         self.spectra_model = model
@@ -138,6 +114,12 @@ class SpecXTALCombiModel(QAbstractListModel):
                             for i in self.spectra_model.collection]),
                 key=lambda x: x.combi_string)
         self.spectra_model.rowsInserted.connect(self.scan_and_add_entries)
+        for stuff in self.combinations:
+            stuff.q_checked_state = Qt.Unchecked
+
+    def get_checked_combinations(self):
+        return [i for i in self.combinations
+                if i.q_checked_state == Qt.Checked]
 
     def data(self, index, role):
         if not index.isValid():
@@ -159,9 +141,9 @@ class SpecXTALCombiModel(QAbstractListModel):
             painter.end()
             return qpix
         if role == Qt.CheckStateRole:
-            if not hasattr(node, 'q_checked'):
-                node.q_checked = Qt.Unchecked
-            return node.q_checked
+            if not hasattr(node, 'q_checked_state'):
+                node.q_checked_state = Qt.Unchecked
+            return node.q_checked_state
         if role == self.SpectXtalCombinationRole:
             return node
         if role == self.LineStyleRole:
@@ -178,24 +160,28 @@ class SpecXTALCombiModel(QAbstractListModel):
             return
         node = self.combinations[index.row()]
         if role == Qt.CheckStateRole:
-            node.q_checked = value
-            if value == 0:
-                if not any([i.q_checked for i in self.combinations]):
+            node.q_checked_state = value
+            if value == Qt.Unchecked:
+                if not any([i.q_checked_state for i in self.combinations]):
                     self.layoutAboutToBeChanged.emit()
                     self.selected_xtal_family = None
                     self.layoutChanged.emit()
+                self.combinationCheckedStateChanged.emit(node, False)
             elif not self.ignore_family_constrain:
                 if self.selected_xtal_family is None:
                     self.layoutAboutToBeChanged.emit()
-                    self.selected_xtal_family = \
-                        self.combinations[index.row()].xtal.family_name
+                    self.set_xtal_family(
+                        self.combinations[index.row()])
                     self.layoutChanged.emit()
+            if value == Qt.Checked:
+                self.combinationCheckedStateChanged.emit(node, True)
         if role == self.LineStyleRole:
             self.layoutAboutToBeChanged.emit()
             node.q_pen_style = value
             self.layoutChanged.emit()
         if role == self.LineWidthRole:
             node.q_pen_width = value
+        self.dataChanged.emit(index, index, [role])
         return True
 
     def rowCount(self, parent=QModelIndex()):
@@ -211,8 +197,15 @@ class SpecXTALCombiModel(QAbstractListModel):
             end_row = start_row + lenght - 1
             self.beginInsertRows(QModelIndex(), start_row, end_row)
             for i in diff_comb:
+                i.q_checked_state = 0
                 self.combinations.insert(start_row, i)
             self.endInsertRows()
+
+    def change_xtal_exclusivness(self, mode):
+        if mode == 'cameca':
+            self.setIgnoreFamilyConstrain(False)
+        else:
+            self.setIgnoreFamilyConstrain(True)
 
     def setIgnoreFamilyConstrain(self, state):
         self.layoutAboutToBeChanged.emit()
@@ -225,11 +218,23 @@ class SpecXTALCombiModel(QAbstractListModel):
 
     def leave_only_single_family_selected(self):
         for i, spect_header in enumerate(self.combinations):
-            if spect_header.q_checked and self.selected_xtal_family is None:
-                self.selected_xtal_family = spect_header.xtal.family_name
-            elif spect_header.q_checked:
+            if (spect_header.q_checked_state and
+                    self.selected_xtal_family is None):
+                self.set_xtal_family(spect_header)
+            elif spect_header.q_checked_state:
                 if self.selected_xtal_family != spect_header.xtal.family_name:
                     self.setData(self.index(i), 0, Qt.CheckStateRole)
+
+    def set_xtal_family(self, header):
+        self.selected_xtal_family = header.xtal.family_name
+        html_family_str = """<div style="background-color:{};color:#000000;">
+                             &nbsp;{}&nbsp;</div>""".format(
+                cam_def_colors[header.xtal.family_name].name(),
+                header.xtal.family_name)
+        self.xtalFamilyChanged.emit(header.xtal.family_name,
+                                    header.two_d,
+                                    header.k,
+                                    html_family_str)
 
     def flags(self, index):
         if self.ignore_family_constrain or self.selected_xtal_family is None:
@@ -237,7 +242,7 @@ class SpecXTALCombiModel(QAbstractListModel):
         if self.combinations[index.row()].xtal.family_name == \
                 self.selected_xtal_family:
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        return ~Qt.ItemIsEnabled
+        return Qt.NoItemFlags
 
 
 class CamecaWDSTreeModel(QAbstractItemModel):
@@ -247,16 +252,35 @@ class CamecaWDSTreeModel(QAbstractItemModel):
     This model is not universal - it hooks directly with data,
     otherwise than examples of Qt it does not use brokering
     Classes as i.e. NodeTree and similar."""
+    SpectrumCurvesRole = Qt.UserRole
+    wds_files_appended = Signal(object)
+
     def __init__(self, cameca_files, dark_mode=True, parent=None):
         QAbstractItemModel.__init__(self, parent)
         self.collection = cameca_files
         self.dark_mode = dark_mode
+        # alpha/transparency for curves when not highlighted
+        self.global_alpha = 200
         # this flag is used for tristate check behaviour
         # to prevent children<->parent loops:
         self.parent_selects_children_flag = False
         # That is for custom node with calculated WDS spectra
         self.last_item_is_custom = False
         self.spec_xtal_selection_model = None
+
+    def change_global_alpha(self, value):
+        """change transparency of all curves in the model,
+        that is ignored for highlighted curves in their function
+        which is called from this function"""
+        if (value > 255) or (value < 0):
+            raise ValueError(
+                "alpha should be between 0 to 255,"
+                " but value applied is {}".format(value))
+        self.global_alpha = value
+        for wds_file in self.collection:
+            for dataset in wds_file.content.datasets:
+                for curve in dataset.plot_items:
+                    curve.set_curve_alpha(value)
 
     def index(self, row, column=0, parent=None):
         """reimplemented"""
@@ -282,6 +306,7 @@ class CamecaWDSTreeModel(QAbstractItemModel):
         return QModelIndex()
 
     def hasChildren(self, index):
+        """reimplemented"""
         if index == QModelIndex():
             return True
         node = index.internalPointer()
@@ -290,22 +315,41 @@ class CamecaWDSTreeModel(QAbstractItemModel):
         return False
 
     def rowCount(self, index):
+        """reimplemented"""
         if index.isValid():
             node = index.internalPointer()
             return node.q_row_count
         return len(self.collection)
 
     def columnCount(self, parent):
+        """reimplemented"""
         return 1
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
+        """reimplemented"""
         if orientation == Qt.Horizontal and section == 0 and\
-         role == Qt.DisplayRole:
+                role == Qt.DisplayRole:
             return 'WDS files / Datasets'
+
+    def highlight_spectra(self, selected, deselected=None):
+        for s_idx in selected.indexes():
+            node = s_idx.internalPointer()
+            for plot_item in node.plot_items:
+                plot_item.highlight()
+        if deselected is None:
+            return
+        for d_idx in deselected.indexes():
+            node = d_idx.internalPointer()
+            for plot_item in node.plot_items:
+                plot_item.dehighlight(alpha=self.global_alpha)
 
     def data(self, index, role):
         row = index.row()
         node = index.internalPointer()
+        
+        if (role == self.SpectrumCurvesRole) and\
+                isinstance(node, Cameca.Dataset):
+            return node.plot_items
 
         if role == Qt.DisplayRole:
             if isinstance(node, CamecaBase):
@@ -316,7 +360,14 @@ class CamecaWDSTreeModel(QAbstractItemModel):
         if role == Qt.ToolTipRole:
             if isinstance(node, Cameca.Dataset):
                 return 'dt\'set {} contains:\n  '.format(row + 1) + \
-                    '\n  '.join([str(i.signal_header) for i in node.items])
+                    '\n  '.join([('CORRUPTED! ' if i.signal.corrupted else '')
+                                 + str(i.signal_header)
+                                 for i in node.items])
+
+        if (role == Qt.ForegroundRole and
+                isinstance(node, Cameca.Dataset) and
+                any([i.signal.corrupted for i in node.items])):
+            return QColor(Qt.red)
 
         if role == Qt.CheckStateRole:
             if isinstance(node, CamecaBase):
@@ -325,7 +376,7 @@ class CamecaWDSTreeModel(QAbstractItemModel):
                 if node.q_checked_state == node.q_row_count:
                     return Qt.Checked
                 return Qt.PartiallyChecked
-            if isinstance(node, Cameca.Dataset):  # , Cameca.DatasetItem)):
+            if isinstance(node, Cameca.Dataset):
                 return node.q_checked_state
 
         if role == Qt.DecorationRole:
@@ -357,14 +408,17 @@ class CamecaWDSTreeModel(QAbstractItemModel):
                     self.set_all_children(index, value)
             elif isinstance(node, Cameca.Dataset):
                 node.q_checked_state = value
-                if not hasattr(node, 'plot_items'):
-                    node.plot_items = []
+                # It could look that using dataChanged and connecting plot
+                # items with that would be more clean way, but this
+                # way is much faster, as there needs to be done no iteration
+                # over an over datasets; Single dataset checked - means
+                # only plots which are in the list change visibility
                 for plot_item in node.plot_items:
                     plot_item.setVisible(value)
                 self.update_parent_check_state(index, value)
         if role == Qt.EditRole:
             self.collection[parent.row()].q_children[row].comment.text = value
-        self.dataChanged.emit(index, index)
+        self.dataChanged.emit(index, index, [role])
         return True
 
     def update_parent_check_state(self, index, value):
@@ -379,22 +433,22 @@ class CamecaWDSTreeModel(QAbstractItemModel):
                 self.setData(parent, Qt.PartiallyChecked,
                              role=Qt.CheckStateRole)
 
-    def initialize_calculated_container(self):
-        parent = QModelIndex()
-        self.beginInsertRows(parent, self.rowCount() + 1,
-                             self.rowCount() + 1,)
-        self.collection.append(DummyCamecaWDS())
-        self.last_item_is_custom = True
-        self.endInsertRows()
+    #def initialize_calculated_container(self):
+    #    parent = QModelIndex()
+    #    self.beginInsertRows(parent, self.rowCount() + 1,
+    #                         self.rowCount() + 1,)
+    #    self.collection.append(DummyCamecaWDS())
+    #    self.last_item_is_custom = True
+    #    self.endInsertRows()
 
-    def append_calculated_dataset(self, result):
-        if not self.last_item_is_custom:
-            self.initialize_calculated_container()
-        parent = self.index(self.rowCount() - 1)
-        self.beginInsertRows(parent, self.rowCount(parent) + 1,
-                             self.rowCount(parent) + 1)
-        self.collection[-1].append_dataset(result)
-        self.endInsertRows()
+    #def append_calculated_dataset(self, result):
+    #    if not self.last_item_is_custom:
+    #        self.initialize_calculated_container()
+    #    parent = self.index(self.rowCount() - 1)
+    #    self.beginInsertRows(parent, self.rowCount(parent) + 1,
+    #                         self.rowCount(parent) + 1)
+    #    self.collection[-1].append_dataset(result)
+    #    self.endInsertRows()
 
     def append_wds_files(self, wds_files):
         lenght = len(wds_files)
@@ -406,6 +460,7 @@ class CamecaWDSTreeModel(QAbstractItemModel):
         for i in wds_files:
             self.collection.insert(start_row, i)
         self.endInsertRows()
+        self.wds_files_appended.emit(wds_files)
 
     def set_all_children(self, index, value):
         self.parent_selects_children_flag = True

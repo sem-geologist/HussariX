@@ -17,8 +17,26 @@
 # If not, see <http://www.gnu.org/licenses/>.
 #
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from os import path
+import json
+from re import sub, findall
+from math import log10
+
+from PyQt5 import QtWidgets
 import pyqtgraph as pg
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QPen, QPixmap, QColor, QPainter, QIcon, QFont
+from PyQt5.QtWidgets import (QWidget,
+                             QAction,
+                             QWidgetAction,
+                             QLabel,
+                             QMenu,
+                             QListView,
+                             QSizePolicy,
+                             QAbstractScrollArea,
+                             QHBoxLayout)
+from PyQt5.QtCore import pyqtSignal as Signal
+from PyQt5.QtCore import pyqtSlot as Slot
 
 from ..misc import xray_util as xu
 from .node import ElementLineTreeModel, SimpleDictNode
@@ -26,14 +44,10 @@ from .node import ElementLineTreeModel, SimpleDictNode
 from .qpet import element_table as qpet
 from . import CustomWidgets as cw
 from .CustomPGWidgets import CustomViewBox, CustomAxisItem
-from .spectral_curve import SpectralCurveItem
-from os import path
-import json
-from re import sub, findall
-from math import log10
+from .spectrum_curve import SpectrumCurveItem
+# from ..icons.icons import IconProvider
 
 main_path = path.join(path.dirname(__file__), path.pardir)
-icon_path = path.join(main_path, 'icons')
 conf_path = path.join(main_path,
                       'configurations',
                       'lines.json')
@@ -42,21 +56,22 @@ with open(conf_path) as fn:
     jsn = fn.read()
 lines = json.loads(jsn)
 
-# dealling with greek letters, where windows dos retards made it
-# into  latin:
+# dealling with windows-mind-slaves casted greek letters into latin:
 dos_greek = {'a': 'α', 'b': 'β', 'c': 'γ', 'z': 'ζ'}
 
 
-def colorCSS(qcolor):
+# QColor.name() returns the RGB not RGBA
+def color_to_css(qcolor):
     """convert color to css string 'rgba(tuple)' format
-       while preserving the alpha value"""
+       with alpha value. (QColor.name() is insufficient - without alpha)"""
     css_color = 'rgba({0}, {1}, {2}, {3})'.format(
                 *pg.colorTuple(qcolor))
     return css_color
 
 
 def darken_lighten(color, times, color_list=None, dark_mode=False):
-    """return the list of recursively darkened/lighten QtColors"""
+    """return the list of recursively darkened/lighten QtColors
+    darkening or lightening is chosen depending from dark_mode/used theme"""
     if color_list is None:
         color_list = [color]
     if times > 0:
@@ -65,6 +80,26 @@ def darken_lighten(color, times, color_list=None, dark_mode=False):
         darken_lighten(color, times - 1, color_list=color_list,
                        dark_mode=dark_mode)
     return color_list
+
+
+def menu_linestyle_entry_generator(pen_style=Qt.SolidLine, width=2,
+                                   parent=None):
+    """return QWidgetAction with QLabel widget as main widget where
+    it is displaying sample line painted with provided pen_style and width"""
+    menu_entry = QWidgetAction(parent)
+    label = QLabel(parent)
+    pix = QPixmap(74, 24)
+    pix.fill(Qt.transparent)
+    painter = QPainter(pix)
+    pen = QPen(QColor(246, 116, 0), width,
+               pen_style)
+    painter.setPen(pen)
+    painter.drawLine(5, 12, 75, 12)  # ForegroundNeutral
+    painter.end()
+    label.setPixmap(pix)
+    menu_entry.setDefaultWidget(label)
+    menu_entry.pen = pen  # this attribute will hold the style
+    return menu_entry
 
 
 def utfize(text):
@@ -92,8 +127,71 @@ def format_line(text, order=1):
     return string
 
 
+class XtalListView(QListView):
+
+    def __init__(self, parent=None):
+        QListView.__init__(self, parent=parent)
+        line_pattern_menu = QMenu("line pattern")
+        for i in [Qt.SolidLine, Qt.DotLine, Qt.DashLine, Qt.DashDotLine,
+                  Qt.DashDotDotLine]:
+            action = menu_linestyle_entry_generator(pen_style=i,
+                                                    parent=line_pattern_menu)
+            line_pattern_menu.addAction(action)
+
+            line_pattern_menu.addSeparator()
+        self.l_pattern_menu = line_pattern_menu
+        line_width_menu = QMenu("line width")
+        for j in [1, 2, 3, 4, 5]:
+            action = menu_linestyle_entry_generator(width=j,
+                                                    parent=line_width_menu)
+            line_width_menu.addAction(action)
+            line_width_menu.addSeparator()
+        self.l_width_menu = line_width_menu
+        self.line_style_menu = QMenu()
+        self.line_style_menu.addMenu(line_pattern_menu)
+        self.line_style_menu.addMenu(line_width_menu)
+        self.setViewMode(QListView.IconMode)
+        self.setResizeMode(QListView.Adjust)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.set_style_from_menu)
+        self.setMinimumSize(24, 24)
+        self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.setWhatsThis("""
+        <h4>XTAL-spectrometer combination view.</h4>
+        <p>
+        This widget exposes aggregated categories from WDS file tree view;
+        Categories are made for all unique combinations found in opened
+        WDS files for spectrometer and diffracting crystal combinations</p>
+        <p> When checking/tick'ing category, algorithm iterates through 
+        <bold>all</bold>
+        opened WDS datasets and generates plotting curves which is added
+        to plotting canvas. By default curves can be invisible, unless it
+        is marked in the main WDS dataset/files tree.</p>
+        <p> With right-mouse click on the category, curve line style and 
+        line weight of given category can be changed with a help of popup
+        menu; Changes are going to be applied only to curves appearing on
+        the canvas of this widget.</p>""")
+
+    def set_style_from_menu(self, pos):
+        index = self.indexAt(pos)
+        if not index.isValid():
+            return
+        pos_glob = self.mapToGlobal(pos)
+        menu_entry = self.line_style_menu.exec(pos_glob)
+        xtal_model = self.model()
+        if menu_entry in self.l_pattern_menu.actions():
+            role = xtal_model.LineStyleRole
+            value = menu_entry.pen.style()
+        elif menu_entry in self.l_width_menu.actions():
+            role = xtal_model.LineWidthRole
+            value = menu_entry.pen.width()
+        else:
+            return
+        xtal_model.setData(index, value, role)
+
+
 class XRayElementTable(qpet.ElementTableGUI):
-    ordersChanged = QtCore.pyqtSignal()
+    ordersChanged = Signal()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -130,10 +228,10 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.p_layout.addWidget(self.siegbahn, 0, 1, 1, 1)
         self.p_layout.addWidget(self.hv_value, 1, 1, 1, 1)
         # set the default states:
-        self.preview.setCheckState(QtCore.Qt.Checked)
-        self.siegbahn.setCheckState(QtCore.Qt.Checked)
+        self.preview.setCheckState(Qt.Checked)
+        self.siegbahn.setCheckState(Qt.Checked)
         self.hv_value.setValue(15.)
-        self.preview_edge.setCheckState(QtCore.Qt.Checked)
+        self.preview_edge.setCheckState(Qt.Checked)
         self.orders_interface = QtWidgets.QLineEdit()
         self.orders_interface.setMinimumSize(16, 16)
         self.layout().addWidget(self.orders_interface, 0, 12, 1, 5)
@@ -165,6 +263,34 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.orders_interface.setText(orders_str)
 
 
+class FramelessXRayElementTable(QtWidgets.QWidget):
+    def __init__(self, parent=None, **kwargs):
+        QtWidgets.QWidget.__init__(self, parent=parent, **kwargs)
+        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
+        self.pet = XRayElementTable(parent=self)
+        self.setLayout(QtWidgets.QVBoxLayout(self))
+        self.label = QtWidgets.QLabel('Element Table')
+        self.label.setAlignment(Qt.AlignHCenter)
+        if parent is not None:
+            self.set_new_title(self.parent().name)
+            self.parent().sig_name_had_changed.connect(self.set_new_title)
+        self.layout().addWidget(self.label)
+        self.layout().addWidget(self.pet)
+        self.layout().setContentsMargins(0, 1, 0, 0)
+        self.layout().setSpacing(0)
+
+    def set_new_title(self, new_text):
+        self.label.setText('Element Table of {}'.format(new_text))
+
+    def mousePressEvent(self, event):
+        self._mouse_clicked_x_coord = event.x()
+        self._mouse_clicked_y_coord = event.y()
+
+    def mouseMoveEvent(self, event):
+        self.move(event.globalX() - self._mouse_clicked_x_coord,
+                  event.globalY() - self._mouse_clicked_y_coord)
+
+
 class AutoEditor(QtWidgets.QDialog):
     """widget for entering min max x and y for
     auto range of the spectra"""
@@ -177,7 +303,7 @@ class AutoEditor(QtWidgets.QDialog):
 
     def _setup_ui(self):
         self.groupBox1 = QtWidgets.QGroupBox("x min-max", self)
-        self.gridLayout = QtWidgets.QHBoxLayout(self.groupBox1)
+        self.gridLayout = QHBoxLayout(self.groupBox1)
         self.x_min = QtWidgets.QLineEdit()
         self.x_max = QtWidgets.QLineEdit()
         self.gridLayout.addWidget(self.x_min)
@@ -185,7 +311,7 @@ class AutoEditor(QtWidgets.QDialog):
         self.verticalLayout.addWidget(self.groupBox1)
 
         self.groupBox2 = QtWidgets.QGroupBox("y min-max", self)
-        self.gridLayout2 = QtWidgets.QHBoxLayout(self.groupBox2)
+        self.gridLayout2 = QHBoxLayout(self.groupBox2)
         self.y_min = QtWidgets.QLineEdit()
         self.y_max = QtWidgets.QLineEdit()
         self.gridLayout2.addWidget(self.y_min)
@@ -212,17 +338,16 @@ class AutoEditor(QtWidgets.QDialog):
         return x_range, y_range
 
 
-class LineEnabler(QtWidgets.QWidget):
+class LineEnabler(QWidget):
 
     def __init__(self, parent=None):
-        QtWidgets.QWidget.__init__(self,  parent)
+        QWidget.__init__(self,  parent)
         self.gridLayout = QtWidgets.QGridLayout(self)
         self.buttonHide = QtWidgets.QPushButton(self)
         self.buttonHide.setText('Hide')
         self.gridLayout.addWidget(self.buttonHide, 4, 2, 1, 1)
-        spacerItem = QtWidgets.QSpacerItem(20, 40,
-                                           QtWidgets.QSizePolicy.Minimum,
-                                           QtWidgets.QSizePolicy.Expanding)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QSizePolicy.Minimum,
+                                           QSizePolicy.Expanding)
         self.gridLayout.addItem(spacerItem, 3, 2, 1, 1)
         self.buttonToggle = QtWidgets.QPushButton(self)
         self.buttonToggle.setText('Save to custom')
@@ -230,14 +355,14 @@ class LineEnabler(QtWidgets.QWidget):
         self.buttonSave = QtWidgets.QPushButton(self)
         self.buttonSave.setText('Save to default')
         self.gridLayout.addWidget(self.buttonSave, 1, 2, 1, 1)
-        self.atom = QtWidgets.QLabel(self)
-        font = QtGui.QFont()
+        self.atom = QLabel(self)
+        font = QFont()
         font.setPointSize(40)
         self.atom.setFont(font)
         self.atom.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.atom.setFrameShadow(QtWidgets.QFrame.Raised)
         self.atom.setLineWidth(2)
-        self.atom.setAlignment(QtCore.Qt.AlignCenter)
+        self.atom.setAlignment(Qt.AlignCenter)
         self.gridLayout.addWidget(self.atom, 0, 2, 1, 1)
         self.lineView = cw.LeavableTreeView(self)
         self.gridLayout.addWidget(self.lineView, 0, 0, 4, 2)
@@ -246,7 +371,7 @@ class LineEnabler(QtWidgets.QWidget):
         else:
             self.buttonHide.pressed.connect(self.hide)
 
-    @QtCore.pyqtSlot(str)
+    @Slot(str)
     def set_element_lines(self,  element):
         if self.parent() is not None:
             if self.parent().isHidden():
@@ -270,14 +395,14 @@ class PenEditor(QtWidgets.QDialog):
         self.formLayout = QtWidgets.QFormLayout(self.groupBox1)
         self.formLayout.setWidget(0,
                                   QtWidgets.QFormLayout.LabelRole,
-                                  QtWidgets.QLabel('color'))
+                                  QLabel('color'))
         self.text_color_btn = pg.ColorButton()
         self.formLayout.setWidget(0,
                                   QtWidgets.QFormLayout.FieldRole,
                                   self.text_color_btn)
         self.formLayout.setWidget(1,
                                   QtWidgets.QFormLayout.LabelRole,
-                                  QtWidgets.QLabel('size'))
+                                  QLabel('size'))
         self.font_btn = QtWidgets.QToolButton()
         self.font_btn.setText('Fe_Ka')
         self.formLayout.setWidget(1,
@@ -289,14 +414,14 @@ class PenEditor(QtWidgets.QDialog):
         self.formLayout2 = QtWidgets.QFormLayout(self.groupBox2)
         self.formLayout2.setWidget(0,
                                    QtWidgets.QFormLayout.LabelRole,
-                                   QtWidgets.QLabel('color'))
+                                   QLabel('color'))
         self.line_color_btn = pg.ColorButton()
         self.formLayout2.setWidget(0,
                                    QtWidgets.QFormLayout.FieldRole,
                                    self.line_color_btn)
         self.formLayout2.setWidget(1,
                                    QtWidgets.QFormLayout.LabelRole,
-                                   QtWidgets.QLabel('width'))
+                                   QLabel('width'))
         self.line_width_spn = pg.SpinBox(value=2, bounds=(0.1, 10),
                                          dec=1, minStep=0.1)
         self.formLayout2.setWidget(1,
@@ -389,9 +514,12 @@ class PenEditor(QtWidgets.QDialog):
 
 
 class XrayCanvas(pg.PlotWidget):
+
+    xAxisUnitsChanged = Signal(str)
+
     def __init__(self, kv=15, initial_mode='energy', dark_mode=False):
         plot_bkg_color = pg.mkColor(22, 33, 44) \
-            if dark_mode else pg.mkColor(230, 230, 230)
+            if dark_mode else pg.mkColor(250, 250, 255)
         pg.PlotWidget.__init__(
             self,
             viewBox=CustomViewBox(),
@@ -399,6 +527,7 @@ class XrayCanvas(pg.PlotWidget):
                        'bottom': CustomAxisItem('bottom')},
             background=plot_bkg_color)
         self.dark_mode = dark_mode
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         # p1 the main plotItem/canvas
         # p2 secondary viewbox for xray preview lines
         self.p1 = self.plotItem
@@ -411,22 +540,29 @@ class XrayCanvas(pg.PlotWidget):
         self.x_axis_mode = initial_mode
         self.y_axis_mode = 'cps'  # default
         self._gen_axis_actions()
-        self.set_xtal(8.75, 0.000144)  # default to PET crystal
+        self.xtal_family_text_item = pg.TextItem(
+            html='XTAL',
+            anchor=(1, 1))
+        self.xtal_family_text_family = pg.TextItem('family', anchor=(0, 1))
+        self.xtal_family_text_family.setParentItem(self.bottom_axis)
+        self.xtal_family_text_item.setParentItem(self.bottom_axis)
+        self.set_xtal('PET', 8.75, 0.000144, 'PET')  # default to PET crystal
+        self.xtal_family_text_item.setVisible(False)
         self.set_kv(kv)
         self.set_connections()
         self.init_x_axis()
         self.siegbahn = True
         self.p1.vb.sigResized.connect(self.updateViews)
-        self.prev_text_font = QtGui.QFont()
+        self.prev_text_font = QFont()
         if self.dark_mode:
             prev_marker_col = pg.mkColor((255, 200, 255, 180))
-            self.prev_edge_text_color = pg.mkColor((0, 0, 0))
-            self.prev_edge_pen = pg.mkPen((0, 0, 0, 200), width=2,
+            self.prev_edge_text_color = pg.mkColor((200, 200, 200))
+            self.prev_edge_pen = pg.mkPen((200, 200, 200, 200), width=2,
                                           dash=[0.5, 1.5])
         else:
             prev_marker_col = pg.mkColor((35, 10, 20, 180))
-            self.prev_edge_text_color = pg.mkColor((255, 255, 255))
-            self.prev_edge_pen = pg.mkPen((255, 255, 255, 200), width=2,
+            self.prev_edge_text_color = pg.mkColor((50, 50, 50))
+            self.prev_edge_pen = pg.mkPen((50, 50, 50, 200), width=2,
                                           dash=[0.5, 1.5])
         self.prev_marker_pen = [pg.mkPen(i, width=2) for i in
                                 darken_lighten(prev_marker_col, 14,
@@ -439,34 +575,36 @@ class XrayCanvas(pg.PlotWidget):
         self.orders = set([1])
         self.xray_line_cache = {}
         self.xray_edge_cache = {}
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.xtal_family_text_item.setPos(0, self.bottom_axis.height())
 
     def _gen_axis_actions(self):
         self.x_axis_ag = QtWidgets.QActionGroup(self)
         self.y_axis_ag = QtWidgets.QActionGroup(self)
         self.x_axis_ag.setExclusive(True)
         self.y_axis_ag.setExclusive(True)
-        kev = QtWidgets.QAction('keV', parent=self.x_axis_ag)
+        kev = QAction('keV', parent=self.x_axis_ag)
         kev._title = 'energy (keV)'
         kev._si_units = False
         kev.setCheckable(True)
-        sin_thet = QtWidgets.QAction('100k sin(θ)', parent=self.x_axis_ag)
+        sin_thet = QAction('100k sin(θ)', parent=self.x_axis_ag)
         sin_thet._title = 'position (10<sup>5 </sup>sin(θ))'
         sin_thet._si_units = False
         sin_thet.setCheckable(True)
-        nm = QtWidgets.QAction('nm', parent=self.x_axis_ag)
+        nm = QAction('nm', parent=self.x_axis_ag)
         nm._title = 'wavelenght (nm)'
         nm._si_units = False
         nm.setCheckable(True)
         self.x_actions = [kev, sin_thet, nm]
-        cts = QtWidgets.QAction('cts', parent=self.y_axis_ag)
+        cts = QAction('cts', parent=self.y_axis_ag)
         cts._title = 'raw intensity'
         cts._si_units = True
         cts.setCheckable(True)
-        cps = QtWidgets.QAction('cps', parent=self.y_axis_ag)
+        cps = QAction('cps', parent=self.y_axis_ag)
         cps._title = 'time norm. intensity'
         cps._si_units = True
         cps.setCheckable(True)
-        cpsna = QtWidgets.QAction('cps/nA', parent=self.y_axis_ag)
+        cpsna = QAction('cps/nA', parent=self.y_axis_ag)
         cpsna._title = 'exposure norm. intensity'
         cpsna._si_units = True
         cpsna.setCheckable(True)
@@ -494,10 +632,9 @@ class XrayCanvas(pg.PlotWidget):
             y_mode = ['cts', 'cps', 'cpsna'][j]
             self.y_axis_mode = y_mode
         for item in self.p1.curves:
-            if isinstance(item, SpectralCurveItem):
-                item.set_spectral_data(x_mode=x_mode, y_mode=y_mode)
+            if isinstance(item, SpectrumCurveItem):
+                item.set_spectrum_data(x_mode=x_mode, y_mode=y_mode)
         self.autoRange()
-
 
     def init_x_axis(self):
         if self.x_axis_mode == 'cameca':
@@ -521,7 +658,12 @@ class XrayCanvas(pg.PlotWidget):
             self.prev_marker_pen = [pg.mkPen(color, width=width)
                                     for color in colors]
 
-    def set_xtal(self, two_D, K):
+    def set_xtal(self, family_name, two_D, K, html=None):
+        if html is not None:
+            self.xtal_family_text_item.setHtml(html)
+            self.xtal_family_text_item.setPos(0, self.bottom_axis.height())
+            self.xtal_family_text_family.setPos(0, self.bottom_axis.height())
+        self.xtal_family_name = family_name
         self.two_D = two_D
         self.K = K
         self.axis_quotient = xu.calc_scale_to_sin_theta(two_D, K)
@@ -532,13 +674,20 @@ class XrayCanvas(pg.PlotWidget):
             self.p1.setLimits(xMin=-0.5)
             self.setXRange(0.45, self.kv)
             self.set_kv(self.kv)
+            self.xtal_family_text_item.setVisible(False)
+            self.xtal_family_text_family.setVisible(False)
         elif mode == 'cameca':
             self.p1.setLimits(xMin=10000, xMax=95000)
             self.setXRange(20000, 95000)
             self.wds_orders = [1]
+            self.xtal_family_text_item.setVisible(True)
+            self.xtal_family_text_family.setVisible(True)
         elif mode == 'wavelenth':
             self.p1.setLimits(xMin=0, xMax=5)
             self.setXRange(0, 100)
+            self.xtal_family_text_item.setVisible(False)
+            self.xtal_family_text_family.setVisible(False)
+        self.xAxisUnitsChanged.emit(mode)
 
     def set_kv(self, kv):
         self.kv = kv
@@ -555,38 +704,58 @@ class XrayCanvas(pg.PlotWidget):
         xam = self.x_axis_mode
         if element not in xec:
             xec[element] = {}
-        if xam in xec[element]:
-            for item in xec[element][xam]:
-                self.p2.addItem(item)
-            return
+        if xam == 'cameca':
+            xfn = self.xtal_family_name 
+        elem_dict = xec[element]
+        if xam in elem_dict:
+            if xam == 'energy':
+                for item in elem_dict[xam]:
+                    self.p2.addItem(item)
+                return
+            elif xam == 'cameca':
+                if xfn in elem_dict[xam]:
+                    for item in elem_dict[xam][xfn]:
+                        self.p2.addItem(item)
+                    return
         if xam == 'energy':
             lines = xu.xray_shells_for_plot(element)
         elif xam == 'cameca':
             lines = xu.xray_shells_for_plot_wds(element,
                                                 two_D=self.two_D,
                                                 K=self.K)
-        xec[element][xam] = []
+        if xam == 'energy':
+            elem_dict[xam] = []
+        elif xam == 'cameca':
+            if xam not in elem_dict:
+                elem_dict[xam] = {}
+            elem_dict[xam][xfn] = []
         for i in lines:
             line = pg.PlotCurveItem([i[1], i[1]], [0.06, 1.2],
                                     pen=self.prev_edge_pen)
             self.p2.addItem(line)
-            xec[element][xam].append(line)
             text = pg.TextItem(text="{0} {1}".format(element, i[0]),
                                anchor=(0., 1.),
                                angle=90)
             text.setFont(self.prev_text_font)
             self.p2.addItem(text)
             text.setPos(i[1], 1.)
-            xec[element][xam].append(text)
+            if xam == 'energy':
+                final_list = elem_dict[xam]
+            elif xam == 'cameca':
+                final_list = elem_dict[xam][xfn]
+            else:
+                return
+            final_list.append(line)
+            final_list.append(text)
 
     def previewLines(self, element, kv=None, lines=None, siegbahn=None):
         if kv is None:
             kv = self.kv
         if siegbahn is None:
             siegbahn = self.siegbahn
-        #self.p2.clear()
+        # self.p2.clear()
         self.p2.setZValue(9999)
-        css_color = colorCSS(self.prev_text_color)
+        css_color = color_to_css(self.prev_text_color)
         if lines is None:
             if self.x_axis_mode == 'energy':
                 lines = {1: xu.xray_lines_for_plot(element, kv, siegbahn)}
@@ -637,7 +806,13 @@ class XrayCanvas(pg.PlotWidget):
         pass
 
 
-class BackgroundModel:
+class PositionMarker(pg.InfiniteLine):
+    def __init__(self, canvas=None, line_type='peak', **kwargs):
+        """line_type one of peak, background"""
+        pg.InfiniteLine.__init__(self, )
+
+
+class PositionMarkers:
     def __init__(self, canvas=None,
                  initial_values=None):
         """
@@ -648,30 +823,51 @@ class BackgroundModel:
         right_relative_position, slope_val, background_modeling_mode)
         """
         if initial_values is not None:
-            self.set_type = 'particular'
+            self.type = 'particular'
             self.initial_values = initial_values
             self.name = self.initial_values[0]
         else:
-            self.set_type = 'generic'
+            self.type = 'generic'
             self.name = ''
+            # modes: 'two_bkgd', 'single_bkgd', 'solo'
+            self.mode = 'two_bkgd'
         self.canvas = None
         self.m_line = None
         self.bg1_line = None
         self.bg2_line = None
         self.bg1_text = None
         self.bg2_text = None
+        self.m_text_pos = 0.80
+        self.bg1_text_pos = 0.75
+        self.bg2_text_pos = 0.75
         if canvas is not None:
             self.canvas = canvas
             self.initiate_lines()
+            self.x_axis_mode = self.canvas.x_axis_mode
+
+    def set_mode(self, mode):
+        if mode not in ('two_bkgd', 'single_bkgd', 'solo'):
+            raise KeyError("Position marker can be set only to one of:"
+                           "['two_bkgd', 'single_bkgd', 'solo']")
+        if mode == self.mode:
+            return
+        else:
+            self.mode = mode
 
     def gen_positions(self):
-        if self.set_type == 'generic':
+        if self.type == 'generic':
             axis_range = self.canvas.getAxis('bottom').range
             width = axis_range[1] - axis_range[0]
-            lower = axis_range[0] + width * 0.25
+            if self.mode in ('two_bkgd', 'single_bkgd'):
+                lower = axis_range[0] + width * 0.25
+            else:
+                lower = None
             middle = axis_range[0] + width * 0.5
-            higher = axis_range[0] + width * 0.75
-        elif self.set_type == 'particular':
+            if self.mode == 'two_bkgd':
+                higher = axis_range[0] + width * 0.75
+            else:
+                higher = None
+        elif self.type == 'particular':
             middle, lower, higher = self.initial_values[1:4]
             if lower is not None:
                 lower = middle + lower
@@ -680,23 +876,36 @@ class BackgroundModel:
         return lower, middle, higher
 
     def initiate_lines(self):
+        if self.canvas.dark_mode:
+            color = 'w'
+        else:
+            color = 'k'
         lower, middle, higher = self.gen_positions()
         self.m_line = pg.InfiniteLine(middle, movable=True,
-                                      pen=pg.mkPen('w', width=3.))
+                                      pen=pg.mkPen(color, width=3.),
+                                      name='main',
+                                      markers=[('^', 0.99, 6.0)])
         if lower is not None:
             self.bg1_line = pg.InfiniteLine(lower, movable=True,
-                                            pen=pg.mkPen('w', width=1.5))
-            self.bg1_text = pg.InfLineLabel(self.bg1_line, movable=True,    
-                                            color='w')
+                                            pen=pg.mkPen(color, width=1.5),
+                                            name='bkgd1',
+                                            markers=[('v', 0.01, 6.0)])
+            self.bg1_text = pg.InfLineLabel(self.bg1_line, movable=True,
+                                            color=color,
+                                            position=self.bg1_text_pos)
             self.bg1_line.sigPositionChanged.connect(self.update_marker_str)
-        
+
         if higher is not None:
             self.bg2_line = pg.InfiniteLine(higher, movable=True,
-                                            pen=pg.mkPen('w', width=1.5))
-            self.bg2_text = pg.InfLineLabel(self.bg2_line, movable=True, 
-                                            color='w')
+                                            pen=pg.mkPen(color, width=1.5),
+                                            name='bkgd2',
+                                            markers=[('v', 0.01, 6.0)])
+            self.bg2_text = pg.InfLineLabel(self.bg2_line, movable=True,
+                                            color=color,
+                                            position=self.bg2_text_pos)
             self.bg2_line.sigPositionChanged.connect(self.update_marker_str)
-        self.m_text = pg.InfLineLabel(self.m_line, movable=True, color='w')
+        self.m_text = pg.InfLineLabel(self.m_line, movable=True, color=color,
+                                      position=self.m_text_pos)
         self.update_marker_str()
         self.m_line.sigPositionChanged.connect(self.update_marker_str)
         self.add_to_canvas()
@@ -704,9 +913,17 @@ class BackgroundModel:
     def initiate_positions(self):
         lower, middle, higher = self.gen_positions()
         if self.bg1_line is not None:
-            self.bg1_line.setValue(lower)
+            if lower is not None:
+                self.bg1_line.setValue(lower)
+            else:
+                self.canvas.removeItem(self.bg1_line)
+                self.bg1_line = None
         if self.bg2_line is not None:
-            self.bg2_line.setValue(higher)
+            if higher is not None:
+                self.bg2_line.setValue(higher)
+            else:
+                self.canvas.removeItem(self.bg2_line)
+                self.bg2_line = None
         self.m_line.setValue(middle)
 
     def update_marker_str(self):
@@ -728,7 +945,7 @@ class BackgroundModel:
             rng = log10(rng)
         precission = str(3 - int(rng))
         str_list = ['{:.', precission, 'f}']
-        if self.set_type == 'particular':
+        if self.type == 'particular':
             str_list.extend(['\n', self.name])
         return ''.join(str_list)
 
@@ -740,63 +957,110 @@ class BackgroundModel:
             self.canvas.addItem(self.bg2_line)
 
     def remove_from_canvas(self):
-        self.canvas.removeItem(self.m_line)
+        if self.m_line is not None:
+            self.m_text_pos = self.m_text.orthoPos
+            self.canvas.removeItem(self.m_line)
+            self.m_line.sigPositionChanged.disconnect(self.update_marker_str)
+            self.m_line = None
+            self.m_text = None
         if self.bg1_line is not None:
+            self.bg1_text_pos = self.bg1_text.orthoPos
             self.canvas.removeItem(self.bg1_line)
+            self.bg1_line.sigPositionChanged.disconnect(self.update_marker_str)
+            self.bg1_line = None
+            self.bg1_text = None
         if self.bg2_line is not None:
+            self.bg2_text_pos = self.bg2_text.orthoPos
             self.canvas.removeItem(self.bg2_line)
+            self.bg2_line.sigPositionChanged.disconnect(self.update_marker_str)
+            self.bg2_line = None
+            self.bg2_text = None
 
     def register_canvas(self, canvas):
         self.canvas = canvas
-        if self.m_line is None:
-            self.initiate_lines()
-        else:
-            self.initiate_positions()
-            self.add_to_canvas()
+        # if self.m_line is None:
+        self.remove_from_canvas()
+        self.initiate_lines()
+        # else:
+        #    self.initiate_positions()
+        #    self.add_to_canvas()
 
 
 class XraySpectraGUI(cw.FullscreenableWidget):
+    sig_name_had_changed = Signal(str)
+
     def __init__(self, parent=None, icon_size=None,
-                 pet_opacity=None, initial_mode='energy'):
+                 pet_opacity=None, initial_mode='energy',
+                 name='Plot Widget'):
         cw.FullscreenableWidget.__init__(self, parent, icon_size)
+        self._name = name
         self.resize(550, 550)
         self._pet_opacity = pet_opacity
-        self.centralwidget = QtWidgets.QWidget()
-        self.setCentralWidget(self.centralwidget)
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.centralwidget)
-        self.horizontalLayout.setContentsMargins(1, 1, 1, 1)
+        self.pet = None
+        self.splitter = QtWidgets.QSplitter(Qt.Vertical)
+        self.setCentralWidget(self.splitter)
+        self.bkgd_helper_widget = QWidget(self.splitter)
         self._setup_toolbar()
         self.canvas = XrayCanvas(initial_mode=initial_mode,
                                  dark_mode=self.dark_mode)
-        # self.pos_markers = PositionMarkers()
+        self.canvas.setWhatsThis(
+            """<h4>Plotting Canvas</h4>
+            <p>plotting canvas can show spectra for checked datasets
+            in WDS tree view, and checked xtal-spectrometer combinations
+            enabled/checked in below attached widget.</p>
+            <p>right clicking on y or x axis alows to change units;
+            in case of changing x units to wavelenth or energy - that
+            unlocks possibility to check xtal-spec combinations from
+            different xtal families allowing to plot and compare overlapping
+            spectral regions</p>""")
+        size_policy_canvas = QSizePolicy()
+        size_policy_canvas.setVerticalStretch(200)
+        size_policy_canvas.setVerticalPolicy(QSizePolicy.Expanding)
+        size_policy_canvas.setHorizontalPolicy(QSizePolicy.Expanding)
+        self.canvas.setSizePolicy(size_policy_canvas)
+        self.pos_markers = PositionMarkers()
         self._setup_menu()
         self._setup_connections()
-        self.horizontalLayout.addWidget(self.canvas)
+        self.splitter.addWidget(self.canvas)
+        self.spect_xtal_combo_view = XtalListView(parent=self.splitter)
+        size_policy = QSizePolicy()
+        size_policy.setVerticalStretch(1)
+        size_policy.setVerticalPolicy(QSizePolicy.Minimum)
+        size_policy.setHorizontalPolicy(QSizePolicy.Minimum)
+        self.spect_xtal_combo_view.setSizePolicy(size_policy)
+        self.splitter.addWidget(self.bkgd_helper_widget)
+        bkgd_layout = QHBoxLayout(self.bkgd_helper_widget)
+        bkgd_layout.addWidget(QLabel("Background slope"))
+        bkgd_layout.setContentsMargins(2, 2, 2, 2)
+        self.slope_spin_box = pg.SpinBox(
+            value=1.0, dec=True, min=0.001, max=1000, decimals=6)
+        self.slope_spin_box.setMinimumHeight(24)
+        bkgd_layout.addWidget(self.slope_spin_box)
+        self.bkgd_helper_widget.setSizePolicy(size_policy)
+        self.bkgd_helper_widget.hide()
+        self.splitter.addWidget(self.spect_xtal_combo_view)
+        self.actionWDSSelector.toggled.connect(
+            self.spect_xtal_combo_view.setVisible)
+        self.actionWDSSelector.setChecked(True)
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, new_name):
+        self._name = new_name
+        self.sig_name_had_changed.emit(new_name)
 
     def _setup_menu(self):
         menu = self.canvas.p1.getViewBox().menu
-        self.actionClearMarker = menu.addAction('Remove cursors')
+        self.actionClearMarker = menu.addAction('Remove markers')
+        self.actionClearMarker.setIcon(
+            QIcon(self.icon_provider.get_icon_path('lines_hide.svg')))
 
     def _setup_connections(self):
-        self.pet.elementConsidered.connect(self.canvas.previewEdges)
-        self.pet.elementConsidered.connect(self.canvas.previewLines)
-        self.pet.elementUnconsidered.connect(self.canvas.clearPreview)
-        self.config_preview.triggered.connect(
-            self.canvas.tweek_preview_style)
-        self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
-        self.pet.elementRightClicked.connect(
-            self.lineSelector.set_element_lines)
-        self.lineSelector.lineView.entered.connect(
-            self.preview_hovered_lines)
-        self.lineSelector.lineView.mouseLeft.connect(
-            self.canvas.clearPreview)
-        self.pet.siegbahn.toggled.connect(self.canvas.set_siegbahn_state)
-        self.pet.ordersChanged.connect(self.broker_orders_state_to_canvas)
-        #self.actionMarker.triggered.connect(self.show_markers_on_canvas)
-        #self.actionClearMarker.triggered.connect(
-        #    self.pos_markers.remove_from_canvas)
-        self.pet.preview.toggled.connect(self.preview_toggle)
-        self.pet.preview_edge.toggled.connect(self.preview_edges_toggle)
+        self.actionClearMarker.triggered.connect(
+            self.pos_markers.remove_from_canvas)
         self.auto_all.triggered.connect(self.canvas.p1.autoRange)
         self.auto_height.triggered.connect(self.auto_y)
         self.auto_width.triggered.connect(self.auto_x)
@@ -812,14 +1076,14 @@ class XraySpectraGUI(cw.FullscreenableWidget):
     def broker_orders_state_to_canvas(self):
         self.canvas.orders = self.pet.orders
 
-    @QtCore.pyqtSlot(bool)
+    @Slot(bool)
     def preview_toggle(self, state):
         if state:
             self.pet.elementConsidered.connect(self.canvas.previewLines)
         else:
             self.pet.elementConsidered.disconnect(self.canvas.previewLines)
 
-    @QtCore.pyqtSlot(bool)
+    @Slot(bool)
     def preview_edges_toggle(self, state):
         if state:
             self.pet.elementConsidered.connect(self.canvas.previewEdges)
@@ -829,58 +1093,118 @@ class XraySpectraGUI(cw.FullscreenableWidget):
     def _setup_toolbar(self):
         # add spacer:
         self._empty2 = QtWidgets.QWidget()
-        self._empty2.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                   QtWidgets.QSizePolicy.Expanding)
+        self._empty2.setSizePolicy(QSizePolicy.Expanding,
+                                   QSizePolicy.Expanding)
         self.toolbar.addWidget(self._empty2)
-        self.actionElementTable = QtWidgets.QAction(self)
-        self.actionElementTable.setIcon(QtGui.QIcon(self.gen_ico_path('pt.svg')))
-        self.toolbar.addAction(self.actionElementTable)
-        self._setup_pet()
-        self.actionElementTable.triggered.connect(self.show_pet)
+        self.element_table_button = cw.CustomToolButton(self)
+        self.toolbar.addWidget(self.element_table_button)
+        self._setup_table_button()
         self.toolbar.addSeparator()
         self.auto_button = cw.CustomToolButton(self)
+        self.auto_button.setWhatsThis(
+            "This automatically adjust x and/or y axis range")
         self._setup_auto()
         self.toolbar.addWidget(self.auto_button)
-        self.config_button = cw.CustomToolButton(self)
-        self.config_button.setIcon(
-            QtGui.QIcon(self.gen_ico_path('line_preview_settings.svg')))
-        self._setup_config()
-        self.toolbar.addWidget(self.config_button)
         self._empty1 = QtWidgets.QWidget()
-        self._empty1.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                   QtWidgets.QSizePolicy.Expanding)
+        self._empty1.setSizePolicy(QSizePolicy.Expanding,
+                                   QSizePolicy.Expanding)
         self.toolbar.addWidget(self._empty1)
-        self.actionMarker = QtWidgets.QAction(self)
-        self.actionMarker.setIcon(QtGui.QIcon(self.gen_ico_path('lines.svg')))
-        self.toolbar.addAction(self.actionMarker)
-        self.actionWDSSelector = QtWidgets.QAction(self)
-        self.actionWDSSelector.setIcon(
-            QtGui.QIcon(self.gen_ico_path('wds_selection.svg')))
+        self.marker_button = cw.CustomToolButton(self)
+        self.marker_button.setWhatsThis(
+            """This adds movable line marker with single, double or any
+            background line markers; Drop down menu of this widget allows to
+            set some available background modeling for selected markers"""
+        )
+        self.toolbar.addWidget(self.marker_button)
+        self._setup_markers()
+        self.actionWDSSelector = QAction(self)
+        self.actionWDSSelector.setIcon(QIcon(
+            self.icon_provider.get_icon_path('wds_selection.svg')))
+        self.actionWDSSelector.setCheckable(True)
+        self.actionWDSSelector.setToolTip(
+            'hide/show WDS-XTAL-spectrometer combination categories')
         self.toolbar.addAction(self.actionWDSSelector)
 
-    def show_markers_on_canvas(self):
-        self.pos_markers.register_canvas(self.canvas.p1)
+    def show_three_markers_on_canvas(self):
+        self.pos_markers.set_mode('two_bkgd')
+        self.pos_markers.register_canvas(self.canvas)
+        self.action_exp_background.setEnabled(True)
+        self.action_linear_background.setEnabled(True)
+
+    def show_two_markers_on_canvas(self):
+        self.pos_markers.set_mode('single_bkgd')
+        self.pos_markers.register_canvas(self.canvas)
+        self.action_linear_background.setEnabled(True)
+        self.action_exp_background.setEnabled(False)
+        self.action_exp_background.setChecked(False)
+
+    def show_single_marker_on_canvas(self):
+        self.pos_markers.set_mode('solo')
+        self.action_linear_background.setChecked(False)
+        self.action_exp_background.setChecked(False)
+        self.pos_markers.register_canvas(self.canvas)
+        self.action_linear_background.setEnabled(False)
+        self.action_exp_background.setEnabled(False)
+
+    def _setup_markers(self):
+        menu = QMenu('markers and backgrounds')
+        self.action_marker_bgx2 = QAction(
+            QIcon(self.icon_provider.get_icon_path('lines_bgx2.svg')),
+            'peak and 2 background',
+            self.marker_button)
+        self.action_marker_bgx2.triggered.connect(self.bkgd_helper_widget.hide)
+        self.action_marker_and_1bkg = QAction(
+            QIcon(self.icon_provider.get_icon_path('lines_pk_1xbkg.svg')),
+            'peak and single background',
+            self.marker_button)
+        self.action_marker_and_1bkg.triggered.connect(
+            self.bkgd_helper_widget.show)
+        self.action_marker_only = QAction(
+            QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
+            'single marker only',
+            self.marker_button)
+        self.action_marker_only.triggered.connect(self.bkgd_helper_widget.hide)
+        self.action_linear_background = QAction('linear background')
+        self.action_linear_background.setCheckable(True)
+        self.action_exp_background = QAction('exponential background')
+        self.action_exp_background.setCheckable(True)
+        for action in [self.action_marker_bgx2, self.action_marker_and_1bkg,
+                       self.action_marker_only]:
+            action.triggered.connect(self.marker_button.set_action_to_default)
+        menu.addAction(self.action_marker_bgx2)
+        menu.addAction(self.action_marker_and_1bkg)
+        menu.addAction(self.action_marker_only)
+        menu.addSection("Background models:")
+        menu.addAction(self.action_linear_background)
+        menu.addAction(self.action_exp_background)
+        self.marker_button.setMenu(menu)
+        self.marker_button.setDefaultAction(self.action_marker_bgx2)
+        self.action_marker_bgx2.triggered.connect(
+            self.show_three_markers_on_canvas)
+        self.action_marker_and_1bkg.triggered.connect(
+            self.show_two_markers_on_canvas)
+        self.action_marker_only.triggered.connect(
+            self.show_single_marker_on_canvas)
 
     def _setup_auto(self):
-        menu = QtWidgets.QMenu('auto range')
-        self.auto_all = QtWidgets.QAction(
-            QtGui.QIcon(self.gen_ico_path('auto_all.svg')),
+        menu = QMenu('auto range')
+        self.auto_all = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_all.svg')),
             'all',
             self.auto_button)
-        self.auto_width = QtWidgets.QAction(
-            QtGui.QIcon(self.gen_ico_path('auto_width.svg')),
+        self.auto_width = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_width.svg')),
             'width',
             self.auto_button)
-        self.auto_height = QtWidgets.QAction(
-            QtGui.QIcon(self.gen_ico_path('auto_height.svg')),
+        self.auto_height = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_height.svg')),
             'height',
             self.auto_button)
-        self.auto_custom = QtWidgets.QAction(
-            QtGui.QIcon(self.gen_ico_path('auto_custom.svg')),
+        self.auto_custom = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_custom.svg')),
             'custom',
             self.auto_button)
-        self.custom_conf = QtWidgets.QAction(
-            'custom config.', self.auto_button)
+        self.custom_conf = QAction('custom config.', self.auto_button)
         action_list = [self.auto_all, self.auto_width, self.auto_height,
                        self.auto_custom, self.custom_conf]
         for i in action_list[:-1]:
@@ -889,51 +1213,77 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self.auto_button.setMenu(menu)
         self.auto_button.setDefaultAction(self.auto_all)
 
-    def _setup_config(self):
-        menu = QtWidgets.QMenu('config')
-        self.config_preview = QtWidgets.QAction(
-            QtGui.QIcon(self.gen_ico_path('line_preview_settings.svg')),
+    def _setup_table_button(self):
+        menu = QMenu('Element Table')
+        self.action_element_table = QAction(self)
+        self.action_element_table.setIcon(
+            QIcon(self.icon_provider.get_icon_path('pt.svg')))
+        self.action_element_table.setToolTip("show/hide element table")
+        self.action_element_table.setWhatsThis("show/hide element table")
+        self.action_element_table.triggered.connect(self.show_pet)
+        self.config_preview = QAction(
+            QIcon(self.icon_provider.get_icon_path(
+                'line_preview_settings.svg')),
             'preview style',
-            self.config_button)
-        self.config_burned = QtWidgets.QAction(
-            QtGui.QIcon(self.gen_ico_path('line_burn_settings.svg')),
+            self.element_table_button)
+        self.config_burned = QAction(
+            QIcon(self.icon_provider.get_icon_path('line_burn_settings.svg')),
             'burned style',
-            self.config_button)
-        action_list = [self.config_preview, self.config_burned]
-        for i in action_list:
-            i.triggered.connect(self.config_button.set_action_to_default)
-        menu.addActions(action_list)
-        self.config_button.setMenu(menu)
-        self.config_button.setDefaultAction(self.config_preview)
+            self.element_table_button)
+        menu.addActions([self.config_preview,
+                         self.config_burned])
+        self.element_table_button.setMenu(menu)
+        self.element_table_button.setDefaultAction(self.action_element_table)
 
     def _setup_pet(self):
-        self.dock_pet_win = QtWidgets.QDockWidget('Periodic table', self)
-        self.dock_pet_win.setSizePolicy(QtGui.QSizePolicy.Minimum,
-                                        QtGui.QSizePolicy.Minimum)
+        #self.dock_pet_win = QtWidgets.QWidget(self)
+        #self.dock_pet_win.setSizePolicy(QSizePolicy.Minimum,
+        #                                QSizePolicy.Minimum)
         self.dock_line_win = QtWidgets.QDockWidget('Line selection', self)
-        self.pet = XRayElementTable(parent=self.dock_pet_win)
+        #self.pet = XRayElementTable(parent=self.dock_pet_win)
+        self.pet_win = FramelessXRayElementTable(parent=self)
+        self.pet = self.pet_win.pet
         self.lineSelector = LineEnabler(self.dock_line_win)
-        self.dock_pet_win.setWidget(self.pet)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,
-                           self.dock_pet_win)
-        self.dock_pet_win.setAllowedAreas(QtCore.Qt.NoDockWidgetArea)
-        self.dock_pet_win.setFloating(True)
+        #self.dock_pet_win.setWidget(self.pet)
+        #self.addDockWidget(Qt.RightDockWidgetArea,
+        #                   self.dock_pet_win)
+        #self.dock_pet_win.setAllowedAreas(Qt.NoDockWidgetArea)
+        #self.dock_pet_win.setFloating(True)
         self.dock_line_win.setWidget(self.lineSelector)
-        self.addDockWidget(QtCore.Qt.RightDockWidgetArea,
+        self.addDockWidget(Qt.RightDockWidgetArea,
                            self.dock_line_win)
-        self.dock_line_win.setAllowedAreas(QtCore.Qt.NoDockWidgetArea)
+        self.dock_line_win.setAllowedAreas(Qt.NoDockWidgetArea)
         self.dock_line_win.setFloating(True)
         if self._pet_opacity:
-            self.dock_pet_win.setWindowOpacity(self._pet_opacity)
-        self.dock_pet_win.resize(self.dock_pet_win.minimumSizeHint())
+            self.pet_win.setWindowOpacity(self._pet_opacity)
+        self.pet_win.resize(self.pet_win.minimumSizeHint())
         self.dock_line_win.hide()
-        self.dock_pet_win.hide()
+        self.pet_win.hide()
+        self.pet.elementConsidered.connect(self.canvas.previewEdges)
+        self.pet.elementConsidered.connect(self.canvas.previewLines)
+        self.pet.elementUnconsidered.connect(self.canvas.clearPreview)
+        self.config_preview.triggered.connect(
+            self.canvas.tweek_preview_style)
+        self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
+        self.pet.elementRightClicked.connect(
+            self.lineSelector.set_element_lines)
+        self.lineSelector.lineView.entered.connect(
+            self.preview_hovered_lines)
+        self.lineSelector.lineView.mouseLeft.connect(
+            self.canvas.clearPreview)
+        self.pet.siegbahn.toggled.connect(self.canvas.set_siegbahn_state)
+        self.pet.ordersChanged.connect(self.broker_orders_state_to_canvas)
+        self.pet.preview.toggled.connect(self.preview_toggle)
+        self.pet.preview_edge.toggled.connect(self.preview_edges_toggle)
 
     def show_pet(self):
-        if self.dock_pet_win.isVisible():
-            self.dock_pet_win.hide()
+        if self.pet is None:
+            self._setup_pet()
+            self.pet_win.move(self.mapToGlobal(self.pos() + QPoint(5, 5)))
+        if self.pet_win.isVisible():
+            self.pet_win.hide()
         else:
-            self.dock_pet_win.show()
+            self.pet_win.show()
 
     def preview_hovered_lines(self, item):
         self.canvas.clearPreview()

@@ -1315,9 +1315,10 @@ class Cameca(KaitaiStruct):
 
             self.comment = self._root.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(32)
-            self.extra_wds_meta_flag = self._io.read_u4le()
-            if self.extra_wds_meta_flag == 1:
-                self.extra_unknown = self._root.WdsItemExtraEnding(self._io, self, self._root)
+            self.n_extra_wds_stuff = self._io.read_u4le()
+            self.extra_wds_stuff = [None] * (self.n_extra_wds_stuff)
+            for i in range(self.n_extra_wds_stuff):
+                self.extra_wds_stuff[i] = self._root.WdsItemExtraEnding(self._io, self, self._root)
 
             self.template_flag = self._io.read_u4le()
             if self.template_flag == 1:
@@ -1532,9 +1533,10 @@ class Cameca(KaitaiStruct):
                 self.annotated_lines_table[i] = self._root.AnnotatedLines(self._io, self, self._root)
 
             self.reserved_4 = self._io.read_bytes(4)
-            self.extra_ending_flag = self._io.read_u4le()
-            if self.extra_ending_flag == 1:
-                self.extra_ending = self._root.WdsItemExtraEnding(self._io, self, self._root)
+            self.n_extra_ending = self._io.read_u4le()
+            self.extra_ending = [None] * (self.n_extra_ending)
+            for i in range(self.n_extra_ending):
+                self.extra_ending[i] = self._root.WdsItemExtraEnding(self._io, self, self._root)
 
 
 

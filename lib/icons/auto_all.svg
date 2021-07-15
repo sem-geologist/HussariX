@@ -1,9 +1,0 @@
-<svg version="1.1" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-    <g transform="translate(0 -1004.4)">
-        <g transform="translate(-1.5623 .0416)" stroke-width="1px" aria-label="A">
-            <path d="m37.176 1031h-11.758l-1.8555 5.3125h-7.5586l10.801-29.16h8.9648l10.801 29.16h-7.5586zm-9.8828-5.4102h7.9883l-3.9844-11.602z"/>
-        </g>
-        <path transform="translate(0 1004.4)" d="m6 2-5 6h3v23h-3l5 5 5-5h-3v-23h3z" color="#000000" color-rendering="auto" dominant-baseline="auto" image-rendering="auto" shape-rendering="auto" solid-color="#000000" style="font-feature-settings:normal;font-variant-alternates:normal;font-variant-caps:normal;font-variant-ligatures:normal;font-variant-numeric:normal;font-variant-position:normal;isolation:auto;mix-blend-mode:normal;shape-padding:0;text-decoration-color:#000000;text-decoration-line:none;text-decoration-style:solid;text-indent:0;text-orientation:mixed;text-transform:none;white-space:normal"/>
-        <path transform="translate(0 1004.4)" d="m16 37-5 5 5 5v-3h24v3l5-5-5-5v3h-24z" color="#000000" color-rendering="auto" dominant-baseline="auto" image-rendering="auto" shape-rendering="auto" solid-color="#000000" style="font-feature-settings:normal;font-variant-alternates:normal;font-variant-caps:normal;font-variant-ligatures:normal;font-variant-numeric:normal;font-variant-position:normal;isolation:auto;mix-blend-mode:normal;shape-padding:0;text-decoration-color:#000000;text-decoration-line:none;text-decoration-style:solid;text-indent:0;text-orientation:mixed;text-transform:none;white-space:normal"/>
-    </g>
-</svg>
