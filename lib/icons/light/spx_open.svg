@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 16 16"
+   version="1.1">
+  <defs
+     id="defs11">
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath2152">
+      <rect
+         style="fill:#ff0000;stroke:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:stroke fill markers"
+         id="rect2154"
+         width="8"
+         height="8"
+         x="22"
+         y="8"
+         ry="1" />
+    </clipPath>
+  </defs>
+  <path
+     style="fill:none;stroke:#232629;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="M 2,14 5,2 9.0496311,14.131992 11.931152,9.0786495 15.095037,13.925017"
+     id="path1011"
+     sodipodi:nodetypes="ccccc" />
+  <g
+     id="g45437"
+     transform="matrix(0.94334261,0,0,0.94334261,1.0196433,-0.4244568)">
+    <g
+       id="g25122"
+       transform="translate(2.9253799,0.497937)">
+      <ellipse
+         style="fill:none;fill-opacity:1;stroke:#0072bb;stroke-width:0.79504561;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+         id="path950"
+         cx="5.0557055"
+         cy="7.9976244"
+         rx="4.3971257"
+         ry="1.5796092"
+         transform="matrix(0.82299154,-0.56805363,0.56925795,0.82215898,0,0)" />
+      <ellipse
+         style="fill:none;fill-opacity:1;stroke:#0072bb;stroke-width:0.79504561;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+         id="path950-6"
+         cx="-9.2720976"
+         cy="-1.9018729"
+         rx="4.3971257"
+         ry="1.5796092"
+         transform="matrix(-0.82299154,-0.56805363,-0.56925795,0.82215898,0,0)" />
+    </g>
+    <circle
+       style="fill:#0072bb;fill-opacity:1;stroke:none;stroke-width:1.47132;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       id="path25226"
+       cx="9.5"
+       cy="1.5"
+       r="1" />
+    <circle
+       style="fill:#0072bb;fill-opacity:1;stroke:none;stroke-width:1.47132;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       id="path25226-7"
+       cx="9.5"
+       cy="7"
+       r="1" />
+  </g>
+</svg>

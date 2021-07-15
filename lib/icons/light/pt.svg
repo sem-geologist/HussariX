@@ -1,0 +1,14 @@
+<svg id="SVGRoot" version="1.1" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+    <g>
+        <path d="m2 4v38h44v-38h-8v6h-12v6h-10v-6h-6v-6zm2 2h4v4h-4zm36 0h4v4h-4zm-36 6h4v4h-4zm6 0h4v4h-4zm18 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm-36 6h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm-36 6h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm-36 6h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm-36 6h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4zm6 0h4v4h-4z" fill="#232629"/>
+        <g fill="#da4453">
+            <rect x="10" y="18" width="4" height="4" style="paint-order:normal"/>
+            <rect x="4" y="18" width="4" height="4" style="paint-order:normal" fill="#2ecc71"/>
+            <rect x="22" y="18" width="4" height="4" style="paint-order:normal"/>
+            <rect x="34" y="18" width="4" height="4" style="paint-order:normal"/>
+            <rect x="10" y="36" width="4" height="4" style="paint-order:normal"/>
+            <rect x="16" y="36" width="4" height="4" style="paint-order:normal"/>
+            <rect x="28" y="30" width="4" height="4" style="paint-order:normal" fill="#2ecc71"/>
+        </g>
+    </g>
+</svg>

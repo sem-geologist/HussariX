@@ -19,7 +19,7 @@
 
 # from xraydb import XrayDB
 from math import log, e, sqrt
-import periodictable as pt
+#import periodictable as pt
 #import scipy.constants as sc
 from . elements import elements
 
@@ -225,6 +225,6 @@ def xray_weight(elem, ln):
     return get_element_lines_cached(elem)[ln][1]
 
 
-def to_oxide_mass(elem, compound, mass):
-    comp = pt.formula(compound)
-    return mass / comp.mass_fraction[pt.elements.symbol(elem)]
+#def to_oxide_mass(elem, compound, mass):
+#    comp = pt.formula(compound)
+#    return mass / #comp.mass_fraction[pt.elements.symbol(elem)]
