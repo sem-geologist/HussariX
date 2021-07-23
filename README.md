@@ -1,12 +1,22 @@
 # QSEM-Viewer
-(better name needs to be thought up)
+(This will be renamed to HussariX in the near future)
 
 Work in progress...
 
-This is going to be universal graphical program for openning and exploring the SEM projects (At least Bruker Esprit ~~and Jeol Analytic Station formats~~[that is not any more for me relevant]) and files (single spectra from Bruker, mappings, Cameca Peaksight files) with some datetime tracking functionality
+This is going to be universal graphical program for openning and exploring the SEM projects (At least Bruker Esprit ~~and Jeol Analytic Station formats~~[that is not any more for me relevant, albeit it could change in the future]) and EPMA files (single spectra from Bruker, mappings, Cameca Peaksight files) with some datetime tracking functionality.
 
 Dependencies:
-`PyQt5`, `numpy`, `scipy`, `pyqtgraph` (at least 0.11.0rc), `periodictable` 
+`PyQt5` - for GUI
+`pyqtgraph` (at least 0.11.0rc) - for plotting and advanced GUI
+`numpy` - for everything array,
+`scipy` - ?, (trying to make sure it is not hard dependecy, however pyqtgraph can be boosted with it in imaging.)
+`kaitaistruct` runtime (0.9) - for using cameca peaksight binary parser.
+
+all these depndencies can be installed as `pip` or `conda` packages.
+
+Maybe in far future this will have bundled version (with everything included), but currently it needs working python package envirnment (pip or conda).
 
 WIP. Major redesign.
 
+Done and functional:
+- [x] Cameca WDS scan (wdsDat).
