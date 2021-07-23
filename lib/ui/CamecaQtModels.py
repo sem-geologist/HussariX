@@ -346,7 +346,7 @@ class CamecaWDSTreeModel(QAbstractItemModel):
     def data(self, index, role):
         row = index.row()
         node = index.internalPointer()
-        
+
         if (role == self.SpectrumCurvesRole) and\
                 isinstance(node, Cameca.Dataset):
             return node.plot_items

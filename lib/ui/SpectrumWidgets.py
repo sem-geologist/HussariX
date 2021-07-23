@@ -20,10 +20,11 @@
 from os import path
 import json
 from re import sub, findall
-from math import log10
-
+from math import log, log10, degrees, atan
 from PyQt5 import QtWidgets
 import pyqtgraph as pg
+import numpy as np
+from pyqtgraph import InfiniteLine, mkPen
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPen, QPixmap, QColor, QPainter, QIcon, QFont
 from PyQt5.QtWidgets import (QWidget,
@@ -38,6 +39,9 @@ from PyQt5.QtWidgets import (QWidget,
 from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import pyqtSlot as Slot
 
+from .CamecaQtModels import (CamecaWDSTreeModel,
+                             WDSPlotItem,
+                             SpecXTALCombiModel)
 from ..misc import xray_util as xu
 from .node import ElementLineTreeModel, SimpleDictNode
 
@@ -45,7 +49,6 @@ from .qpet import element_table as qpet
 from . import CustomWidgets as cw
 from .CustomPGWidgets import CustomViewBox, CustomAxisItem
 from .spectrum_curve import SpectrumCurveItem
-# from ..icons.icons import IconProvider
 
 main_path = path.join(path.dirname(__file__), path.pardir)
 conf_path = path.join(main_path,
@@ -153,7 +156,8 @@ class XtalListView(QListView):
         self.setViewMode(QListView.IconMode)
         self.setResizeMode(QListView.Adjust)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self.set_style_from_menu)
+        self.customContextMenuRequested.connect(
+            self.set_style_from_menu_entry)
         self.setMinimumSize(24, 24)
         self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.setWhatsThis("""
@@ -162,17 +166,17 @@ class XtalListView(QListView):
         This widget exposes aggregated categories from WDS file tree view;
         Categories are made for all unique combinations found in opened
         WDS files for spectrometer and diffracting crystal combinations</p>
-        <p> When checking/tick'ing category, algorithm iterates through 
+        <p> When checking/tick'ing category, algorithm iterates through
         <bold>all</bold>
         opened WDS datasets and generates plotting curves which is added
         to plotting canvas. By default curves can be invisible, unless it
         is marked in the main WDS dataset/files tree.</p>
-        <p> With right-mouse click on the category, curve line style and 
+        <p> With right-mouse click on the category, curve line style and
         line weight of given category can be changed with a help of popup
         menu; Changes are going to be applied only to curves appearing on
         the canvas of this widget.</p>""")
 
-    def set_style_from_menu(self, pos):
+    def set_style_from_menu_entry(self, pos):
         index = self.indexAt(pos)
         if not index.isValid():
             return
@@ -639,7 +643,7 @@ class XrayCanvas(pg.PlotWidget):
     def init_x_axis(self):
         if self.x_axis_mode == 'cameca':
             self.x_actions[1].trigger()
-        elif self.X_axis_mode == 'wavelenth':
+        elif self.x_axis_mode == 'wavelenth':
             self.x_actions[2].trigger()
         else:
             self.x_actions[0].trigger()
@@ -806,10 +810,10 @@ class XrayCanvas(pg.PlotWidget):
         pass
 
 
-class PositionMarker(pg.InfiniteLine):
+class PositionMarker(InfiniteLine):
     def __init__(self, canvas=None, line_type='peak', **kwargs):
         """line_type one of peak, background"""
-        pg.InfiniteLine.__init__(self, )
+        InfiniteLine.__init__(self, )
 
 
 class PositionMarkers:
@@ -881,25 +885,25 @@ class PositionMarkers:
         else:
             color = 'k'
         lower, middle, higher = self.gen_positions()
-        self.m_line = pg.InfiniteLine(middle, movable=True,
-                                      pen=pg.mkPen(color, width=3.),
-                                      name='main',
-                                      markers=[('^', 0.99, 6.0)])
+        self.m_line = InfiniteLine(middle, movable=True,
+                                   pen=pg.mkPen(color, width=3.),
+                                   name='main',
+                                   markers=[('^', 0.99, 6.0)])
         if lower is not None:
-            self.bg1_line = pg.InfiniteLine(lower, movable=True,
-                                            pen=pg.mkPen(color, width=1.5),
-                                            name='bkgd1',
-                                            markers=[('v', 0.01, 6.0)])
+            self.bg1_line = InfiniteLine(lower, movable=True,
+                                         pen=pg.mkPen(color, width=1.5),
+                                         name='bkgd1',
+                                         markers=[('v', 0.01, 6.0)])
             self.bg1_text = pg.InfLineLabel(self.bg1_line, movable=True,
                                             color=color,
                                             position=self.bg1_text_pos)
             self.bg1_line.sigPositionChanged.connect(self.update_marker_str)
 
         if higher is not None:
-            self.bg2_line = pg.InfiniteLine(higher, movable=True,
-                                            pen=pg.mkPen(color, width=1.5),
-                                            name='bkgd2',
-                                            markers=[('v', 0.01, 6.0)])
+            self.bg2_line = InfiniteLine(higher, movable=True,
+                                         pen=pg.mkPen(color, width=1.5),
+                                         name='bkgd2',
+                                         markers=[('v', 0.01, 6.0)])
             self.bg2_text = pg.InfLineLabel(self.bg2_line, movable=True,
                                             color=color,
                                             position=self.bg2_text_pos)
@@ -986,6 +990,178 @@ class PositionMarkers:
         #    self.add_to_canvas()
 
 
+class LinearBackground(InfiniteLine):
+    def __init__(self, plotting_widget, spect_xtal):
+        self.pw = plotting_widget
+        pos_markers = self.pw.pos_markers
+        m_pos = pos_markers.m_line.getXPos()
+        self.pm = pos_markers
+        self.signal_header = spect_xtal
+        super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
+                                                              color='y'))
+        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
+        self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
+        self.sm = self.pw.wds_tree_selection_model
+        self.sm.currentChanged.connect(self.update_background)
+        self.update_background()
+
+    def update_background(self):
+        def filter_curve(curve):
+            if (curve.signal_header == self.signal_header) and\
+                    (curve in self.pw.canvas.p1.curves):
+                return True
+            return False
+
+        bg1_pos = self.pm.bg1_line.getXPos()
+        bg2_pos = self.pm.bg2_line.getXPos()
+        lenght = bg1_pos - bg2_pos
+        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
+                                                  Qt.UserRole)
+        if plot_curves is None:
+            return
+        filtered = list(filter(filter_curve, plot_curves))
+        if len(filtered) == 1:
+            curve = filtered[0]
+        else:
+            return
+        data = curve.getData()
+        idx1 = np.abs(data[0] - bg1_pos).argmin()
+        idx2 = np.abs(data[0] - bg2_pos).argmin()
+        x_pos1 = data[0][idx1]
+        y_pos1 = data[1][idx1]
+        y_pos2 = data[1][idx2]
+        h = y_pos1 - y_pos2
+        new_angle = degrees(atan(h/lenght))
+        self.setAngle(new_angle)
+        self.setPos((x_pos1, y_pos1))
+
+    def prepare_to_destroy(self):
+        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
+        self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
+        self.sm.currentChanged.disconnect(self.update_background)
+
+
+class ExponentialBackground(pg.PlotCurveItem):
+    def __init__(self, plotting_widget, spect_xtal):
+        super().__init__(pen=mkPen(width=2, color='y'))
+        self.pw = plotting_widget
+        pos_markers = self.pw.pos_markers
+        self.pm = pos_markers
+        self.signal_header = spect_xtal
+        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
+        self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
+        self.pm.m_line.sigPositionChanged.connect(self.update_background)
+        self.sm = self.pw.wds_tree_selection_model
+        self.sm.currentChanged.connect(self.update_background)
+        self.update_background()
+
+    def update_background(self):
+        def filter_curve(curve):
+            if (curve.signal_header == self.signal_header) and\
+                    (curve in self.pw.canvas.p1.curves):
+                return True
+            return False
+
+        bg1_pos = self.pm.bg1_line.getXPos()
+        bg2_pos = self.pm.bg2_line.getXPos()
+        m_pos = self.pm.m_line.getXPos()
+        min_pos = min(bg1_pos, bg2_pos, m_pos)
+        max_pos = max(bg1_pos, bg2_pos, m_pos)
+        width = max_pos - min_pos
+        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
+                                                  Qt.UserRole)
+        if plot_curves is None:
+            return
+        filtered = list(filter(filter_curve, plot_curves))
+        if len(filtered) == 1:
+            curve = filtered[0]
+        else:
+            return
+        data = curve.getData()
+        idx1 = np.abs(data[0] - bg1_pos).argmin()
+        idx2 = np.abs(data[0] - bg2_pos).argmin()
+        x_pos1 = data[0][idx1]
+        y_pos1 = data[1][idx1]
+        x_pos2 = data[0][idx2]
+        y_pos2 = data[1][idx2]
+        f = log(y_pos1 / y_pos2) / log(x_pos2 / x_pos1)
+        x_linespace = np.linspace(min_pos - 0.2 * width,
+                                  max_pos + 0.2 * width,
+                                  num=512)
+        y = y_pos2 * (x_pos2 / x_linespace) ** f
+        self.setData(x_linespace, y)
+
+    def prepare_to_destroy(self):
+        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
+        self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
+        self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
+        self.sm.currentChanged.disconnect(self.update_background)
+
+
+class SloppedBackground(InfiniteLine):
+    def __init__(self, plotting_widget, spect_xtal):
+        self.pw = plotting_widget
+        pos_markers = self.pw.pos_markers
+        m_pos = pos_markers.m_line.getXPos()
+        self.pm = pos_markers
+        self.signal_header = spect_xtal
+        super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
+                                                              color='y'))
+        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
+        self.pm.m_line.sigPositionChanged.connect(self.update_background)
+        self.sm = self.pw.wds_tree_selection_model
+        self.sm.currentChanged.connect(self.update_background)
+        self.pw.slope_spin_box.sigValueChanging.connect(
+            self.slope_from_spin_box)
+        self.slope_from_spin_box(self.pw.slope_spin_box)
+
+    def slope_from_spin_box(self, spin_box):
+        self.slope = spin_box.value()
+        self.update_background(slope=self.slope)
+
+    def update_background(self, *args, slope=None):
+        def filter_curve(curve):
+            if (curve.signal_header == self.signal_header) and\
+                    (curve in self.pw.canvas.p1.curves):
+                return True
+            return False
+
+        if slope is None:
+            slope = self.slope
+        elif slope > 0.:
+            self.slope = slope
+        else:
+            return
+        m_pos = self.pm.m_line.getXPos()
+        bg1_pos = self.pm.bg1_line.getXPos()
+        lenght = bg1_pos - m_pos
+        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
+                                                  Qt.UserRole)
+        if plot_curves is None:
+            return
+        filtered = list(filter(filter_curve, plot_curves))
+        if len(filtered) == 1:
+            curve = filtered[0]
+        else:
+            return
+        data = curve.getData()
+        idx = np.abs(data[0] - bg1_pos).argmin()
+        x_pos = data[0][idx]
+        y_pos = data[1][idx]
+        y_pos_main = y_pos * slope
+        h = y_pos - y_pos_main
+        new_angle = degrees(atan(h/lenght))
+        self.setAngle(new_angle)
+        self.setPos((x_pos, y_pos))
+
+    def prepare_to_destroy(self):
+        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
+        self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
+        self.sm.currentChanged.disconnect(self.update_background)
+        self.pw.slope_spin_box.sigValueChanging.disconnect(
+            self.slope_from_spin_box)
+
+
 class XraySpectraGUI(cw.FullscreenableWidget):
     sig_name_had_changed = Signal(str)
 
@@ -1018,30 +1194,8 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         size_policy_canvas.setVerticalPolicy(QSizePolicy.Expanding)
         size_policy_canvas.setHorizontalPolicy(QSizePolicy.Expanding)
         self.canvas.setSizePolicy(size_policy_canvas)
-        self.pos_markers = PositionMarkers()
-        self._setup_menu()
         self._setup_connections()
         self.splitter.addWidget(self.canvas)
-        self.spect_xtal_combo_view = XtalListView(parent=self.splitter)
-        size_policy = QSizePolicy()
-        size_policy.setVerticalStretch(1)
-        size_policy.setVerticalPolicy(QSizePolicy.Minimum)
-        size_policy.setHorizontalPolicy(QSizePolicy.Minimum)
-        self.spect_xtal_combo_view.setSizePolicy(size_policy)
-        self.splitter.addWidget(self.bkgd_helper_widget)
-        bkgd_layout = QHBoxLayout(self.bkgd_helper_widget)
-        bkgd_layout.addWidget(QLabel("Background slope"))
-        bkgd_layout.setContentsMargins(2, 2, 2, 2)
-        self.slope_spin_box = pg.SpinBox(
-            value=1.0, dec=True, min=0.001, max=1000, decimals=6)
-        self.slope_spin_box.setMinimumHeight(24)
-        bkgd_layout.addWidget(self.slope_spin_box)
-        self.bkgd_helper_widget.setSizePolicy(size_policy)
-        self.bkgd_helper_widget.hide()
-        self.splitter.addWidget(self.spect_xtal_combo_view)
-        self.actionWDSSelector.toggled.connect(
-            self.spect_xtal_combo_view.setVisible)
-        self.actionWDSSelector.setChecked(True)
 
     @property
     def name(self):
@@ -1052,15 +1206,7 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self._name = new_name
         self.sig_name_had_changed.emit(new_name)
 
-    def _setup_menu(self):
-        menu = self.canvas.p1.getViewBox().menu
-        self.actionClearMarker = menu.addAction('Remove markers')
-        self.actionClearMarker.setIcon(
-            QIcon(self.icon_provider.get_icon_path('lines_hide.svg')))
-
     def _setup_connections(self):
-        self.actionClearMarker.triggered.connect(
-            self.pos_markers.remove_from_canvas)
         self.auto_all.triggered.connect(self.canvas.p1.autoRange)
         self.auto_height.triggered.connect(self.auto_y)
         self.auto_width.triggered.connect(self.auto_x)
@@ -1109,82 +1255,6 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self._empty1.setSizePolicy(QSizePolicy.Expanding,
                                    QSizePolicy.Expanding)
         self.toolbar.addWidget(self._empty1)
-        self.marker_button = cw.CustomToolButton(self)
-        self.marker_button.setWhatsThis(
-            """This adds movable line marker with single, double or any
-            background line markers; Drop down menu of this widget allows to
-            set some available background modeling for selected markers"""
-        )
-        self.toolbar.addWidget(self.marker_button)
-        self._setup_markers()
-        self.actionWDSSelector = QAction(self)
-        self.actionWDSSelector.setIcon(QIcon(
-            self.icon_provider.get_icon_path('wds_selection.svg')))
-        self.actionWDSSelector.setCheckable(True)
-        self.actionWDSSelector.setToolTip(
-            'hide/show WDS-XTAL-spectrometer combination categories')
-        self.toolbar.addAction(self.actionWDSSelector)
-
-    def show_three_markers_on_canvas(self):
-        self.pos_markers.set_mode('two_bkgd')
-        self.pos_markers.register_canvas(self.canvas)
-        self.action_exp_background.setEnabled(True)
-        self.action_linear_background.setEnabled(True)
-
-    def show_two_markers_on_canvas(self):
-        self.pos_markers.set_mode('single_bkgd')
-        self.pos_markers.register_canvas(self.canvas)
-        self.action_linear_background.setEnabled(True)
-        self.action_exp_background.setEnabled(False)
-        self.action_exp_background.setChecked(False)
-
-    def show_single_marker_on_canvas(self):
-        self.pos_markers.set_mode('solo')
-        self.action_linear_background.setChecked(False)
-        self.action_exp_background.setChecked(False)
-        self.pos_markers.register_canvas(self.canvas)
-        self.action_linear_background.setEnabled(False)
-        self.action_exp_background.setEnabled(False)
-
-    def _setup_markers(self):
-        menu = QMenu('markers and backgrounds')
-        self.action_marker_bgx2 = QAction(
-            QIcon(self.icon_provider.get_icon_path('lines_bgx2.svg')),
-            'peak and 2 background',
-            self.marker_button)
-        self.action_marker_bgx2.triggered.connect(self.bkgd_helper_widget.hide)
-        self.action_marker_and_1bkg = QAction(
-            QIcon(self.icon_provider.get_icon_path('lines_pk_1xbkg.svg')),
-            'peak and single background',
-            self.marker_button)
-        self.action_marker_and_1bkg.triggered.connect(
-            self.bkgd_helper_widget.show)
-        self.action_marker_only = QAction(
-            QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
-            'single marker only',
-            self.marker_button)
-        self.action_marker_only.triggered.connect(self.bkgd_helper_widget.hide)
-        self.action_linear_background = QAction('linear background')
-        self.action_linear_background.setCheckable(True)
-        self.action_exp_background = QAction('exponential background')
-        self.action_exp_background.setCheckable(True)
-        for action in [self.action_marker_bgx2, self.action_marker_and_1bkg,
-                       self.action_marker_only]:
-            action.triggered.connect(self.marker_button.set_action_to_default)
-        menu.addAction(self.action_marker_bgx2)
-        menu.addAction(self.action_marker_and_1bkg)
-        menu.addAction(self.action_marker_only)
-        menu.addSection("Background models:")
-        menu.addAction(self.action_linear_background)
-        menu.addAction(self.action_exp_background)
-        self.marker_button.setMenu(menu)
-        self.marker_button.setDefaultAction(self.action_marker_bgx2)
-        self.action_marker_bgx2.triggered.connect(
-            self.show_three_markers_on_canvas)
-        self.action_marker_and_1bkg.triggered.connect(
-            self.show_two_markers_on_canvas)
-        self.action_marker_only.triggered.connect(
-            self.show_single_marker_on_canvas)
 
     def _setup_auto(self):
         menu = QMenu('auto range')
@@ -1314,3 +1384,247 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         elif item_type == 'element':
             self.canvas.previewLines(element,
                                      siegbahn=self.pet.siegbahn_enabled)
+
+
+class WDSSpectraGUI(XraySpectraGUI):
+    def __init__(self, wds_tree_model, wds_tree_selection_model):
+        XraySpectraGUI.__init__(self, pet_opacity=0.9,
+                                initial_mode='cameca')
+        self.pos_markers = PositionMarkers()
+        self.backgrounds = []
+        self._setup_wds_additions()
+        self._setup_markers()
+        self._setup_marker_remove()
+        self.spect_xtal_combo_view = XtalListView(parent=self.splitter)
+        size_policy = QSizePolicy()
+        size_policy.setVerticalStretch(1)
+        size_policy.setVerticalPolicy(QSizePolicy.Minimum)
+        size_policy.setHorizontalPolicy(QSizePolicy.Minimum)
+        self.spect_xtal_combo_view.setSizePolicy(size_policy)
+        self.splitter.addWidget(self.bkgd_helper_widget)
+        bkgd_layout = QHBoxLayout(self.bkgd_helper_widget)
+        bkgd_layout.addWidget(QLabel("Background slope"))
+        bkgd_layout.setContentsMargins(2, 2, 2, 2)
+        self.slope_spin_box = pg.SpinBox(
+            value=1.0, dec=True, min=0.001, max=1000, decimals=6)
+        self.slope_spin_box.setMinimumHeight(24)
+        bkgd_layout.addWidget(self.slope_spin_box)
+        self.bkgd_helper_widget.setSizePolicy(size_policy)
+        self.bkgd_helper_widget.hide()
+        self.splitter.addWidget(self.spect_xtal_combo_view)
+        self.actionWDSSelector.toggled.connect(
+            self.spect_xtal_combo_view.setVisible)
+        self.actionWDSSelector.setChecked(True)
+        self.xtal_model = SpecXTALCombiModel(wds_tree_model)
+        self.spect_xtal_combo_view.setModel(self.xtal_model)
+        self.wds_tree_model = wds_tree_model
+        self.wds_tree_selection_model = wds_tree_selection_model
+        self.add_spectrum_curves(alpha=self.wds_tree_model.global_alpha)
+        self.wds_tree_model.wds_files_appended.connect(
+            self.add_spectrum_curves)
+        self.xtal_model.xtalFamilyChanged.connect(self.canvas.set_xtal)
+        self.canvas.xAxisUnitsChanged.connect(self.change_xtal_exclusivness)
+        self.xtal_model.combinationCheckedStateChanged.connect(
+            self.change_curves)
+        self.xtal_model.dataChanged.connect(self.change_style_of_spect)
+        self.xtal_model.combinationCheckedStateChanged.connect(
+            self.set_background_model)
+
+    def _setup_wds_additions(self):
+        self.marker_button = cw.CustomToolButton(self)
+        self.marker_button.setWhatsThis(
+            """This adds movable line marker with single, double or any
+            background line markers; Drop down menu of this widget allows to
+            set some available background modeling for selected markers"""
+        )
+        self.toolbar.addWidget(self.marker_button)
+        self._setup_markers()
+        self.actionWDSSelector = QAction(self)
+        self.actionWDSSelector.setIcon(QIcon(
+            self.icon_provider.get_icon_path('wds_selection.svg')))
+        self.actionWDSSelector.setCheckable(True)
+        self.actionWDSSelector.setToolTip(
+            'hide/show WDS-XTAL-spectrometer combination categories')
+        self.toolbar.addAction(self.actionWDSSelector)
+
+    def _setup_marker_remove(self):
+        menu = self.canvas.p1.getViewBox().menu
+        self.actionClearMarker = menu.addAction('Remove markers')
+        self.actionClearMarker.setIcon(
+            QIcon(self.icon_provider.get_icon_path('lines_hide.svg')))
+        self.actionClearMarker.triggered.connect(
+            self.clear_background_models)
+        self.actionClearMarker.triggered.connect(
+            self.pos_markers.remove_from_canvas)
+
+    def set_background_model(self):
+        self.clear_background_models()
+        xtal_spect_combi = self.xtal_model.get_checked_combinations()
+        if len(xtal_spect_combi) == 0:
+            return
+        if self.action_linear_background.isChecked():
+            if self.pos_markers.mode == 'two_bkgd':
+                for combi in xtal_spect_combi:
+                    bkg = LinearBackground(self, combi)
+                    self.backgrounds.append(bkg)
+                    self.canvas.addItem(bkg)
+            if self.pos_markers.mode == 'single_bkgd':
+                for combi in xtal_spect_combi:
+                    bkg = SloppedBackground(self, combi)
+                    self.backgrounds.append(bkg)
+                    self.canvas.addItem(bkg)
+        if self.action_exp_background.isChecked():
+            for combi in xtal_spect_combi:
+                bkg = ExponentialBackground(self, combi)
+                self.backgrounds.append(bkg)
+                self.canvas.addItem(bkg)
+
+    def clear_background_models(self):
+        if len(self.backgrounds) > 0:
+            for bkgd in self.backgrounds:
+                bkgd.prepare_to_destroy()
+                self.canvas.p1.removeItem(bkgd)
+            self.backgrounds.clear()  # just to be sure none left
+
+    def show_three_markers_on_canvas(self):
+        self.clear_background_models()
+        self.pos_markers.set_mode('two_bkgd')
+        self.pos_markers.register_canvas(self.canvas)
+        self.action_exp_background.setEnabled(True)
+        self.action_linear_background.setEnabled(True)
+        self.set_background_model()
+
+    def show_two_markers_on_canvas(self):
+        self.clear_background_models()
+        self.pos_markers.set_mode('single_bkgd')
+        self.pos_markers.register_canvas(self.canvas)
+        self.action_linear_background.setEnabled(True)
+        self.action_exp_background.setEnabled(False)
+        self.action_exp_background.setChecked(False)
+        self.set_background_model()
+
+    def show_single_marker_on_canvas(self):
+        self.clear_background_models()
+        self.pos_markers.set_mode('solo')
+        self.action_linear_background.setChecked(False)
+        self.action_exp_background.setChecked(False)
+        self.pos_markers.register_canvas(self.canvas)
+        self.action_linear_background.setEnabled(False)
+        self.action_exp_background.setEnabled(False)
+
+    def _setup_markers(self):
+        menu = QMenu('markers and backgrounds')
+        self.action_marker_bgx2 = QAction(
+            QIcon(self.icon_provider.get_icon_path('lines_bgx2.svg')),
+            'peak and 2 background',
+            self.marker_button)
+        self.action_marker_bgx2.triggered.connect(self.bkgd_helper_widget.hide)
+        self.action_marker_and_1bkg = QAction(
+            QIcon(self.icon_provider.get_icon_path('lines_pk_1xbkg.svg')),
+            'peak and single background',
+            self.marker_button)
+        self.action_marker_and_1bkg.triggered.connect(
+            self.bkgd_helper_widget.show)
+        self.action_marker_only = QAction(
+            QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
+            'single marker only',
+            self.marker_button)
+        self.action_marker_only.triggered.connect(self.bkgd_helper_widget.hide)
+        self.action_linear_background = QAction('linear background')
+        self.action_linear_background.toggled.connect(
+            self.set_background_model)
+        self.action_linear_background.setCheckable(True)
+        self.action_exp_background = QAction('exponential background')
+        self.action_exp_background.setCheckable(True)
+        self.action_exp_background.toggled.connect(
+            self.set_background_model)
+        for action in [self.action_marker_bgx2, self.action_marker_and_1bkg,
+                       self.action_marker_only]:
+            action.triggered.connect(self.marker_button.set_action_to_default)
+        menu.addAction(self.action_marker_bgx2)
+        menu.addAction(self.action_marker_and_1bkg)
+        menu.addAction(self.action_marker_only)
+        menu.addSection("Background models:")
+        menu.addAction(self.action_linear_background)
+        menu.addAction(self.action_exp_background)
+        self.marker_button.setMenu(menu)
+        self.marker_button.setDefaultAction(self.action_marker_bgx2)
+        self.action_marker_bgx2.triggered.connect(
+            self.show_three_markers_on_canvas)
+        self.action_marker_and_1bkg.triggered.connect(
+            self.show_two_markers_on_canvas)
+        self.action_marker_only.triggered.connect(
+            self.show_single_marker_on_canvas)
+
+    def change_curves(self, xtal, state):
+        if state:
+            self.add_spectrum_curves(spect_headers=[xtal],
+                                     alpha=self.wds_tree_model.global_alpha)
+            self.canvas.autoRange()
+        else:
+            self.remove_spectrum_curves(xtal)
+
+    def change_style_of_spect(self, index_u, index_d, roles=[]):
+        if len(roles) != 1:
+            return
+        role = roles[0]
+        if role in [self.xtal_model.LineWidthRole,
+                    self.xtal_model.LineStyleRole]:
+            xm = self.xtal_model
+            spect_header = xm.data(index_u, xm.SpectXtalCombinationRole)
+            curves = [i for i in self.canvas.p1.curves
+                      if i.signal_header == spect_header]
+            for curve in curves:
+                if role == self.xtal_model.LineWidthRole:
+                    curve.set_curve_width(spect_header.q_pen_width)
+                else:
+                    curve.set_curve_style(spect_header.q_pen_style)
+
+    def add_spectrum_curves(self, wds_files=None,
+                            spect_headers=None, alpha=200):
+        if spect_headers is None:
+            spect_headers = [i for i in
+                             self.xtal_model.combinations
+                             if i.q_checked_state]
+        if wds_files is None:
+            wds_files = self.wds_tree_model.collection
+        for wds_file in wds_files:
+            for dataset in wds_file.content.datasets:
+                for item in dataset.items:
+                    if item.signal_header in spect_headers:
+                        # spect_header is copy with custom attributes
+                        # for pen style and width
+                        # where .signal_header has not those
+                        i = spect_headers.index(item.signal_header)
+                        WDSPlotItem(item, self.canvas,
+                                    pen_style=spect_headers[i].q_pen_style,
+                                    pen_width=spect_headers[i].q_pen_width,
+                                    alpha=alpha)
+        # highlight spectra if it is selected in tree view:
+        self.wds_tree_model.highlight_spectra(
+            self.wds_tree_selection_model.selection())
+
+    def remove_spectrum_curves(self, spect_header):
+        # we cant iterate over canvas.p1.items, while removing,
+        # we need a copy of list to iterate through
+        curves_list = [i for i in self.canvas.p1.curves
+                       if i.signal_header == spect_header]
+        for curve in curves_list:
+            curve.remove_from_model()
+            self.canvas.p1.removeItem(curve)
+
+    def change_xtal_exclusivness(self, mode):
+        if mode == 'cameca':
+            self.xtal_model.setIgnoreFamilyConstrain(False)
+        else:
+            self.xtal_model.setIgnoreFamilyConstrain(True)
+
+    def prepare_to_destroy(self):
+        for curve in self.canvas.p1.curves:
+            if isinstance(curve, WDSPlotItem):
+                curve.remove_from_model()
+        self.canvas.p1.clear()
+        if hasattr(self, 'pet_win'):
+            self.pet_win.close()
+
+

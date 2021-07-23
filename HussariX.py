@@ -12,9 +12,6 @@ from lib.ui.CamecaQtModels import (CamecaWDSTreeModel,
 from lib.ui import SpectrumWidgets as sw
 from lib.parsers import cameca
 from lib.icons.icons import IconProvider
-from pyqtgraph import InfiniteLine, mkPen
-import math
-import numpy as np
 
 # check if there is peaksight installed
 CAMSOFT_IS_PRESENT = False
@@ -27,123 +24,6 @@ if os.name == 'nt':
             CAMSOFT_IS_PRESENT = True
     except EnvironmentError:
         pass
-
-
-class LinearBackground(InfiniteLine):
-    def __init__(self, plotting_widget, spect_xtal):
-        self.pw = plotting_widget
-        pos_markers = self.pw.pos_markers
-        m_pos = pos_markers.m_line.getXPos()
-        self.pm = pos_markers
-        self.signal_header = spect_xtal
-        super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
-                                                              color='y'))
-        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
-        self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
-        self.sm = self.pw.wds_tree_selection_model
-        self.sm.currentChanged.connect(self.update_background)
-        self.update_background()
-
-    def update_background(self):
-        def filter_curve(curve):
-            if (curve.signal_header == self.signal_header) and\
-                    (curve in self.pw.canvas.p1.curves):
-                return True
-            return False
-
-        bg1_pos = self.pm.bg1_line.getXPos()
-        bg2_pos = self.pm.bg2_line.getXPos()
-        lenght = bg1_pos - bg2_pos
-        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
-                                                  Qt.UserRole)
-        if plot_curves is None:
-            return
-        filtered = list(filter(filter_curve, plot_curves))
-        if len(filtered) == 1:
-            curve = filtered[0]
-        else:
-            return
-        data = curve.getData()
-        idx1 = np.abs(data[0] - bg1_pos).argmin()
-        idx2 = np.abs(data[0] - bg2_pos).argmin()
-        x_pos1 = data[0][idx1]
-        y_pos1 = data[1][idx1]
-        y_pos2 = data[1][idx2]
-        h = y_pos1 - y_pos2
-        new_angle = math.degrees(math.atan(h/lenght))
-        self.setAngle(new_angle)
-        self.setPos((x_pos1, y_pos1))
-
-    def prepare_to_destroy(self):
-        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
-        self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
-        self.sm.currentChanged.disconnect(self.update_background)
-        self.pw.slope_spin_box.sigValueChanging.disconnect(
-            self.slope_from_spin_box)
-
-
-class SloppedBackground(InfiniteLine):
-    def __init__(self, plotting_widget, spect_xtal):
-        self.pw = plotting_widget
-        pos_markers = self.pw.pos_markers
-        m_pos = pos_markers.m_line.getXPos()
-        self.pm = pos_markers
-        self.signal_header = spect_xtal
-        super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
-                                                              color='y'))
-        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
-        self.pm.m_line.sigPositionChanged.connect(self.update_background)
-        self.sm = self.pw.wds_tree_selection_model
-        self.sm.currentChanged.connect(self.update_background)
-        self.pw.slope_spin_box.sigValueChanging.connect(
-            self.slope_from_spin_box)
-        self.slope_from_spin_box(self.pw.slope_spin_box)
-
-    def slope_from_spin_box(self, spin_box):
-        self.slope = spin_box.value()
-        self.update_background(slope=self.slope)
-
-    def update_background(self, *args, slope=None):
-        def filter_curve(curve):
-            if (curve.signal_header == self.signal_header) and\
-                    (curve in self.pw.canvas.p1.curves):
-                return True
-            return False
-
-        if slope is None:
-            slope = self.slope
-        elif slope > 0.:
-            self.slope = slope
-        else:
-            return
-        m_pos = self.pm.m_line.getXPos()
-        bg1_pos = self.pm.bg1_line.getXPos()
-        lenght = bg1_pos - m_pos
-        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
-                                                  Qt.UserRole)
-        if plot_curves is None:
-            return
-        filtered = list(filter(filter_curve, plot_curves))
-        if len(filtered) == 1:
-            curve = filtered[0]
-        else:
-            return
-        data = curve.getData()
-        idx = np.abs(data[0] - bg1_pos).argmin()
-        x_pos = data[0][idx]
-        y_pos = data[1][idx]
-        y_pos_main = y_pos * slope
-        h = y_pos - y_pos_main
-        new_angle = math.degrees(math.atan(h/lenght))
-        self.setAngle(new_angle)
-        self.setPos((x_pos, y_pos))
-
-    def prepare_to_destroy(self):
-        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
-        self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
-        self.sm.currentChanged.disconnect(self.update_background)
-        self.pw.slope_spin_box.sigValueChanging.disconnect(
-            self.slope_from_spin_box)
 
 
 class DockMenu(QtGui.QMenu):
@@ -181,94 +61,6 @@ class DockMenu(QtGui.QMenu):
         main_window = self.parent()
         main_window.destroy_wds_plotWidget(self.dock_widget)
 
-
-class WDSSpectraGUI(sw.XraySpectraGUI):
-    def __init__(self, wds_tree_model, wds_tree_selection_model):
-        sw.XraySpectraGUI.__init__(self, pet_opacity=0.9,
-                                   initial_mode='cameca')
-        self.xtal_model = SpecXTALCombiModel(wds_tree_model)
-        self.spect_xtal_combo_view.setModel(self.xtal_model)
-        self.wds_tree_model = wds_tree_model
-        self.wds_tree_selection_model = wds_tree_selection_model
-        self.add_spectrum_curves(alpha=self.wds_tree_model.global_alpha)
-        self.wds_tree_model.wds_files_appended.connect(
-            self.add_spectrum_curves)
-        self.xtal_model.xtalFamilyChanged.connect(self.canvas.set_xtal)
-        self.canvas.xAxisUnitsChanged.connect(self.change_xtal_exclusivness)
-        self.xtal_model.combinationCheckedStateChanged.connect(
-            self.change_curves)
-        self.xtal_model.dataChanged.connect(self.change_style_of_spect)
-
-    def change_curves(self, xtal, state):
-        if state:
-            self.add_spectrum_curves(spect_headers=[xtal],
-                                     alpha=self.wds_tree_model.global_alpha)
-            self.canvas.autoRange()
-        else:
-            self.remove_spectrum_curves(xtal)
-
-    def change_style_of_spect(self, index_u, index_d, roles=[]):
-        if len(roles) != 1:
-            return
-        role = roles[0]
-        if role in [self.xtal_model.LineWidthRole,
-                    self.xtal_model.LineStyleRole]:
-            xm = self.xtal_model
-            spect_header = xm.data(index_u, xm.SpectXtalCombinationRole)
-            curves = [i for i in self.canvas.p1.curves
-                      if i.signal_header == spect_header]
-            for curve in curves:
-                if role == self.xtal_model.LineWidthRole:
-                    curve.set_curve_width(spect_header.q_pen_width)
-                else:
-                    curve.set_curve_style(spect_header.q_pen_style)
-
-    def add_spectrum_curves(self, wds_files=None,
-                            spect_headers=None, alpha=200):
-        if spect_headers is None:
-            spect_headers = [i for i in
-                             self.xtal_model.combinations
-                             if i.q_checked_state]
-        if wds_files is None:
-            wds_files = self.wds_tree_model.collection
-        for wds_file in wds_files:
-            for dataset in wds_file.content.datasets:
-                for item in dataset.items:
-                    if item.signal_header in spect_headers:
-                        # spect_header is copy with custom attributes
-                        # for pen style and width
-                        # where .signal_header has not those
-                        i = spect_headers.index(item.signal_header)
-                        WDSPlotItem(item, self.canvas,
-                                    pen_style=spect_headers[i].q_pen_style,
-                                    pen_width=spect_headers[i].q_pen_width,
-                                    alpha=alpha)
-        # highlight spectra if it is selected in tree view:
-        self.wds_tree_model.highlight_spectra(
-            self.wds_tree_selection_model.selection())
-
-    def remove_spectrum_curves(self, spect_header):
-        # we cant iterate over canvas.p1.items, while removing,
-        # we need a copy of list to iterate through
-        curves_list = [i for i in self.canvas.p1.curves
-                       if i.signal_header == spect_header]
-        for curve in curves_list:
-            curve.remove_from_model()
-            self.canvas.p1.removeItem(curve)
-
-    def change_xtal_exclusivness(self, mode):
-        if mode == 'cameca':
-            self.xtal_model.setIgnoreFamilyConstrain(False)
-        else:
-            self.xtal_model.setIgnoreFamilyConstrain(True)
-
-    def prepare_to_destroy(self):
-        for curve in self.canvas.p1.curves:
-            if isinstance(curve, WDSPlotItem):
-                curve.remove_from_model()
-        self.canvas.p1.clear()
-        if hasattr(self, 'pet_win'):
-            self.pet_win.close()
 
 
 class HussariX(QtWidgets.QMainWindow):
@@ -399,6 +191,8 @@ class HussariX(QtWidgets.QMainWindow):
                     for simple Peak-Bakground markers</p>"""
                 )
                 self.wds_tree_view.setModel(self.wds_files_model)
+                self.wds_tree_view.setStyleSheet(
+                    'show-decoration-selected: 0')
                 self.wds_files_selection_model = self.wds_tree_view.selectionModel()
                 self.wds_files_selection_model.selectionChanged.connect(
                     self.wds_files_model.highlight_spectra)
@@ -444,8 +238,8 @@ class HussariX(QtWidgets.QMainWindow):
 
     def make_wds_plotWidget(self):
         self.plot_n += 1
-        widget = WDSSpectraGUI(self.wds_files_model,
-                               self.wds_files_selection_model)
+        widget = sw.WDSSpectraGUI(self.wds_files_model,
+                                  self.wds_files_selection_model)
         plotting_dw = Dock('WDS Plot {}'.format(self.plot_n), widget=widget,
                            autoOrientation=False)
         widget.attachedToParentWidget.connect(plotting_dw.setVisible)
