@@ -1,3 +1,11 @@
+"""files in glasbey_assets directory, from which glasbey_dark and
+glasbey_light color sets are created, are copied from colorcet
+library.
+Colorcet is distributed with Creative Commons Attribution 4.0
+International Public License (CC-BY).
+For more information please see the colorcet project.
+"""
+
 import csv
 from os import path
 from PyQt5.QtGui import QColor
