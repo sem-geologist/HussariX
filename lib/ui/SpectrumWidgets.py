@@ -997,8 +997,13 @@ class LinearBackground(InfiniteLine):
         m_pos = pos_markers.m_line.getXPos()
         self.pm = pos_markers
         self.signal_header = spect_xtal
+        if self.pw.canvas.dark_mode:
+            color = 'y'
+        else:
+            color = 'r'
         super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
-                                                              color='y'))
+                                                              color=color))
+        self.setZValue(3001)  # over 3000
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
         self.sm = self.pw.wds_tree_selection_model
@@ -1043,8 +1048,13 @@ class LinearBackground(InfiniteLine):
 
 class ExponentialBackground(pg.PlotCurveItem):
     def __init__(self, plotting_widget, spect_xtal):
-        super().__init__(pen=mkPen(width=2, color='y'))
         self.pw = plotting_widget
+        if self.pw.canvas.dark_mode:
+            color = 'y'
+        else:
+            color = 'r'
+        super().__init__(pen=mkPen(width=2, color=color))
+        self.setZValue(3001)  # over 3000
         pos_markers = self.pw.pos_markers
         self.pm = pos_markers
         self.signal_header = spect_xtal
@@ -1105,8 +1115,13 @@ class SloppedBackground(InfiniteLine):
         m_pos = pos_markers.m_line.getXPos()
         self.pm = pos_markers
         self.signal_header = spect_xtal
+        if self.pw.canvas.dark_mode:
+            color = 'y'
+        else:
+            color = 'r'
         super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
-                                                              color='y'))
+                                                              color=color))
+        self.setZValue(3001)  # over 3000
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.sm = self.pw.wds_tree_selection_model
