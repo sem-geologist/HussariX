@@ -1,5 +1,5 @@
 
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 import pyqtgraph as pg
 
@@ -178,7 +178,7 @@ class selectableMarker:
 # TODO implement the boundRect and shape for polygon:
 
 
-class selectablePolygon(selectableMarker, QtGui.QGraphicsPolygonItem):
+class selectablePolygon(selectableMarker, QtWidgets.QGraphicsPolygonItem):
     """requires object for reference and QPolygonF"""
 
     def __init__(self, data, *args):
@@ -186,7 +186,7 @@ class selectablePolygon(selectableMarker, QtGui.QGraphicsPolygonItem):
         selectableMarker.__init__(self, data, *args)
 
 
-class selectableRectangle(selectableMarker, QtGui.QGraphicsRectItem):
+class selectableRectangle(selectableMarker, QtWidgets.QGraphicsRectItem):
     """requires object for reference and 4 points of bounding Rectangle:
      (left_top: x, y, width, height)"""
 
@@ -204,7 +204,7 @@ class selectableRectangle(selectableMarker, QtGui.QGraphicsRectItem):
         return path
 
 
-class selectableEllipse(selectableMarker, QtGui.QGraphicsEllipseItem):
+class selectableEllipse(selectableMarker, QtWidgets.QGraphicsEllipseItem):
     """requires object for reference and 4 points of bounding Rectangle:
      (left_top: x, y, width, height)"""
 
@@ -222,7 +222,7 @@ class selectableEllipse(selectableMarker, QtGui.QGraphicsEllipseItem):
         return path
 
 
-class selectablePoint(selectableMarker, QtGui.QGraphicsPathItem):
+class selectablePoint(selectableMarker, QtWidgets.QGraphicsPathItem):
     # class selectablePoint(QtGui.QGraphicsPathItem):
     """requires object for reference and path item (the symbol):
      and QtGui.QPainterPath"""
