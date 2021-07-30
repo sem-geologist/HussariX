@@ -123,7 +123,7 @@ class CustomAxisItem(pg.AxisItem):
     # a context menu that includes their parents' menus.
     def getContextMenus(self, event=None):
         if self.menu is None:
-            self.menu = QtGui.QMenu()
+            self.menu = QtWidgets.QMenu()
             self.menu.setTitle("axis options..")
             for i in self.actions:
                 self.menu.addAction(i)

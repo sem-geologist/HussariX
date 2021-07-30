@@ -20,7 +20,7 @@
 from PyQt5.QtWidgets import (QMainWindow, QToolBar, QAction,
                              QBoxLayout, QSplitter, QGridLayout,
                              QToolButton, QTreeView)
-from PyQt5.QtGui import (QIcon, )
+from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtCore import pyqtSignal as Signal
 

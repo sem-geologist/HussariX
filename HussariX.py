@@ -6,9 +6,7 @@ from datetime import datetime
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
-from lib.ui.CamecaQtModels import (CamecaWDSTreeModel,
-                                   WDSPlotItem,
-                                   SpecXTALCombiModel)
+from lib.ui.CamecaQtModels import CamecaWDSTreeModel
 from lib.ui import SpectrumWidgets as sw
 from lib.parsers import cameca
 from lib.icons.icons import IconProvider
@@ -26,11 +24,11 @@ if os.name == 'nt':
         pass
 
 
-class DockMenu(QtGui.QMenu):
+class DockMenu(QtWidgets.QMenu):
     def __init__(self, dock_widget, parent=None):
         self.dock_widget = dock_widget
         name = dock_widget.title()
-        QtGui.QMenu.__init__(self, name, parent=parent)
+        QtWidgets.QMenu.__init__(self, name, parent=parent)
         self.rename_action = QtWidgets.QAction('rename')
         self.rename_action.setIcon(
             QtGui.QIcon(self.parent().icon_provider.get_icon_path(
@@ -60,7 +58,6 @@ class DockMenu(QtGui.QMenu):
     def remove_dock(self):
         main_window = self.parent()
         main_window.destroy_wds_plotWidget(self.dock_widget)
-
 
 
 class HussariX(QtWidgets.QMainWindow):

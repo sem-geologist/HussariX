@@ -26,6 +26,8 @@ import pyqtgraph as pg
 import numpy as np
 from pyqtgraph import InfiniteLine, mkPen
 from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import pyqtSignal as Signal
+from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5.QtGui import QPen, QPixmap, QColor, QPainter, QIcon, QFont
 from PyQt5.QtWidgets import (QWidget,
                              QAction,
@@ -36,11 +38,8 @@ from PyQt5.QtWidgets import (QWidget,
                              QSizePolicy,
                              QAbstractScrollArea,
                              QHBoxLayout)
-from PyQt5.QtCore import pyqtSignal as Signal
-from PyQt5.QtCore import pyqtSlot as Slot
 
-from .CamecaQtModels import (CamecaWDSTreeModel,
-                             WDSPlotItem,
+from .CamecaQtModels import (WDSPlotItem,
                              SpecXTALCombiModel)
 from ..misc import xray_util as xu
 from .node import ElementLineTreeModel, SimpleDictNode
