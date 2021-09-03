@@ -7,7 +7,7 @@ This is going to be universal graphical program for openning and exploring the S
 
 Dependencies:
 - `PyQt5` - for GUI
-- `pyqtgraph` (at least 0.11.0rc) - for plotting and advanced GUI
+- `pyqtgraph` (at least 0.11.0rc, not 0.12.2) - for plotting and advanced GUI
 - `numpy` - for everything array,
 - `scipy` - ?, (trying to make sure it is not hard dependecy, however pyqtgraph can be boosted with it in imaging.)
 - `kaitaistruct` runtime (0.9) - for using cameca peaksight binary parser.

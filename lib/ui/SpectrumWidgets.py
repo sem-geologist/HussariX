@@ -37,7 +37,8 @@ from PyQt5.QtWidgets import (QWidget,
                              QListView,
                              QSizePolicy,
                              QAbstractScrollArea,
-                             QHBoxLayout)
+                             QHBoxLayout,
+                             QSpinBox)
 
 from .CamecaQtModels import (WDSPlotItem,
                              SpecXTALCombiModel)
@@ -48,6 +49,11 @@ from .qpet import element_table as qpet
 from . import CustomWidgets as cw
 from .CustomPGWidgets import CustomViewBox, CustomAxisItem
 from .spectrum_curve import SpectrumCurveItem
+
+import warnings
+warnings.simplefilter('ignore', np.RankWarning)
+# here we ignore polynomial  warnings, as we are not going to use
+# polynomial outside initial data bounds
 
 main_path = path.join(path.dirname(__file__), path.pardir)
 conf_path = path.join(main_path,
@@ -127,6 +133,20 @@ def format_line(text, order=1):
     elif order > 3:
         string = '{0}<sup>{1}<sup>th</sup></sup>'.format(string, order)
     return string
+
+
+def validate_idx_range(data_len, idx, window_size):
+    """return min and max indexes for given distance from given index
+    so that min and max values would stay in bounts of data length"""
+    if idx - window_size > 0:
+        idx_min = idx - window_size
+    else:
+        idx_min = 0
+    if idx + window_size < data_len - 1:
+        idx_max = idx + window_size
+    else:
+        idx_max = data_len - 1
+    return idx_min, idx_max
 
 
 class XtalListView(QListView):
@@ -708,7 +728,7 @@ class XrayCanvas(pg.PlotWidget):
         if element not in xec:
             xec[element] = {}
         if xam == 'cameca':
-            xfn = self.xtal_family_name 
+            xfn = self.xtal_family_name
         elem_dict = xec[element]
         if xam in elem_dict:
             if xam == 'energy':
@@ -807,12 +827,6 @@ class XrayCanvas(pg.PlotWidget):
 
     def auto_custom(self):
         pass
-
-
-class PositionMarker(InfiniteLine):
-    def __init__(self, canvas=None, line_type='peak', **kwargs):
-        """line_type one of peak, background"""
-        InfiniteLine.__init__(self, )
 
 
 class PositionMarkers:
@@ -1003,8 +1017,20 @@ class LinearBackground(InfiniteLine):
         super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
                                                               color=color))
         self.setZValue(3001)  # over 3000
+        self.bg1_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
+                                                        color=color))
+        self.bg2_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
+                                                        color=color))
+        self.pw.canvas.addItem(self.bg1_avg_curve)
+        self.pw.canvas.addItem(self.bg2_avg_curve)
+        self.bg1_avg_curve.setZValue(3002)
+        self.bg2_avg_curve.setZValue(3002)
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
+        self.pw.avg_poly_order_spin.valueChanged.connect(
+            self.update_background)
+        self.pw.avg_win_size_spin.valueChanged.connect(
+            self.update_background)
         self.sm = self.pw.wds_tree_selection_model
         self.sm.currentChanged.connect(self.update_background)
         self.update_background()
@@ -1031,9 +1057,33 @@ class LinearBackground(InfiniteLine):
         data = curve.getData()
         idx1 = np.abs(data[0] - bg1_pos).argmin()
         idx2 = np.abs(data[0] - bg2_pos).argmin()
-        x_pos1 = data[0][idx1]
-        y_pos1 = data[1][idx1]
-        y_pos2 = data[1][idx2]
+        avg_window = self.pw.avg_win_size_spin.value()
+        order = self.pw.avg_poly_order_spin.value()
+        if avg_window == 0:
+            x_pos1 = data[0][idx1]
+            y_pos1 = data[1][idx1]
+            y_pos2 = data[1][idx2]
+        else:
+            data_len = len(data[0])
+            i1_min, i1_max = validate_idx_range(data_len, idx1,
+                                                avg_window)
+            i2_min, i2_max = validate_idx_range(data_len, idx2,
+                                                avg_window)
+            xses1 = data[0][i1_min:i1_max+1]
+            xses2 = data[0][i2_min:i2_max+1]
+            ys1 = data[1][i1_min:i1_max+1]
+            ys2 = data[1][i2_min:i2_max+1]
+            poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
+            poly2 = np.polynomial.polynomial.polyfit(xses2, ys2, order)
+            y_pos1 = np.polynomial.polynomial.polyval(bg1_pos, poly1)
+            y_pos2 = np.polynomial.polynomial.polyval(bg2_pos, poly2)
+            self.bg1_avg_curve.setData(
+                xses1,
+                np.polynomial.polynomial.polyval(xses1, poly1))
+            self.bg2_avg_curve.setData(
+                xses2,
+                np.polynomial.polynomial.polyval(xses2, poly2))
+            x_pos1 = bg1_pos
         h = y_pos1 - y_pos2
         new_angle = degrees(atan(h/lenght))
         self.setAngle(new_angle)
@@ -1042,6 +1092,12 @@ class LinearBackground(InfiniteLine):
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
         self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
+        self.pw.avg_poly_order_spin.valueChanged.disconnect(
+            self.update_background)
+        self.pw.avg_win_size_spin.valueChanged.disconnect(
+            self.update_background)
+        self.pw.canvas.removeItem(self.bg1_avg_curve)
+        self.pw.canvas.removeItem(self.bg2_avg_curve)
         self.sm.currentChanged.disconnect(self.update_background)
 
 
@@ -1056,6 +1112,18 @@ class ExponentialBackground(pg.PlotCurveItem):
         self.setZValue(3001)  # over 3000
         pos_markers = self.pw.pos_markers
         self.pm = pos_markers
+        self.bg1_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
+                                                        color=color))
+        self.bg2_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
+                                                        color=color))
+        self.pw.avg_poly_order_spin.valueChanged.connect(
+            self.update_background)
+        self.pw.avg_win_size_spin.valueChanged.connect(
+            self.update_background)
+        self.pw.canvas.addItem(self.bg1_avg_curve)
+        self.pw.canvas.addItem(self.bg2_avg_curve)
+        self.bg1_avg_curve.setZValue(3002)
+        self.bg2_avg_curve.setZValue(3002)
         self.signal_header = spect_xtal
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
@@ -1089,10 +1157,38 @@ class ExponentialBackground(pg.PlotCurveItem):
         data = curve.getData()
         idx1 = np.abs(data[0] - bg1_pos).argmin()
         idx2 = np.abs(data[0] - bg2_pos).argmin()
-        x_pos1 = data[0][idx1]
-        y_pos1 = data[1][idx1]
-        x_pos2 = data[0][idx2]
-        y_pos2 = data[1][idx2]
+        avg_window = self.pw.avg_win_size_spin.value()
+        order = self.pw.avg_poly_order_spin.value()
+        if avg_window == 0:
+            x_pos1 = data[0][idx1]
+            y_pos1 = data[1][idx1]
+            x_pos2 = data[0][idx2]
+            y_pos2 = data[1][idx2]
+            self.bg1_avg_curve.setData()
+            self.bg2_avg_curve.setData()
+        else:
+            data_len = len(data[0])
+            i1_min, i1_max = validate_idx_range(data_len, idx1,
+                                                avg_window)
+            i2_min, i2_max = validate_idx_range(data_len, idx2,
+                                                avg_window)
+            xses1 = data[0][i1_min:i1_max+1]
+            xses2 = data[0][i2_min:i2_max+1]
+            ys1 = data[1][i1_min:i1_max+1]
+            ys2 = data[1][i2_min:i2_max+1]
+            poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
+            poly2 = np.polynomial.polynomial.polyfit(xses2, ys2, order)
+            y_pos1 = np.polynomial.polynomial.polyval(bg1_pos, poly1)
+            y_pos2 = np.polynomial.polynomial.polyval(bg2_pos, poly2)
+            self.bg1_avg_curve.setData(
+                xses1,
+                np.polynomial.polynomial.polyval(xses1, poly1))
+            self.bg2_avg_curve.setData(
+                xses2,
+                np.polynomial.polynomial.polyval(xses2, poly2))
+            x_pos1 = bg1_pos
+            x_pos2 = bg2_pos
+
         f = log(y_pos1 / y_pos2) / log(x_pos2 / x_pos1)
         x_linespace = np.linspace(min_pos - 0.2 * width,
                                   max_pos + 0.2 * width,
@@ -1103,6 +1199,12 @@ class ExponentialBackground(pg.PlotCurveItem):
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
         self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
+        self.pw.avg_poly_order_spin.valueChanged.disconnect(
+            self.update_background)
+        self.pw.avg_win_size_spin.valueChanged.disconnect(
+            self.update_background)
+        self.pw.canvas.removeItem(self.bg1_avg_curve)
+        self.pw.canvas.removeItem(self.bg2_avg_curve)
         self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
         self.sm.currentChanged.disconnect(self.update_background)
 
@@ -1121,6 +1223,14 @@ class SloppedBackground(InfiniteLine):
         super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
                                                               color=color))
         self.setZValue(3001)  # over 3000
+        self.bg1_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
+                                                        color=color))
+        self.pw.canvas.addItem(self.bg1_avg_curve)
+        self.bg1_avg_curve.setZValue(3002)
+        self.pw.avg_poly_order_spin.valueChanged.connect(
+            self.update_background)
+        self.pw.avg_win_size_spin.valueChanged.connect(
+            self.update_background)
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.sm = self.pw.wds_tree_selection_model
@@ -1160,8 +1270,23 @@ class SloppedBackground(InfiniteLine):
             return
         data = curve.getData()
         idx = np.abs(data[0] - bg1_pos).argmin()
-        x_pos = data[0][idx]
-        y_pos = data[1][idx]
+        avg_window = self.pw.avg_win_size_spin.value()
+        order = self.pw.avg_poly_order_spin.value()
+        if avg_window == 0:
+            x_pos = data[0][idx]
+            y_pos = data[1][idx]
+        else:
+            data_len = len(data[0])
+            i1_min, i1_max = validate_idx_range(data_len, idx,
+                                                avg_window)
+            xses1 = data[0][i1_min:i1_max+1]
+            ys1 = data[1][i1_min:i1_max+1]
+            poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
+            y_pos = np.polynomial.polynomial.polyval(bg1_pos, poly1)
+            self.bg1_avg_curve.setData(
+                xses1,
+                np.polynomial.polynomial.polyval(xses1, poly1))
+            x_pos = bg1_pos
         y_pos_main = y_pos * slope
         h = y_pos - y_pos_main
         new_angle = degrees(atan(h/lenght))
@@ -1171,6 +1296,11 @@ class SloppedBackground(InfiniteLine):
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
         self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
+        self.pw.avg_poly_order_spin.valueChanged.disconnect(
+            self.update_background)
+        self.pw.avg_win_size_spin.valueChanged.disconnect(
+            self.update_background)
+        self.pw.canvas.removeItem(self.bg1_avg_curve)
         self.sm.currentChanged.disconnect(self.update_background)
         self.pw.slope_spin_box.sigValueChanging.disconnect(
             self.slope_from_spin_box)
@@ -1417,12 +1547,25 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.spect_xtal_combo_view.setSizePolicy(size_policy)
         self.splitter.addWidget(self.bkgd_helper_widget)
         bkgd_layout = QHBoxLayout(self.bkgd_helper_widget)
-        bkgd_layout.addWidget(QLabel("Background slope"))
+        bkgd_layout.addWidget(QLabel("Bkgd. slope:"))
         bkgd_layout.setContentsMargins(2, 2, 2, 2)
+        self.bkgd_helper_widget.setMaximumHeight(28)
         self.slope_spin_box = pg.SpinBox(
-            value=1.0, dec=True, min=0.001, max=1000, decimals=6)
-        self.slope_spin_box.setMinimumHeight(24)
+            value=1.0, dec=True, min=0.001, max=1000, decimals=6,
+            compactHeight=False)
         bkgd_layout.addWidget(self.slope_spin_box)
+        bkgd_layout.addWidget(QLabel("avg. size:"))
+        self.avg_win_size_spin = QSpinBox()
+        self.avg_win_size_spin.setValue(10)
+        self.avg_win_size_spin.setRange(1, 100)
+        self.avg_win_size_spin.setSingleStep(1)
+        bkgd_layout.addWidget(self.avg_win_size_spin)
+        bkgd_layout.addWidget(QLabel("poly. ord.:"))
+        self.avg_poly_order_spin = QSpinBox()
+        self.avg_poly_order_spin.setValue(1)
+        self.avg_poly_order_spin.setRange(1, 15)
+        self.avg_poly_order_spin.setSingleStep(1)
+        bkgd_layout.addWidget(self.avg_poly_order_spin)
         self.bkgd_helper_widget.setSizePolicy(size_policy)
         self.bkgd_helper_widget.hide()
         self.splitter.addWidget(self.spect_xtal_combo_view)
@@ -1492,6 +1635,7 @@ class WDSSpectraGUI(XraySpectraGUI):
                 bkg = ExponentialBackground(self, combi)
                 self.backgrounds.append(bkg)
                 self.canvas.addItem(bkg)
+        self.update_bkgd_helper_box_visibility()
 
     def clear_background_models(self):
         if len(self.backgrounds) > 0:
@@ -1506,6 +1650,7 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.pos_markers.register_canvas(self.canvas)
         self.action_exp_background.setEnabled(True)
         self.action_linear_background.setEnabled(True)
+        self.slope_spin_box.setEnabled(False)
         self.set_background_model()
 
     def show_two_markers_on_canvas(self):
@@ -1515,6 +1660,7 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.action_linear_background.setEnabled(True)
         self.action_exp_background.setEnabled(False)
         self.action_exp_background.setChecked(False)
+        self.slope_spin_box.setEnabled(True)
         self.set_background_model()
 
     def show_single_marker_on_canvas(self):
@@ -1526,19 +1672,27 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.action_linear_background.setEnabled(False)
         self.action_exp_background.setEnabled(False)
 
+    def update_bkgd_helper_box_visibility(self):
+        if self.action_linear_background.isChecked() or \
+                self.action_exp_background.isChecked():
+            self.bkgd_helper_widget.show()
+        else:
+            self.bkgd_helper_widget.hide()
+
     def _setup_markers(self):
         menu = QMenu('markers and backgrounds')
         self.action_marker_bgx2 = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_bgx2.svg')),
             'peak and 2 background',
             self.marker_button)
-        self.action_marker_bgx2.triggered.connect(self.bkgd_helper_widget.hide)
+        self.action_marker_bgx2.triggered.connect(
+            self.update_bkgd_helper_box_visibility)
         self.action_marker_and_1bkg = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_pk_1xbkg.svg')),
             'peak and single background',
             self.marker_button)
         self.action_marker_and_1bkg.triggered.connect(
-            self.bkgd_helper_widget.show)
+            self.update_bkgd_helper_box_visibility)
         self.action_marker_only = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
             'single marker only',
@@ -1577,6 +1731,7 @@ class WDSSpectraGUI(XraySpectraGUI):
             self.canvas.autoRange()
         else:
             self.remove_spectrum_curves(xtal)
+            self.set_background_model()
 
     def change_style_of_spect(self, index_u, index_d, roles=[]):
         if len(roles) != 1:
@@ -1622,7 +1777,8 @@ class WDSSpectraGUI(XraySpectraGUI):
         # we cant iterate over canvas.p1.items, while removing,
         # we need a copy of list to iterate through
         curves_list = [i for i in self.canvas.p1.curves
-                       if i.signal_header == spect_header]
+                       if isinstance(i, WDSPlotItem) and
+                       (i.signal_header == spect_header)]
         for curve in curves_list:
             curve.remove_from_model()
             self.canvas.p1.removeItem(curve)

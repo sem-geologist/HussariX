@@ -18,6 +18,7 @@ cam_def_colors = {'PC0': QColor(182, 255, 182),
                   'TAP': QColor(175, 255, 255),
                   'LIF': QColor(255, 192, 255),
                   'QTZ': QColor(128, 255, 255),
+                  'EDX': QColor(255, 255, 255),
                   'etc': QColor(255, 255, 255)}
 
 
