@@ -3,7 +3,7 @@ import os
 
 from datetime import datetime
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSettings
 from PyQt5 import QtGui, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
 from lib.ui.CamecaQtModels import CamecaWDSTreeModel
@@ -11,6 +11,7 @@ from lib.ui import SpectrumWidgets as sw
 from lib.parsers import cameca
 from lib.icons.icons import IconProvider
 
+setting = QSettings('setting.ini', QSettings.IniFormat)
 # check if there is peaksight installed
 CAMSOFT_IS_PRESENT = False
 if os.name == 'nt':
@@ -160,9 +161,14 @@ class HussariX(QtWidgets.QMainWindow):
             wds_data_path = os.path.join(cam_data_path, current_project,
                                          current_sample, "WDS Spectra")
             dialog.setDirectory(wds_data_path)
+        else:
+            last_dir = setting.value('last_dir')
+            if last_dir is not None:
+                dialog.setDirectory(last_dir)
         dialog.exec()
         files = dialog.selectedFiles()
         if 'wdsDat' in files[0]:
+            setting.setValue('last_dir', dialog.directory().absolutePath())
             if not self.any_file_opened:
                 self.setCentralWidget(self.docking_area)
                 self.any_file_opened = True
