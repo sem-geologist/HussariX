@@ -3,7 +3,7 @@ import os
 
 from datetime import datetime
 
-from PyQt5.QtCore import Qt, QSettings
+from PyQt5.QtCore import Qt, QSettings, QDir
 from PyQt5 import QtGui, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
 from lib.ui.CamecaQtModels import CamecaWDSTreeModel
@@ -163,11 +163,11 @@ class HussariX(QtWidgets.QMainWindow):
             dialog.setDirectory(wds_data_path)
         else:
             last_dir = setting.value('last_dir')
-            if last_dir is not None:
+            if last_dir is not None and QDir(last_dir).exists():
                 dialog.setDirectory(last_dir)
         dialog.exec()
         files = dialog.selectedFiles()
-        if 'wdsDat' in files[0]:
+        if len(files) > 0 and 'wdsDat' in files[0]:
             setting.setValue('last_dir', dialog.directory().absolutePath())
             if not self.any_file_opened:
                 self.setCentralWidget(self.docking_area)
