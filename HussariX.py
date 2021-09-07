@@ -92,6 +92,7 @@ class HussariX(QtWidgets.QMainWindow):
         self.setWindowIcon(icon)
         self.action_whats_this = QtWidgets.QWhatsThis.createAction(self)
         self.help_m.addAction(self.action_whats_this)
+        self.help_m.addAction("About Qt", QtWidgets.qApp.aboutQt)
         self.action_open_wdsDat = QtWidgets.QAction('Open wdsDat')
         self.action_open_wdsDat.setIcon(
             QtGui.QIcon(self.icon_provider.get_icon_path(
