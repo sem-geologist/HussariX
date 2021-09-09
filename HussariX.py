@@ -203,6 +203,9 @@ class HussariX(QtWidgets.QMainWindow):
                 self.wds_tree_view.setHeaderHidden(True)
                 self.wds_tree_view.setSelectionMode(
                     QtWidgets.QTreeView.ExtendedSelection)
+                self.wds_tree_view.setContextMenuPolicy(Qt.CustomContextMenu)
+                self.wds_tree_view.customContextMenuRequested.connect(
+                    self.wds_color_dialog)
                 self.wds_items_dw = Dock('WDS Files/Datasets',
                                          widget=self.wds_tree_view,
                                          autoOrientation=False,
@@ -239,6 +242,14 @@ class HussariX(QtWidgets.QMainWindow):
                 self.action_mkPlotItem.trigger()  # make at least one
             wds_files = [cameca.CamecaWDS(i) for i in files]
             self.wds_files_model.append_wds_files(wds_files)
+
+    def wds_color_dialog(self, qpoint):
+        index = self.wds_tree_view.indexAt(qpoint)
+        node = index.internalPointer()
+        initial_color = node.q_custom_color
+        new_color = QtWidgets.QColorDialog.getColor(initial_color)
+        if new_color.isValid():
+            self.wds_files_model.setData(index, new_color, Qt.DecorationRole)
 
     def make_wds_plotWidget(self):
         self.plot_n += 1

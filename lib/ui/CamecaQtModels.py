@@ -395,14 +395,13 @@ class CamecaWDSTreeModel(QAbstractItemModel):
                 return node.comment.text
 
     def setData(self, index, value, role):
-        row = index.row()
-        parent = index.parent()
-
         if not index.isValid() and role in (Qt.CheckStateRole,
-                                            Qt.EditRole):
+                                            Qt.EditRole,
+                                            Qt.DecorationRole):
             return False
+
+        node = index.internalPointer()
         if role == Qt.CheckStateRole:
-            node = index.internalPointer()
             if isinstance(node, CamecaBase):
                 if value == Qt.Checked:
                     node.q_checked_state = node.q_row_count
@@ -421,7 +420,11 @@ class CamecaWDSTreeModel(QAbstractItemModel):
                     plot_item.setVisible(value)
                 self.update_parent_check_state(index, value)
         if role == Qt.EditRole:
-            self.collection[parent.row()].q_children[row].comment.text = value
+            node.text = value
+        if role == Qt.DecorationRole:
+            node.q_custom_color = value
+            for j in node.plot_items:
+                j.set_curve_color(value)
         self.dataChanged.emit(index, index, [role])
         return True
 
