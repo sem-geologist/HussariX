@@ -1742,7 +1742,8 @@ class WDSSpectraGUI(XraySpectraGUI):
             xm = self.xtal_model
             spect_header = xm.data(index_u, xm.SpectXtalCombinationRole)
             curves = [i for i in self.canvas.p1.curves
-                      if i.signal_header == spect_header]
+                      if isinstance(i, WDSPlotItem) and
+                      (i.signal_header == spect_header)]
             for curve in curves:
                 if role == self.xtal_model.LineWidthRole:
                     curve.set_curve_width(spect_header.q_pen_width)
