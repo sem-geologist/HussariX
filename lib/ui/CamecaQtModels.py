@@ -1,3 +1,4 @@
+from datetime import datetime
 from PyQt5.QtCore import (QAbstractItemModel,
                           QAbstractListModel,
                           QModelIndex,
@@ -360,10 +361,12 @@ class CamecaWDSTreeModel(QAbstractItemModel):
 
         if role == Qt.ToolTipRole:
             if isinstance(node, Cameca.Dataset):
-                return 'dt\'set {} contains:\n  '.format(row + 1) + \
+                ts = node.extras.datetime_and_pos[0].datetime.unix_timestamp
+                return 'dataset {} contains:\n  '.format(row + 1) + \
                     '\n  '.join([('CORRUPTED! ' if i.signal.corrupted else '')
                                  + str(i.signal_header)
-                                 for i in node.items])
+                                 for i in node.items]) + '\n ' + \
+                    datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
 
         if (role == Qt.ForegroundRole and
                 isinstance(node, Cameca.Dataset) and
