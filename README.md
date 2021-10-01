@@ -1,5 +1,5 @@
-# QSEM-Viewer
-(This will be renamed to HussariX in the near future)
+# HussariX
+(formely QSEM-viewer)
 
 Work in progress...
 
