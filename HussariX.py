@@ -162,13 +162,17 @@ class HussariX(QtWidgets.QMainWindow):
                                          current_sample, "WDS Spectra")
             dialog.setDirectory(wds_data_path)
         else:
-            last_dir = setting.value('last_dir')
+            setting.sync()
+            last_dir = setting.value('last_wds_dir')
             if last_dir is not None and QDir(last_dir).exists():
                 dialog.setDirectory(last_dir)
         dialog.exec()
         files = dialog.selectedFiles()
         if len(files) > 0 and 'wdsDat' in files[0]:
-            setting.setValue('last_dir', dialog.directory().absolutePath())
+            if not CAMSOFT_IS_PRESENT:
+                setting.setValue('last_wds_dir',
+                                 dialog.directory().absolutePath())
+                setting.sync()
             if not self.any_file_opened:
                 self.setCentralWidget(self.docking_area)
                 self.any_file_opened = True
@@ -192,7 +196,8 @@ class HussariX(QtWidgets.QMainWindow):
                     combinations is present in the dataset)</p>
                     <p>Current item (the last item clicked or navigated with
                     keyboard) will change background model in Plotting Widgets
-                    for simple Peak-Bakground markers</p>"""
+                    for simple Peak-Background markers</p>
+                    <p>Mouse right click will open color dialog.</p>"""
                 )
                 self.wds_tree_view.setModel(self.wds_files_model)
                 self.wds_tree_view.setStyleSheet(
