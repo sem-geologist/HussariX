@@ -132,7 +132,6 @@ types:
         type: u4
       - id: n_of_datasets
         type: u4
-        # DBG START
       - id: datasets
         type: dataset
         repeat: expr
@@ -195,6 +194,9 @@ types:
       - id: reserved_v18
         size: 4
         if: header.version >= 0x12
+      - id: reserved_v19
+        size: 12
+        if: header.version >= 0x13
       - id: dts_extras_type
         type: u4
         enum: dataset_extras_type
@@ -589,7 +591,7 @@ types:
       - id: n_pixels
         type: u4
     seq:
-      - id: struct_v
+      - id: version
         type: u4
       - id: dataset_type
         type: u4
@@ -672,6 +674,9 @@ types:
         type: f4
       - id: reserved_2
         size: 8
+      - id: reserved_v6
+        size: 12
+        if: version >= 6
         
     instances:
       array_data_size:

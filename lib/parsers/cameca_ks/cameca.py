@@ -596,7 +596,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.struct_v = self._io.read_u4le()
+            self.version = self._io.read_u4le()
             self.dataset_type = self._root.DatasetType(self._io.read_u4le())
             self.stage_x = self._io.read_s4le()
             self.stage_y = self._io.read_s4le()
@@ -638,6 +638,9 @@ class Cameca(KaitaiStruct):
             self.colorbar_ticks = self._root.ColorBarTicks(self._io, self, self._root)
             self.img_rotation = self._io.read_f4le()
             self.reserved_2 = self._io.read_bytes(8)
+            if self.version >= 6:
+                self.reserved_v6 = self._io.read_bytes(12)
+
 
         @property
         def array_data_size(self):
@@ -1335,6 +1338,9 @@ class Cameca(KaitaiStruct):
             self.reserved_2 = self._io.read_bytes(12)
             if self.header.version >= 18:
                 self.reserved_v18 = self._io.read_bytes(4)
+
+            if self.header.version >= 19:
+                self.reserved_v19 = self._io.read_bytes(12)
 
             self.dts_extras_type = self._root.DatasetExtrasType(self._io.read_u4le())
             _on = self.dts_extras_type
