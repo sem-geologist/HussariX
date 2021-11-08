@@ -6,6 +6,7 @@ from datetime import datetime
 from PyQt5.QtCore import Qt, QSettings, QDir
 from PyQt5 import QtGui, QtWidgets
 from pyqtgraph.dockarea import Dock, DockArea
+from pyqtgraph.console import Console
 from lib.ui.CamecaQtModels import CamecaWDSTreeModel
 from lib.ui import SpectrumWidgets as sw
 from lib.parsers import cameca
@@ -94,6 +95,12 @@ class HussariX(QtWidgets.QMainWindow):
         self.action_whats_this = QtWidgets.QWhatsThis.createAction(self)
         self.help_m.addAction(self.action_whats_this)
         self.help_m.addAction("About Qt", QtWidgets.qApp.aboutQt)
+        self.action_console = QtWidgets.QAction('python console')
+        self.console = None
+        self.action_console.setCheckable(True)
+        self.action_console.setChecked(False)
+        self.help_m.addAction(self.action_console)
+        self.action_console.toggled.connect(self.show_console)
         self.action_open_wdsDat = QtWidgets.QAction('Open wdsDat')
         self.action_open_wdsDat.setIcon(
             QtGui.QIcon(self.icon_provider.get_icon_path(
@@ -287,8 +294,23 @@ class HussariX(QtWidgets.QMainWindow):
         self.plotting_m.removeAction(dock_widget.menu_action)
         dock_widget.close()
 
+    def show_console(self, state):
+        if state:
+            if self.console is None:
+                self.console = Console.ConsoleWidget(self, namespace={
+                    'hussarix': main_window,
+                    'cameca': cameca})
+                self.console_dw = Dock("Python Console", widget=self.console,
+                                       autoOrientation=False)
+                self.docking_area.addDock(self.console_dw, position='bottom')
+            else:
+                self.console_dw.show()
+        else:
+            self.console_dw.hide()
+
 
 def main():
+    global main_window
     app = QtWidgets.QApplication(sys.argv)
     main_window = HussariX()
     main_window.show()
