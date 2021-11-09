@@ -72,13 +72,15 @@ class WDSPlotItem(SpectrumCurveItem):
             y = self.signal.y_cts
         elif y_mode == 'cpsna':
             y = self.signal.y_cps_per_nA
-        if x.shape[0] > y.shape[0]:
+        if x.shape[0] > y.shape[0]:  # a hack to plot corrupted content
             x = x[:y.shape[0]]
         self.setData(x=x, y=y)
+        self.x_ref = x
+        self.y_ref = y
 
     def remove_from_model(self):
         """actually remove from data container which is checked by model,
-        but model does not need to be informed as the contente of .plot_items
+        but model does not need to be informed as the content of .plot_items
         are checked only during check_box state changes"""
         self.dataset.plot_items.remove(self)
 

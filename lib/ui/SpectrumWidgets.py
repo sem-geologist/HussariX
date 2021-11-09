@@ -1003,105 +1003,7 @@ class PositionMarkers:
         #    self.add_to_canvas()
 
 
-class LinearBackground(InfiniteLine):
-    def __init__(self, plotting_widget, spect_xtal):
-        self.pw = plotting_widget
-        pos_markers = self.pw.pos_markers
-        m_pos = pos_markers.m_line.getXPos()
-        self.pm = pos_markers
-        self.signal_header = spect_xtal
-        if self.pw.canvas.dark_mode:
-            color = 'y'
-        else:
-            color = 'r'
-        super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
-                                                              color=color))
-        self.setZValue(3001)  # over 3000
-        self.bg1_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
-                                                        color=color))
-        self.bg2_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
-                                                        color=color))
-        self.pw.canvas.addItem(self.bg1_avg_curve)
-        self.pw.canvas.addItem(self.bg2_avg_curve)
-        self.bg1_avg_curve.setZValue(3002)
-        self.bg2_avg_curve.setZValue(3002)
-        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
-        self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
-        self.pw.avg_poly_order_spin.valueChanged.connect(
-            self.update_background)
-        self.pw.avg_win_size_spin.valueChanged.connect(
-            self.update_background)
-        self.sm = self.pw.wds_tree_selection_model
-        self.sm.currentChanged.connect(self.update_background)
-        self.update_background()
-
-    def update_background(self):
-        def filter_curve(curve):
-            if (curve.signal_header == self.signal_header) and\
-                    (curve in self.pw.canvas.p1.curves):
-                return True
-            return False
-
-        bg1_pos = self.pm.bg1_line.getXPos()
-        bg2_pos = self.pm.bg2_line.getXPos()
-        lenght = bg1_pos - bg2_pos
-        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
-                                                  Qt.UserRole)
-        if plot_curves is None:
-            return
-        filtered = list(filter(filter_curve, plot_curves))
-        if len(filtered) == 1:
-            curve = filtered[0]
-        else:
-            return
-        data = curve.getData()
-        idx1 = np.abs(data[0] - bg1_pos).argmin()
-        idx2 = np.abs(data[0] - bg2_pos).argmin()
-        avg_window = self.pw.avg_win_size_spin.value()
-        order = self.pw.avg_poly_order_spin.value()
-        if avg_window == 0:
-            x_pos1 = data[0][idx1]
-            y_pos1 = data[1][idx1]
-            y_pos2 = data[1][idx2]
-        else:
-            data_len = len(data[0])
-            i1_min, i1_max = validate_idx_range(data_len, idx1,
-                                                avg_window)
-            i2_min, i2_max = validate_idx_range(data_len, idx2,
-                                                avg_window)
-            xses1 = data[0][i1_min:i1_max+1]
-            xses2 = data[0][i2_min:i2_max+1]
-            ys1 = data[1][i1_min:i1_max+1]
-            ys2 = data[1][i2_min:i2_max+1]
-            poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
-            poly2 = np.polynomial.polynomial.polyfit(xses2, ys2, order)
-            y_pos1 = np.polynomial.polynomial.polyval(bg1_pos, poly1)
-            y_pos2 = np.polynomial.polynomial.polyval(bg2_pos, poly2)
-            self.bg1_avg_curve.setData(
-                xses1,
-                np.polynomial.polynomial.polyval(xses1, poly1))
-            self.bg2_avg_curve.setData(
-                xses2,
-                np.polynomial.polynomial.polyval(xses2, poly2))
-            x_pos1 = bg1_pos
-        h = y_pos1 - y_pos2
-        new_angle = degrees(atan(h/lenght))
-        self.setAngle(new_angle)
-        self.setPos((x_pos1, y_pos1))
-
-    def prepare_to_destroy(self):
-        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
-        self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
-        self.pw.avg_poly_order_spin.valueChanged.disconnect(
-            self.update_background)
-        self.pw.avg_win_size_spin.valueChanged.disconnect(
-            self.update_background)
-        self.pw.canvas.removeItem(self.bg1_avg_curve)
-        self.pw.canvas.removeItem(self.bg2_avg_curve)
-        self.sm.currentChanged.disconnect(self.update_background)
-
-
-class ExponentialBackground(pg.PlotCurveItem):
+class TwoPointBackground(pg.PlotDataItem):
     def __init__(self, plotting_widget, spect_xtal):
         self.pw = plotting_widget
         if self.pw.canvas.dark_mode:
@@ -1112,10 +1014,10 @@ class ExponentialBackground(pg.PlotCurveItem):
         self.setZValue(3001)  # over 3000
         pos_markers = self.pw.pos_markers
         self.pm = pos_markers
-        self.bg1_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
-                                                        color=color))
-        self.bg2_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
-                                                        color=color))
+        self.bg1_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
+                                                       color=color))
+        self.bg2_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
+                                                       color=color))
         self.pw.avg_poly_order_spin.valueChanged.connect(
             self.update_background)
         self.pw.avg_win_size_spin.valueChanged.connect(
@@ -1154,28 +1056,28 @@ class ExponentialBackground(pg.PlotCurveItem):
             curve = filtered[0]
         else:
             return
-        data = curve.getData()
-        idx1 = np.abs(data[0] - bg1_pos).argmin()
-        idx2 = np.abs(data[0] - bg2_pos).argmin()
+        data_x, data_y = curve.x_ref, curve.y_ref
+        idx1 = np.abs(data_x - bg1_pos).argmin()
+        idx2 = np.abs(data_x - bg2_pos).argmin()
         avg_window = self.pw.avg_win_size_spin.value()
         order = self.pw.avg_poly_order_spin.value()
         if avg_window == 0:
-            x_pos1 = data[0][idx1]
-            y_pos1 = data[1][idx1]
-            x_pos2 = data[0][idx2]
-            y_pos2 = data[1][idx2]
+            x_pos1 = data_x[idx1]
+            y_pos1 = data_y[idx1]
+            x_pos2 = data_x[idx2]
+            y_pos2 = data_y[idx2]
             self.bg1_avg_curve.setData()
             self.bg2_avg_curve.setData()
         else:
-            data_len = len(data[0])
+            data_len = len(data_x)
             i1_min, i1_max = validate_idx_range(data_len, idx1,
                                                 avg_window)
             i2_min, i2_max = validate_idx_range(data_len, idx2,
                                                 avg_window)
-            xses1 = data[0][i1_min:i1_max+1]
-            xses2 = data[0][i2_min:i2_max+1]
-            ys1 = data[1][i1_min:i1_max+1]
-            ys2 = data[1][i2_min:i2_max+1]
+            xses1 = data_x[i1_min:i1_max+1]
+            xses2 = data_x[i2_min:i2_max+1]
+            ys1 = data_y[i1_min:i1_max+1]
+            ys2 = data_y[i2_min:i2_max+1]
             poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
             poly2 = np.polynomial.polynomial.polyfit(xses2, ys2, order)
             y_pos1 = np.polynomial.polynomial.polyval(bg1_pos, poly1)
@@ -1189,11 +1091,10 @@ class ExponentialBackground(pg.PlotCurveItem):
             x_pos1 = bg1_pos
             x_pos2 = bg2_pos
 
-        f = log(y_pos1 / y_pos2) / log(x_pos2 / x_pos1)
         x_linespace = np.linspace(min_pos - 0.2 * width,
                                   max_pos + 0.2 * width,
                                   num=512)
-        y = y_pos2 * (x_pos2 / x_linespace) ** f
+        y = self.get_background(x_pos1, x_pos2, y_pos1, y_pos2, x_linespace)
         self.setData(x_linespace, y)
 
     def prepare_to_destroy(self):
@@ -1209,28 +1110,46 @@ class ExponentialBackground(pg.PlotCurveItem):
         self.sm.currentChanged.disconnect(self.update_background)
 
 
-class SloppedBackground(InfiniteLine):
+class LinearBackground(TwoPointBackground):
+    @staticmethod
+    def get_background(x_pos1, x_pos2, y_pos1, y_pos2, x_linespace):
+        m = (y_pos2 - y_pos1) / (x_pos2 - x_pos1)
+        b = y_pos1 - x_pos1 * m
+        return x_linespace * m + b
+
+
+class ExponentialBackground(TwoPointBackground):
+    @staticmethod
+    def get_background(x_pos1, x_pos2, y_pos1, y_pos2, x_linespace):
+        m = (y_pos2 - y_pos1) / (x_pos2 - x_pos1)
+        if m <= 0.0:  # exponential
+            f = log(y_pos1 / y_pos2) / log(x_pos2 / x_pos1)
+            return y_pos2 * (x_pos2 / x_linespace) ** f
+        else:
+            b = y_pos1 - x_pos1 * m
+            return x_linespace * m + b
+
+
+class SloppedBackground(pg.PlotDataItem):
     def __init__(self, plotting_widget, spect_xtal):
         self.pw = plotting_widget
-        pos_markers = self.pw.pos_markers
-        m_pos = pos_markers.m_line.getXPos()
-        self.pm = pos_markers
-        self.signal_header = spect_xtal
         if self.pw.canvas.dark_mode:
             color = 'y'
         else:
             color = 'r'
-        super().__init__(pos=(m_pos, 300), angle=0, pen=mkPen(width=2,
-                                                              color=color))
+        super().__init__(pen=mkPen(width=2, color=color))
         self.setZValue(3001)  # over 3000
-        self.bg1_avg_curve = pg.PlotCurveItem(pen=mkPen(width=3,
-                                                        color=color))
-        self.pw.canvas.addItem(self.bg1_avg_curve)
-        self.bg1_avg_curve.setZValue(3002)
+        pos_markers = self.pw.pos_markers
+        self.pm = pos_markers
+        self.bg1_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
+                                                       color=color))
         self.pw.avg_poly_order_spin.valueChanged.connect(
             self.update_background)
         self.pw.avg_win_size_spin.valueChanged.connect(
             self.update_background)
+        self.pw.canvas.addItem(self.bg1_avg_curve)
+        self.bg1_avg_curve.setZValue(3002)
+        self.signal_header = spect_xtal
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.sm = self.pw.wds_tree_selection_model
@@ -1268,19 +1187,19 @@ class SloppedBackground(InfiniteLine):
             curve = filtered[0]
         else:
             return
-        data = curve.getData()
-        idx = np.abs(data[0] - bg1_pos).argmin()
+        data_x, data_y = curve.x_ref, curve.y_ref
+        idx = np.abs(data_x - bg1_pos).argmin()
         avg_window = self.pw.avg_win_size_spin.value()
         order = self.pw.avg_poly_order_spin.value()
         if avg_window == 0:
-            x_pos = data[0][idx]
-            y_pos = data[1][idx]
+            x_pos = data_x[idx]
+            y_pos = data_y[idx]
         else:
-            data_len = len(data[0])
+            data_len = len(data_x)
             i1_min, i1_max = validate_idx_range(data_len, idx,
                                                 avg_window)
-            xses1 = data[0][i1_min:i1_max+1]
-            ys1 = data[1][i1_min:i1_max+1]
+            xses1 = data_x[i1_min:i1_max+1]
+            ys1 = data_y[i1_min:i1_max+1]
             poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
             y_pos = np.polynomial.polynomial.polyval(bg1_pos, poly1)
             self.bg1_avg_curve.setData(
@@ -1289,9 +1208,15 @@ class SloppedBackground(InfiniteLine):
             x_pos = bg1_pos
         y_pos_main = y_pos * slope
         h = y_pos - y_pos_main
-        new_angle = degrees(atan(h/lenght))
-        self.setAngle(new_angle)
-        self.setPos((x_pos, y_pos))
+        m = h / lenght
+        min_pos = min(bg1_pos,  m_pos)
+        max_pos = max(bg1_pos,  m_pos)
+        width = max_pos - min_pos
+        x_linespace = np.linspace(min_pos - 0.2 * width,
+                                  max_pos + 0.2 * width,
+                                  num=512)
+        b = y_pos - x_pos * m
+        self.setData(x_linespace, x_linespace * m + b)
 
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)

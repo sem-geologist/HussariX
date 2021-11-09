@@ -1,18 +1,21 @@
-from pyqtgraph import PlotCurveItem
+from pyqtgraph import PlotDataItem
 from pyqtgraph import mkColor
 
 
-class SpectrumCurveItem(PlotCurveItem):
+class SpectrumCurveItem(PlotDataItem):
     """Abstract SpectralCurveItem, which need to be imlemented
     for given datastructure representing spectra"""
     def set_spectrum_data(self, x_mode=None, y_mode=None):
-        """This function should do self.setData()"""
+        """This function should do self.setData() and
+           set self.x_ref and self.y_ref"""
         raise NotImplementedError(
             'function set_spectral_data needs to be reimplemented in '
             'subclass of SpectralCurveItem')
         # x = None
         # y = None
         # self.setData(x, y)
+        # self.x_ref = x
+        # self.y_ref = y
 
     def highlight(self):
         self._original_z = self.zValue()
