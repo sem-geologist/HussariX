@@ -5,7 +5,7 @@ Work in progress...
 
 This is going to be universal graphical program for openning and exploring the SEM projects and EPMA files (single spectra from Bruker, mappings, Esprit projects, Cameca Peaksight files) with some datetime tracking functionality.
 
-Dependencies:
+## Dependencies:
 - `PyQt5` - for GUI (currently)
 - `pyqtgraph` (at least 0.11.0rc, not 0.12.2) - for plotting and advanced GUI
 - `numpy` - for everything array,
@@ -25,7 +25,7 @@ WIP. Major redesign (moving from manual python-written experimental parser for C
 Current state of (working) implementations:
 - [x] Cameca WDS scan (wdsDat) loading and plotting. 
 
-### LICENSES:
+## Licenses:
 - the license of this repository is GPL-3
 - licenses of included third part code:
   - the `qpet` is under GPL-3
