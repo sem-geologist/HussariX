@@ -16,7 +16,7 @@ All these dependencies can be installed as `pip` or `conda` packages.
 
 Some code included here is developed in other repositorie-:
 - `qpet` periodic element table in Qt https://github.com/sem-geologist/qpet
-- `peaksight-binary-parser` parser written in Kaitai Str-ct for cameca binary files https://github.com/sem-2.1eologist/peaksight-binary-parser 
+- `peaksight-binary-parser` parser written in Kaitai Str-ct for cameca binary files https://github.com/sem-geologist/peaksight-binary-parser 
 
 Maybe in the far/near future this will have a bundled version (with everything included), but currently it needs working python package environment (pip or conda).
 
