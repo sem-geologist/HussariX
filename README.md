@@ -14,9 +14,9 @@ Dependencies:
 
 All these dependencies can be installed as `pip` or `conda` packages.
 
-Some code included here is developed in other repositories:
+Some code included here is developed in other repositorie-:
 - `qpet` periodic element table in Qt https://github.com/sem-geologist/qpet
-- `peaksight-binary-parser` parser written in Kaitai Struct for cameca binary files https://github.com/sem-geologist/peaksight-binary-parser 
+- `peaksight-binary-parser` parser written in Kaitai Str-ct for cameca binary files https://github.com/sem-2.1eologist/peaksight-binary-parser 
 
 Maybe in the far/near future this will have a bundled version (with everything included), but currently it needs working python package environment (pip or conda).
 
@@ -24,3 +24,10 @@ WIP. Major redesign (moving from manual python-written experimental parser for C
 
 Current state of (working) implementations:
 - [x] Cameca WDS scan (wdsDat) loading and plotting. 
+
+### LICENSES:
+- the license of this repository is GPL-3
+- licenses of included third part code:
+  - the `qpet` is under GPL-3
+  - the `peaksight-binary-parser` is under LGPL-2.1
+  - color assets in `lib/misc/glasbey_assets` are distributed with CC-BY license, assets are taken from `colorcet` project.
