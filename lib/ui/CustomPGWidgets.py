@@ -79,14 +79,14 @@ class CustomAxisItem(pg.AxisItem):
     """
     This Customised AxisItem can be setup with actions,
     which appear in the menu after right click.
+    actions are required to contain special attributes
+    such as action._si_units
+    and action._title -- which will be the text/units to be
+    displayed on the Axis. Menu will show entry using
+    action.text().
     """
     def __init__(self, *args, **kwargs):
-        # menu creation is deferred because it is expensive and often
-        # the user will never see the menu anyway.
         self.menu = None
-
-        self.menu = None
-        # allow to inherit from multiple QObject subclasses.
         pg.AxisItem.__init__(self, *args, **kwargs)
         self.actions = None
 
@@ -105,8 +105,12 @@ class CustomAxisItem(pg.AxisItem):
     # On right-click, raise the context menu
     def mouseClickEvent(self, ev):
         if ev.button() == QtCore.Qt.RightButton:
-            if self.raiseContextMenu(ev):
+            pos = ev.pos()
+            if self.rect().contains(pos):
+                self.raiseContextMenu(ev)
                 ev.accept()
+            else:  # prevent from raising axis menu on vb  with grid enabled
+                ev.ignore()
 
     def raiseContextMenu(self, ev):
         menu = self.getContextMenus()
@@ -130,7 +134,7 @@ class CustomAxisItem(pg.AxisItem):
         return self.menu
 
 
-class selectableMarker:
+class SelectableMarker:
 
     # sigClicked = QtCore.Signal(object)
     # sigHovered = QtCore.Signal()
@@ -178,22 +182,22 @@ class selectableMarker:
 # TODO implement the boundRect and shape for polygon:
 
 
-class selectablePolygon(selectableMarker, QtWidgets.QGraphicsPolygonItem):
+class SelectablePolygon(SelectableMarker, QtWidgets.QGraphicsPolygonItem):
     """requires object for reference and QPolygonF"""
 
     def __init__(self, data, *args):
         QtGui.QGraphicsPolygonItem.__init__(self, *args)
-        selectableMarker.__init__(self, data, *args)
+        SelectableMarker.__init__(self, data, *args)
 
 
-class selectableRectangle(selectableMarker, QtWidgets.QGraphicsRectItem):
+class SelectableRectangle(SelectableMarker, QtWidgets.QGraphicsRectItem):
     """requires object for reference and 4 points of bounding Rectangle:
      (left_top: x, y, width, height)"""
 
     def __init__(self, data, *args):
         self.geometry = QtCore.QRectF(*args)
         QtGui.QGraphicsRectItem.__init__(self, *args)
-        selectableMarker.__init__(self, data, *args)
+        SelectableMarker.__init__(self, data, *args)
 
     def boundingRect(self):
         return self.geometry
@@ -204,14 +208,14 @@ class selectableRectangle(selectableMarker, QtWidgets.QGraphicsRectItem):
         return path
 
 
-class selectableEllipse(selectableMarker, QtWidgets.QGraphicsEllipseItem):
+class SelectableEllipse(SelectableMarker, QtWidgets.QGraphicsEllipseItem):
     """requires object for reference and 4 points of bounding Rectangle:
      (left_top: x, y, width, height)"""
 
     def __init__(self, data, *args):
         self.geometry = QtCore.QRectF(*args)
         QtGui.QGraphicsEllipseItem.__init__(self, *args)
-        selectableMarker.__init__(self, data, *args)
+        SelectableMarker.__init__(self, data, *args)
 
     def boundingRect(self):
         return self.geometry
@@ -222,7 +226,7 @@ class selectableEllipse(selectableMarker, QtWidgets.QGraphicsEllipseItem):
         return path
 
 
-class selectablePoint(selectableMarker, QtWidgets.QGraphicsPathItem):
+class SelectablePoint(SelectableMarker, QtWidgets.QGraphicsPathItem):
     # class selectablePoint(QtGui.QGraphicsPathItem):
     """requires object for reference and path item (the symbol):
      and QtGui.QPainterPath"""
@@ -230,7 +234,7 @@ class selectablePoint(selectableMarker, QtWidgets.QGraphicsPathItem):
     def __init__(self, data, *args):
         self.geometry = args[0]
         QtGui.QGraphicsPathItem.__init__(self, *args)
-        selectableMarker.__init__(self, data, *args)
+        SelectableMarker.__init__(self, data, *args)
 
     def boundingRect(self):
         return self.geometry.boundingRect()
