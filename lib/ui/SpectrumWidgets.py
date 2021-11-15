@@ -1211,9 +1211,12 @@ class SloppedBackground(pg.PlotDataItem):
         m = h / lenght
         min_pos = min(bg1_pos,  m_pos)
         max_pos = max(bg1_pos,  m_pos)
-        width = max_pos - min_pos
-        x_linespace = np.linspace(min_pos - 0.2 * width,
-                                  max_pos + 0.2 * width,
+        if self.pw.canvas.x_axis_mode == "cameca":  # sin_theta space
+            extrusion = 10000
+        else:  # rather keV or  space
+            extrusion = max_pos - min_pos
+        x_linespace = np.linspace(min_pos - extrusion,
+                                  max_pos + extrusion,
                                   num=512)
         b = y_pos - x_pos * m
         self.setData(x_linespace, x_linespace * m + b)
