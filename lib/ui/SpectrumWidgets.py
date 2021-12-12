@@ -38,7 +38,8 @@ from PyQt5.QtWidgets import (QWidget,
                              QSizePolicy,
                              QAbstractScrollArea,
                              QHBoxLayout,
-                             QSpinBox)
+                             QSpinBox,
+                             QSizeGrip)
 
 from .CamecaQtModels import (WDSPlotItem,
                              SpecXTALCombiModel)
@@ -177,7 +178,7 @@ class XtalListView(QListView):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(
             self.set_style_from_menu_entry)
-        self.setMinimumSize(24, 24)
+        self.setMinimumSize(28, 28)
         self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.setWhatsThis("""
         <h4>XTAL-spectrometer combination view.</h4>
@@ -257,6 +258,7 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.preview_edge.setCheckState(Qt.Checked)
         self.orders_interface = QtWidgets.QLineEdit()
         self.orders_interface.setMinimumSize(16, 16)
+        self.orders_interface.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self.layout().addWidget(self.orders_interface, 0, 12, 1, 5)
         self.orders_interface.setToolTip("orders of diffracted lines\n"
                                          "to be previewed")
@@ -266,6 +268,7 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.orders_interface.returnPressed.connect(self.parseOrders)
 
     def parseOrders(self):
+        """curently up to 15 orders (more is not very practical)"""
         orders = set()
         ptext = str(self.orders_interface.text())
         ranges = findall(r"([1-9])-\b([2-9]|1[0-5])\b", ptext)
@@ -291,14 +294,19 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent=parent, **kwargs)
         self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
         self.pet = XRayElementTable(parent=self)
+        self.pet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.label = QtWidgets.QLabel('Element Table')
         self.label.setAlignment(Qt.AlignHCenter)
+        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         if parent is not None:
             self.set_new_title(self.parent().name)
             self.parent().sig_name_had_changed.connect(self.set_new_title)
         self.layout().addWidget(self.label)
         self.layout().addWidget(self.pet)
+        sizegrip = QSizeGrip(self)
+        self.pet.layout().addWidget(sizegrip, 8, 17, 1, 1,
+                                    Qt.AlignBottom | Qt.AlignRight)
         self.layout().setContentsMargins(0, 1, 0, 0)
         self.layout().setSpacing(0)
 
