@@ -65,6 +65,7 @@ with open(conf_path) as fn:
     jsn = fn.read()
 lines = json.loads(jsn)
 
+# TODO remove this
 # dealling with windows-mind-slaves casted greek letters into latin:
 dos_greek = {'a': 'α', 'b': 'β', 'c': 'γ', 'z': 'ζ'}
 
@@ -111,6 +112,7 @@ def menu_linestyle_entry_generator(pen_style=Qt.SolidLine, width=2,
     return menu_entry
 
 
+# TODO Remove this
 def utfize(text):
     """replace the a,b,c latin letters used by retards stuck in
     ms-dos age to greek α, β, γ
@@ -258,7 +260,8 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.preview_edge.setCheckState(Qt.Checked)
         self.orders_interface = QtWidgets.QLineEdit()
         self.orders_interface.setMinimumSize(16, 16)
-        self.orders_interface.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.orders_interface.setSizePolicy(QSizePolicy.Preferred,
+                                            QSizePolicy.Preferred)
         self.layout().addWidget(self.orders_interface, 0, 12, 1, 5)
         self.orders_interface.setToolTip("orders of diffracted lines\n"
                                          "to be previewed")
