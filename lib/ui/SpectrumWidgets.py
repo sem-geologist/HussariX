@@ -221,13 +221,24 @@ class XRayElementTable(qpet.ElementTableGUI):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.preview = QtWidgets.QCheckBox('emission')
+        self.preview = QtWidgets.QCheckBox('diagram lines')
         self.preview.setToolTip('preview emission lines')
         self.preview.setMinimumSize(16, 16)
-        self.preview_edge = QtWidgets.QCheckBox('absorption')
+        self.preview_sat = QtWidgets.QCheckBox('sattelite lines')
+        self.preview_sat.setToolTip("preview sattelite lines")
+        self.preview_sat.setMinimumSize(16, 16)
+        self.preview_rae = QtWidgets.QCheckBox("RAE lines")
+        self.preview_rae.setToolTip("preview Radiative Auger Effect lines")
+        self.preview_rae.setMinimumSize(16, 16)
+        self.preview_edge = QtWidgets.QCheckBox('edges')
         self.preview_edge.setToolTip('preview absorption edges')
         self.preview_edge.setMinimumSize(16, 16)
-        self.siegbahn = QtWidgets.QCheckBox('Siegbahn')
+        self.preview_edge_curve = QtWidgets.QCheckBox('continuum')
+        self.preview_edge_curve.setToolTip("preview absorption curves (NIST)")
+        self.preview_edge_curve.setMinimumSize(16, 16)
+        self.siegbahn = QtWidgets.QPushButton('Siegbahn')
+        self.siegbahn.setCheckable(True)
+        self.siegbahn.setChecked(True)
         self.siegbahn.setToolTip("checked - Siegbahn notation "
                                  "(limited lines)\n"
                                  "unchecked - IUPAC notatation "
@@ -236,39 +247,52 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.hv_value = QtWidgets.QDoubleSpinBox()
         self.hv_value.setMinimumSize(16, 16)
         self.hv_value.setSuffix(" kV")
-        self.hv_value.setToolTip("HV value restricts x axis (max) and\n"
-                                 "approximates the heights of preview "
-                                 "lines as\na function of effectivness "
-                                 "of excitation\n(2.7 rule)")
+        self.hv_value.setToolTip(
+            "HV value restricts x axis (max) in keV range and\n"
+            "approximates the heights of preview lines as\n"
+            "a function of effectivness of excitation\n"
+            "(2.7 rule)")
         self.hv_value.setRange(0.1, 1e4)
         # add those parameters to the groupbox:
-        self.preview_group = QtWidgets.QGroupBox('on hover:')
+        self.g_line_par_group = QtWidgets.QFrame()
+        #self.g_line_par_group.setFrameStyle(QtWidgets.QFrame.StyledPanel | QtWidgets.QFrame.Sunken)
+        self.g_line_par_group.setLayout(QtWidgets.QFormLayout())
+        self.preview_group = QtWidgets.QFrame()
         self.preview_group.setLayout(QtWidgets.QGridLayout())
         self.p_layout = self.preview_group.layout()
-        self.layout().addWidget(self.preview_group, 0, 2, 3, 10)
-        self.p_layout.setMargin(0)
-        self.p_layout.setHorizontalSpacing(0)
-        self.p_layout.setVerticalSpacing(0)
-        self.p_layout.addWidget(self.preview, 0, 0, 1, 1)
-        self.p_layout.addWidget(self.preview_edge, 1, 0, 1, 1)
-        self.p_layout.addWidget(self.siegbahn, 0, 1, 1, 1)
-        self.p_layout.addWidget(self.hv_value, 1, 1, 1, 1)
+        self.g_layout = self.g_line_par_group.layout()
+        self.g_layout.setVerticalSpacing(1)
+        self.g_layout.setContentsMargins(6, 0, 6, 6)
+        self.layout().addWidget(self.g_line_par_group, 0, 2, 3, 10)
+        self.layout().addWidget(self.preview_group, 9, 0, 1, 18)
+        self.p_layout.setContentsMargins(2, 6, 2, 2)
+        self.p_layout.setHorizontalSpacing(1)
+        self.p_layout.setVerticalSpacing(1)
+        self.p_layout.addWidget(QLabel('emission:'), 0, 0, 1, 1)
+        self.p_layout.addWidget(QLabel("Absorption:"), 1, 0, 1, 1)
+        self.p_layout.addWidget(self.preview, 0, 1, 1, 1)
+        self.p_layout.addWidget(self.preview_sat, 0, 2, 1, 1)
+        self.p_layout.addWidget(self.preview_rae, 0, 3, 1, 1)
+        self.p_layout.addWidget(self.preview_edge, 1, 1, 1, 1)
+        self.p_layout.addWidget(self.preview_edge_curve, 1, 2, 1, 1)
         # set the default states:
         self.preview.setCheckState(Qt.Checked)
-        self.siegbahn.setCheckState(Qt.Checked)
         self.hv_value.setValue(15.)
         self.preview_edge.setCheckState(Qt.Checked)
         self.orders_interface = QtWidgets.QLineEdit()
         self.orders_interface.setMinimumSize(16, 16)
         self.orders_interface.setSizePolicy(QSizePolicy.Preferred,
                                             QSizePolicy.Preferred)
-        self.layout().addWidget(self.orders_interface, 0, 12, 1, 5)
+        self.g_layout.addRow("orders", self.orders_interface)
+        self.g_layout.addRow("HV limit", self.hv_value)
+        self.g_layout.addRow("notation", self.siegbahn)
         self.orders_interface.setToolTip("orders of diffracted lines\n"
-                                         "to be previewed")
+                                         "to be shown on the plot")
         self.orders = set([1])
         self.orders_interface.setText('1')
         self.orders_interface.setClearButtonEnabled(True)
         self.orders_interface.returnPressed.connect(self.parseOrders)
+        self.siegbahn.toggled.connect(self.set_notation_btn_text)
 
     def parseOrders(self):
         """curently up to 15 orders (more is not very practical)"""
@@ -291,15 +315,39 @@ class XRayElementTable(qpet.ElementTableGUI):
         orders_str = str(orders).strip('{').strip('}')
         self.orders_interface.setText(orders_str)
 
+    def set_notation_btn_text(self, state):
+        if state:
+            self.siegbahn.setText('Siegbahn')
+        else:
+            self.siegbahn.setText('IUPAC')
+
+
+class DockableXRayElementTable(QtWidgets.QDockWidget):
+    def __init__(self, parent=None, **kwargs):
+        QtWidgets.QDockWidget.__init__(self, parent=parent, **kwargs)
+        self.restricted = False
+        self.pet = XRayElementTable(parent=self)
+        self.pet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setWindowTitle('Element Table')
+        if parent is not None:
+            self.set_new_title(self.parent().name)
+            self.parent().sig_name_had_changed.connect(self.set_new_title)
+        self.setWidget(self.pet)
+
+    def set_new_title(self, new_text):
+        self.setWindowTitle('Element Table of {}'.format(new_text))
+
 
 class FramelessXRayElementTable(QtWidgets.QWidget):
     def __init__(self, parent=None, **kwargs):
         QtWidgets.QWidget.__init__(self, parent=parent, **kwargs)
-        self.setWindowFlags(Qt.Tool | Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        self.restricted = False
         self.pet = XRayElementTable(parent=self)
         self.pet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.label = QtWidgets.QLabel('Element Table')
+        self.label.setFrameStyle(QtWidgets.QFrame.StyledPanel | QtWidgets.QFrame.Sunken)
         self.label.setAlignment(Qt.AlignHCenter)
         self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         if parent is not None:
@@ -308,21 +356,41 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
         self.layout().addWidget(self.label)
         self.layout().addWidget(self.pet)
         sizegrip = QSizeGrip(self)
-        self.pet.layout().addWidget(sizegrip, 8, 17, 1, 1,
+        self.pet.layout().addWidget(sizegrip, 9, 17, 1, 1,
                                     Qt.AlignBottom | Qt.AlignRight)
         self.layout().setContentsMargins(0, 1, 0, 0)
         self.layout().setSpacing(0)
+        parent.widgetFullscreened.connect(self.setEmbeddedMode)
 
     def set_new_title(self, new_text):
         self.label.setText('Element Table of {}'.format(new_text))
 
     def mousePressEvent(self, event):
-        self._mouse_clicked_x_coord = event.x()
-        self._mouse_clicked_y_coord = event.y()
+        self._mouse_clicked_pos = event.pos()
 
     def mouseMoveEvent(self, event):
-        self.move(event.globalX() - self._mouse_clicked_x_coord,
-                  event.globalY() - self._mouse_clicked_y_coord)
+        if self.restricted:
+            gp = self.parent().mapFromGlobal(event.globalPos())
+            lt_pos = gp - self._mouse_clicked_pos
+            x, y = self.x(), self.y()
+            if (lt_pos.x() >= 0) and ((lt_pos.x() + self.width()) <= self.parent().width()):
+                x = lt_pos.x()
+            if (lt_pos.y() >= 0) and ((lt_pos.y() + self.height()) <= self.parent().height()):
+                y = lt_pos.y()
+            self.move(x, y)
+        else:
+            self.move(event.globalPos() - self._mouse_clicked_pos)
+
+    def setEmbeddedMode(self, fullscreen):
+        if fullscreen:
+            self.setWindowFlags(Qt.SubWindow)
+            self.setAutoFillBackground(True)
+            self.restricted = True
+            if not self.parent().rect().contains(self.geometry()):
+                self.move(self.parent().rect().center())
+        else:
+            self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+            self.restricted = False
 
 
 class AutoEditor(QtWidgets.QDialog):
@@ -542,8 +610,8 @@ class PenEditor(QtWidgets.QDialog):
     def return_styles(self):
         font = self.font_btn.font()
         text_color = self.text_color_btn.color()
-        line_pen = pg.mkPen(color=self.line_color_btn.color(),
-                            width=self.line_width_spn.value())
+        line_pen = mkPen(color=self.line_color_btn.color(),
+                         width=self.line_width_spn.value())
         return font, text_color, line_pen
 
 
@@ -591,8 +659,8 @@ class XrayCanvas(pg.PlotWidget):
         if self.dark_mode:
             prev_marker_col = pg.mkColor((255, 200, 255, 180))
             self.prev_edge_text_color = pg.mkColor((200, 200, 200))
-            self.prev_edge_pen = pg.mkPen((200, 200, 200, 200), width=2,
-                                          dash=[0.5, 1.5])
+            self.prev_edge_pen = mkPen((200, 200, 200, 200), width=2,
+                                       dash=[0.5, 1.5])
         else:
             prev_marker_col = pg.mkColor((35, 10, 20, 180))
             self.prev_edge_text_color = pg.mkColor((50, 50, 50))
@@ -689,7 +757,7 @@ class XrayCanvas(pg.PlotWidget):
             colors = darken_lighten(prev_marker_pen.color(), 14,
                                     dark_mode=self.dark_mode)
             width = prev_marker_pen.widthF()
-            self.prev_marker_pen = [pg.mkPen(color, width=width)
+            self.prev_marker_pen = [mkPen(color, width=width)
                                     for color in colors]
 
     def set_xtal(self, family_name, two_D, K, html=None):
@@ -910,12 +978,12 @@ class PositionMarkers:
             color = 'k'
         lower, middle, higher = self.gen_positions()
         self.m_line = InfiniteLine(middle, movable=True,
-                                   pen=pg.mkPen(color, width=3.),
+                                   pen=mkPen(color, width=3.),
                                    name='main',
                                    markers=[('^', 0.99, 6.0)])
         if lower is not None:
             self.bg1_line = InfiniteLine(lower, movable=True,
-                                         pen=pg.mkPen(color, width=1.5),
+                                         pen=mkPen(color, width=1.5),
                                          name='bkgd1',
                                          markers=[('v', 0.01, 6.0)])
             self.bg1_text = pg.InfLineLabel(self.bg1_line, movable=True,
@@ -925,7 +993,7 @@ class PositionMarkers:
 
         if higher is not None:
             self.bg2_line = InfiniteLine(higher, movable=True,
-                                         pen=pg.mkPen(color, width=1.5),
+                                         pen=mkPen(color, width=1.5),
                                          name='bkgd2',
                                          markers=[('v', 0.01, 6.0)])
             self.bg2_text = pg.InfLineLabel(self.bg2_line, movable=True,
@@ -1250,11 +1318,13 @@ class XraySpectraGUI(cw.FullscreenableWidget):
 
     def __init__(self, parent=None, icon_size=None,
                  pet_opacity=None, initial_mode='energy',
-                 name='Plot Widget'):
+                 name='Plot Widget',
+                 pet_frameless=True):
         cw.FullscreenableWidget.__init__(self, parent, icon_size)
         self._name = name
         self.resize(550, 550)
         self._pet_opacity = pet_opacity
+        self._pet_frameless = pet_frameless
         self.pet = None
         self.splitter = QtWidgets.QSplitter(Qt.Vertical)
         self.setCentralWidget(self.splitter)
@@ -1389,19 +1459,13 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self.element_table_button.setDefaultAction(self.action_element_table)
 
     def _setup_pet(self):
-        #self.dock_pet_win = QtWidgets.QWidget(self)
-        #self.dock_pet_win.setSizePolicy(QSizePolicy.Minimum,
-        #                                QSizePolicy.Minimum)
         self.dock_line_win = QtWidgets.QDockWidget('Line selection', self)
-        #self.pet = XRayElementTable(parent=self.dock_pet_win)
-        self.pet_win = FramelessXRayElementTable(parent=self)
+        if self._pet_frameless:
+            self.pet_win = FramelessXRayElementTable(parent=self)
+        else:
+            self.pet_win = DockableXRayElementTable(parent=self)
         self.pet = self.pet_win.pet
         self.lineSelector = LineEnabler(self.dock_line_win)
-        #self.dock_pet_win.setWidget(self.pet)
-        #self.addDockWidget(Qt.RightDockWidgetArea,
-        #                   self.dock_pet_win)
-        #self.dock_pet_win.setAllowedAreas(Qt.NoDockWidgetArea)
-        #self.dock_pet_win.setFloating(True)
         self.dock_line_win.setWidget(self.lineSelector)
         self.addDockWidget(Qt.RightDockWidgetArea,
                            self.dock_line_win)

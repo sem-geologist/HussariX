@@ -171,9 +171,6 @@ class ElementLineTreeModel(QtCore.QAbstractItemModel):
         elif (index.column() == 1) and (role == QtCore.Qt.DisplayRole):
             if node.childCount() == 0:
                 return xu.xray_energy(node._parent._parent.name, node.name)
-        elif (index.column() == 2) and (role == QtCore.Qt.DisplayRole):
-            if node.childCount() == 0:
-                return xu.xray_weight(node._parent._parent.name, node.name)
     
     def setData(self, index, value, role):
         if not index.isValid():
@@ -193,8 +190,6 @@ class ElementLineTreeModel(QtCore.QAbstractItemModel):
                 return "Element lines"
             elif section == 1:
                 return "energy [kV]"
-            elif section == 2:
-                return "rel. intens."
 
     def flags(self, index):
         return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsUserCheckable
@@ -205,7 +200,7 @@ class ElementLineTreeModel(QtCore.QAbstractItemModel):
         if parentNode == self._rootNode:
             return QtCore.QModelIndex()
         return self.createIndex(parentNode.row(), 0, parentNode)
-        
+
     def index(self, row, column, parent):
         parentNode = self.getNode(parent)
         childItem = parentNode.child(row)
@@ -219,6 +214,6 @@ class ElementLineTreeModel(QtCore.QAbstractItemModel):
             node = index.internalPointer()
             if node:
                 return node
-            
+
         return self._rootNode
 

@@ -19,7 +19,7 @@
 
 from PyQt5.QtWidgets import (QMainWindow, QToolBar, QAction,
                              QBoxLayout, QSplitter, QGridLayout,
-                             QToolButton, QTreeView)
+                             QToolButton, QTreeView, qApp)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtCore import pyqtSignal as Signal
@@ -28,7 +28,7 @@ from ..icons.icons import IconProvider
 
 
 class FullscreenableWidget(QMainWindow):
-    attachedToParentWidget = Signal(bool)
+    widgetFullscreened = Signal(bool)
 
     def __init__(self, parent=None, icon_size=None):
         QMainWindow.__init__(self, parent)
@@ -60,6 +60,11 @@ class FullscreenableWidget(QMainWindow):
     def go_fullscreen(self):
         self.windowed_flags = self.windowFlags()
         self.windowed_geometry = self.geometry()
+        cur_scr = self.screen()  # to check which screen
+        s_count = len(qApp.screens())
+        for i in range(s_count):
+            if qApp.screens()[i] == cur_scr:
+                screen = qApp.screens()[i]
         if self.parent() is not None:
             self.windowed_parent = self.parent()
             self.win_parent_layout = self.windowed_parent.layout()
@@ -70,11 +75,12 @@ class FullscreenableWidget(QMainWindow):
                         self.index_in_layout)
             self.win_parent_layout.removeWidget(self)
         self.setParent(None)
-        self.attachedToParentWidget.emit(False)
-        self.showFullScreen()
         self.toolbar.insertAction(self.action_fullscreen,
                                   self.action_windowed)
         self.toolbar.removeAction(self.action_fullscreen)
+        self.move(screen.geometry().x(), screen.geometry().y())
+        self.showFullScreen()
+        self.widgetFullscreened.emit(True)
 
     def go_windowed(self):
         self.showNormal()
@@ -84,12 +90,12 @@ class FullscreenableWidget(QMainWindow):
             elif isinstance(self.win_parent_layout, QGridLayout):
                 self.win_parent_layout.addWidget(self, *self.position_in_grid)
             self.setParent(self.windowed_parent)
-            self.attachedToParentWidget.emit(True)
             self.windowed_parent = None
         self.setGeometry(self.windowed_geometry)
         self.toolbar.insertAction(self.action_windowed,
                                   self.action_fullscreen)
         self.toolbar.removeAction(self.action_windowed)
+        self.widgetFullscreened.emit(False)
 
 
 class LeavableTreeView(QTreeView):
