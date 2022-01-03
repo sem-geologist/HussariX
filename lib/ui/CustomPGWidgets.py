@@ -1,11 +1,98 @@
-
+"""Custom PyqtGraph widgets and functions"""
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtGui import (QPixmap, QPen, QColor, QPainter, QPainterPath)
+from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtWidgets import QWidgetAction, QLabel, QMenu, QColorDialog
+from PyQt5.QtCore import pyqtSignal as Signal
 
 import pyqtgraph as pg
 
 default_pen = pg.mkPen((255, 255, 75), width=2)
 default_hover_pen = pg.mkPen((255, 50, 50), width=2)
 default_select_pen = pg.mkPen((255, 255, 255), width=2)
+
+
+def menu_linestyle_entry_generator(pen_style=Qt.SolidLine, width=2,
+                                   parent=None, color=QColor(246, 116, 0)):
+    """return QWidgetAction with QLabel widget as main widget where
+    it is displaying sample line painted with provided pen_style and width"""
+    menu_entry = QWidgetAction(parent)
+    label = QLabel(parent)
+    pix = QPixmap(74, 24)
+    pix.fill(Qt.transparent)
+    painter = QPainter(pix)
+    pen = QPen(color, width,
+               pen_style)
+    painter.setPen(pen)
+    painter.drawLine(5, 12, 75, 12)  # ForegroundNeutral
+    painter.end()
+    label.setPixmap(pix)
+    menu_entry.setDefaultWidget(label)
+    menu_entry.pen = pen  # this attribute will hold the style
+    return menu_entry
+
+
+class LineStyleButton(pg.PathButton):
+    penChanged = Signal(QPen)
+
+    def __init__(self, *args, **kwargs):
+        pg.PathButton.__init__(self, **kwargs)
+        self.pressed.connect(self.change_pen_color)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.set_pen_from_menu)
+        self.update_path()
+
+    def resizeEvent(self, event):
+        pg.PathButton.resizeEvent(self, event)
+        self.update_path()
+
+    def update_path(self):
+        path = QPainterPath(QPointF(0, 0))
+        path.lineTo(self.width() - 2, self.height() - 2)
+        self.setPath(path)
+
+    def setPen(self, *args, **kwargs):
+        self.pen = pg.mkPen(*args, **kwargs)
+        self.penChanged.emit(self.pen)
+
+    def change_pen_color(self):
+        init_color = self.pen.color()
+        new_color = QColorDialog.getColor(init_color)
+        if new_color.isValid():
+            self.pen.setColor(new_color)
+            self.setPen(self.pen)
+            self.update()
+
+    def set_pen_from_menu(self, pos):
+        pos_glob = self.mapToGlobal(pos)
+        color = self.pen.color()
+        style = self.pen.style()
+        width = self.pen.width()
+        line_pattern_menu = QMenu("line pattern")
+        for i in [Qt.SolidLine, Qt.DotLine, Qt.DashLine, Qt.DashDotLine,
+                  Qt.DashDotDotLine]:
+            action = menu_linestyle_entry_generator(width=width,
+                                                    pen_style=i,
+                                                    parent=line_pattern_menu,
+                                                    color=color)
+            line_pattern_menu.addAction(action)
+
+            line_pattern_menu.addSeparator()
+        line_width_menu = QMenu("line width")
+        for j in [1, 2, 3, 4, 5]:
+            action = menu_linestyle_entry_generator(width=j,
+                                                    pen_style=style,
+                                                    parent=line_width_menu,
+                                                    color=color)
+            line_width_menu.addAction(action)
+            line_width_menu.addSeparator()
+        line_style_menu = QMenu()
+        line_style_menu.addMenu(line_pattern_menu)
+        line_style_menu.addMenu(line_width_menu)
+        selected_style = line_style_menu.exec(pos_glob)
+        if selected_style is not None:
+            selected_style.pen.setCosmetic(True)
+            self.setPen(selected_style.pen)
 
 
 class CustomScaleBar(pg.ScaleBar):

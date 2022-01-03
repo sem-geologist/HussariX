@@ -22,6 +22,8 @@ from math import log, e, sqrt
 #import periodictable as pt
 #import scipy.constants as sc
 from . elements import elements
+from . sat_lines import sattelite_lines
+from . rae_lines import lines as rae_lines
 
 # atom_num = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
 #             7: 'N', 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg',
@@ -63,7 +65,7 @@ siegbahn_names = list(iupac_siegbahn.values())
 # it would be crazy to depend on whole scipy just for a few constants
 # here the hardcoded value useful for energy <-> wavelenght/sin(theta)
 # transitions""
-x_ray_const = 1239841.9843320027
+X_RAY_CONST = 1239841.9843320027
 # cached_xdb = {}
 # xdb = XrayDB()
 
@@ -89,7 +91,7 @@ def get_excited_shells(element, kV):
 
 
 def energy_to_sin_theta(energy, two_D, K, order=1):
-    """return sinus theta for given energy and 2D parameter
+    """return sinus theta for given energy (eV) and 2D parameter
     of diffracting crystal
     args:
     energy - energy in keV of the line
@@ -97,24 +99,24 @@ def energy_to_sin_theta(energy, two_D, K, order=1):
     order - order of diffraction (default=1)
     """
     energy = energy / 1000
-    return order * x_ray_const / (two_D * energy * (1 - K / (order**2)))
+    return order * X_RAY_CONST / (two_D * energy * (1 - K / (order**2)))
 
 
 def sin_theta_to_energy(sin_theta, two_D, K, order=1):
-    "return energy for given sin_theta"
-    st = order * x_ray_const / (two_D * sin_theta * (1 - K / (order**2)))
+    "return energy (eV) for given cameca sin_theta*100k"
+    st = order * X_RAY_CONST / (two_D * sin_theta * (1 - K / (order**2)))
     return st * 1000
 
 
 def calc_scale_to_sin_theta(two_D, K, order=1):
     """ calc and return the quotient for recalculating energy
-    axis to sin_theta axis or reverse:
+    axis to sin_theta (*100k; cameca units) axis or reverse:
     calculated quotient is intedend to be further used like:
 
     > sin_theta_axis = quotient / np.array([energies])
     > energy_axis = quotient / np.array([sin_theta])
     """
-    return order * x_ray_const / (two_D * (1 - K / (order**2)))
+    return order * X_RAY_CONST / (two_D * (1 - K / (order**2)))
 
 
 def overvoltage(energy, hv):
@@ -128,7 +130,63 @@ def overvoltage(energy, hv):
     return log(hv / (energy)) / (hv / energy) * e
 
 
-def xray_lines_for_plot(element, hv=15, siegbahn=True):
+def rae_line_for_keV(element, hv=15):
+    """its only single line per element"""
+    shells = get_excited_shells(element, hv * 1000)
+    if 'K' not in shells:  # as those are only KLL lines
+        return None
+    rae_energy = rae_lines[element]
+    rael = ["{} KLL".format(element), rae_energy / 1000, 0.03]
+    return rael
+
+
+def rae_line_for_sin_θ_100k(element, two_D, K, xmin=17000, xmax=85000,
+                            order=1, hv=15, filter_orders=True):
+    if order < 4:
+        quotient = calc_scale_to_sin_theta(two_D=two_D, K=K, order=order)
+        rael = rae_line_for_keV(element, hv=hv)
+        rael[1] = quotient / rael[1]
+        if xmin < rael[1] < xmax:
+            rael[2] = rael[2] * 0.95 / sqrt(order)
+            return rael
+    return None
+
+
+def sat_lines_for_keV(element, hv=15):
+    shells = get_excited_shells(element, hv * 1000)
+    shells = [shell[0] for shell in shells]  # take only family
+    sat_lines = sattelite_lines[element]
+    lines = [[line['full_html_str'],
+              line['energy'] / 1000,
+              line["weight"],
+              line['family']]
+             for line in sat_lines]
+    lines = [x for x in lines if x[3] in shells]
+    return lines
+
+
+def sat_lines_for_sin_θ_100k(element, two_D, K, xmin=17000, xmax=85000,
+                             order=1, hv=15, filter_orders=True):
+    quotient = calc_scale_to_sin_theta(two_D=two_D, K=K, order=order)
+    min_energy = quotient * 1000 / xmax
+    max_energy = quotient * 1000 / xmin
+    sat_lines = sattelite_lines[element]
+    shells = get_excited_shells(element, hv * 1000)
+    shells = [shell[0] for shell in shells]  # take only family
+    lines = [[line['full_html_str'],
+              quotient * 1000 / line['energy'],
+              line["weight"] * 0.95 / sqrt(order),
+              line['family']]
+             for line in sat_lines
+             if ((min_energy < line['energy'] < max_energy)
+             and line['family'] in shells)]
+    if filter_orders and order > 1:
+        cutoff_limit = 0.04 + 0.004 * sqrt(order)
+        lines = [x for x in lines if x[2] > cutoff_limit]
+    return lines
+
+
+def xray_lines_for_keV(element, hv=15):
     """
     return list of lists with x-ray line, energy and weight
     for given element at known acceleration voltage
@@ -150,30 +208,27 @@ def xray_lines_for_plot(element, hv=15, siegbahn=True):
              for i in x_lines]
     shells = get_excited_shells(element, hv * 1000)
     lines = [x for x in lines if (x[0].split('-')[0] in shells)]
-    if siegbahn:
-        lines = [[iupac_siegbahn[x[0]], x[1], x[2]]
-                 for x in lines if x[0] in iupac_siegbahn]
     return lines
 
 
-def xray_shells_for_plot(element):
+def xray_shells_for_keV(element):
     shells = get_edges(element)
     lines = [[i, shells[i] / 1000] for i in shells]
     return lines
 
 
-def xray_shells_for_plot_wds(element, two_D, K):
+def xray_shells_for_sin_θ_100k(element, two_D, K, order=1):
     shells = get_edges(element)
-    quotient = calc_scale_to_sin_theta(two_D=two_D, K=K, order=1)
+    quotient = calc_scale_to_sin_theta(two_D=two_D, K=K, order=order)
     lines = [[i, quotient * 1000 / shells[i]] for i in shells]
     return lines
 
 
-def xray_lines_for_plot_wds(element, two_D, K, xmin=17000, xmax=85000,
-                            order=1, hv=15, siegbahn=True, filter_orders=True):
+def xray_lines_for_sin_θ_100k(element, two_D, K, xmin=17000, xmax=85000,
+                              order=1, hv=15, filter_orders=True):
     """
-    return list of lists with x-ray line, energy and weight
-    for given element at known acceleration voltage
+    return list of lists with x-ray line, sin(theta)*10^5 (cameca wds units)
+    and weight for given element at known acceleration voltage
     ---------
     Atributes:
     element -- abbrevation of element
@@ -194,37 +249,7 @@ def xray_lines_for_plot_wds(element, two_D, K, xmin=17000, xmax=85000,
              for i in x_lines
              if (min_energy < x_lines[i]['energy'] < max_energy)
              and (i.split('-')[0] in shells)]
-    if filter_orders and order > 1:
-        cutoff_limit = 0.05 + 0.004 * sqrt(order)
+    if filter_orders and order > 2:
+        cutoff_limit = 0.04 + 0.004 * sqrt(order)
         lines = [x for x in lines if x[2] > cutoff_limit]
-    if siegbahn:
-        lines = [[iupac_siegbahn[x[0]], x[1], x[2]]
-                 for x in lines if x[0] in iupac_siegbahn]
     return lines
-
-
-def energy_to_lines(energy, tolerance=0.025):
-    """return lines in the range of given tolerance of xray energy"""
-    # TODO: rewrite it in SQL, this is where SQL will shine!!!
-    sim_lines = {}
-    for atom in xdb.atomic_symbols:
-        x_l = get_element_lines_cached(atom)
-        for line in x_l:
-            if -tolerance < (x_l[line][0] - energy / 1000) < tolerance:
-                sim_lines[atom] = line
-    return sim_lines
-
-
-def xray_energy(elem, ln):
-    """return the energy by giving element (abbrevation) and line"""
-    return get_element_lines_cached(elem)[ln][0]
-
-
-def xray_weight(elem, ln):
-    """return xray line weight from given abbrevation and line"""
-    return get_element_lines_cached(elem)[ln][1]
-
-
-#def to_oxide_mass(elem, compound, mass):
-#    comp = pt.formula(compound)
-#    return mass / #comp.mass_fraction[pt.elements.symbol(elem)]

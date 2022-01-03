@@ -25,30 +25,37 @@ from PyQt5 import QtWidgets
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph import InfiniteLine, mkPen
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QSize, QSignalBlocker
 from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import pyqtSlot as Slot
-from PyQt5.QtGui import QPen, QPixmap, QColor, QPainter, QIcon, QFont
+from PyQt5.QtGui import QIcon, QFont, QColor, QIntValidator, QPalette
 from PyQt5.QtWidgets import (QWidget,
                              QAction,
-                             QWidgetAction,
+                             QCheckBox,
+                             QComboBox,
                              QLabel,
                              QMenu,
                              QListView,
                              QSizePolicy,
                              QAbstractScrollArea,
                              QHBoxLayout,
+                             QGridLayout,
                              QSpinBox,
-                             QSizeGrip)
+                             QSizeGrip,
+                             QSpacerItem,
+                             QTabWidget)
 
 from .CamecaQtModels import (WDSPlotItem,
                              SpecXTALCombiModel)
 from ..misc import xray_util as xu
 from .node import ElementLineTreeModel, SimpleDictNode
-
+from ..icons.icons import IconProvider
 from .qpet import element_table as qpet
 from . import CustomWidgets as cw
-from .CustomPGWidgets import CustomViewBox, CustomAxisItem
+from .CustomPGWidgets import (CustomViewBox,
+                              CustomAxisItem,
+                              LineStyleButton,
+                              menu_linestyle_entry_generator)
 from .spectrum_curve import SpectrumCurveItem
 
 import warnings
@@ -56,11 +63,13 @@ warnings.simplefilter('ignore', np.RankWarning)
 # here we ignore polynomial  warnings, as we are not going to use
 # polynomial outside initial data bounds
 
+GAS_IN_COUNTER = ["Ar", "C", "H"]
+
 main_path = path.join(path.dirname(__file__), path.pardir)
 conf_path = path.join(main_path,
                       'configurations',
                       'lines.json')
-
+#TODO coliding name, and oversimpilified json
 with open(conf_path) as fn:
     jsn = fn.read()
 lines = json.loads(jsn)
@@ -79,6 +88,79 @@ def color_to_css(qcolor):
     return css_color
 
 
+def desaturate(init_color, times, desat=True, lighten_darken="darken"):
+    """return the list of recursively desaturated QColors
+    desaturated and brightened/darkened (optionanly) at HSV space"""
+    hsv = (init_color.hue(), init_color.hsvSaturation(),
+           init_color.value(), init_color.alpha())
+    if lighten_darken == "lighten":
+        value_step = (hsv[2] - 255) // (times + 1)
+    elif lighten_darken == "darken":
+        value_step = hsv[2] // (times + 1)
+    else:
+        value_step = 0
+    if desat:
+        desat_step = hsv[1] // (times + 1)
+    else:
+        desat_step = 0
+    color_list = [QColor.fromHsv(hsv[0],
+                                 hsv[1] - desat_step * i,
+                                 hsv[2] - value_step * i,
+                                 hsv[3])
+                  for i in range(times)]
+    return color_list
+
+
+def make_color_html_string(colors):
+    """makes tooltip string with colors from color list"""
+    colors = (i.name() for i in colors[:9])
+    string = """
+<table>
+  <tr>
+    <td>Color</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td style='background-color:{}; width:30px'></td>
+    <td >1<sup>st</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >2<sup>nd</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >3<sup>rd</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >4<sup>th</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >5<sup>th</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >6<sup>th</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >7<sup>th</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >8<sup>th</sup> order</td>
+  </tr>
+  <tr>
+    <td style='background-color:{}'></td>
+    <td >9<sup>th</sup> order</td>
+  </tr>
+</table>
+    """.format(*colors)
+    return string
+
+
 def darken_lighten(color, times, color_list=None, dark_mode=False):
     """return the list of recursively darkened/lighten QtColors
     darkening or lightening is chosen depending from dark_mode/used theme"""
@@ -92,26 +174,6 @@ def darken_lighten(color, times, color_list=None, dark_mode=False):
     return color_list
 
 
-def menu_linestyle_entry_generator(pen_style=Qt.SolidLine, width=2,
-                                   parent=None):
-    """return QWidgetAction with QLabel widget as main widget where
-    it is displaying sample line painted with provided pen_style and width"""
-    menu_entry = QWidgetAction(parent)
-    label = QLabel(parent)
-    pix = QPixmap(74, 24)
-    pix.fill(Qt.transparent)
-    painter = QPainter(pix)
-    pen = QPen(QColor(246, 116, 0), width,
-               pen_style)
-    painter.setPen(pen)
-    painter.drawLine(5, 12, 75, 12)  # ForegroundNeutral
-    painter.end()
-    label.setPixmap(pix)
-    menu_entry.setDefaultWidget(label)
-    menu_entry.pen = pen  # this attribute will hold the style
-    return menu_entry
-
-
 # TODO Remove this
 def utfize(text):
     """replace the a,b,c latin letters used by retards stuck in
@@ -122,13 +184,18 @@ def utfize(text):
 # pg.setConfigOptions(background=pg.mkColor(0, 43, 54))
 
 
-def format_line(text, order=1):
+def format_line_annotation(text, siegbahn=False):
     """wrap x-ray line plain text notation with html formating"""
-    if text in xu.siegbahn_names:
+    if siegbahn and (text in xu.iupac_siegbahn):
+        text = xu.iupac_siegbahn[text]
         string = '{0}<i>{1}</i><sub>{2}</sub>'.format(text[0], text[1],
                                                       text[2:])
     else:
         string = sub(r'([1-7]+)', r'<sub>\1</sub>', text)
+    return string
+
+
+def string_with_order(string, order):
     if order == 2:
         string += '<sup>2<sup>nd</sup></sup>'
     elif order == 3:
@@ -218,24 +285,16 @@ class XtalListView(QListView):
 
 class XRayElementTable(qpet.ElementTableGUI):
     ordersChanged = Signal()
+    fontStyleChanged = Signal(QFont)
+    fontColorChanged = Signal(QColor)
+    annotAnchorChanged = Signal(int)
+    # anchor: 0 - left, 1 - left-bottom, 2 - bottom
+    #         3 - botom-right, 4 - right
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.preview = QtWidgets.QCheckBox('diagram lines')
-        self.preview.setToolTip('preview emission lines')
-        self.preview.setMinimumSize(16, 16)
-        self.preview_sat = QtWidgets.QCheckBox('sattelite lines')
-        self.preview_sat.setToolTip("preview sattelite lines")
-        self.preview_sat.setMinimumSize(16, 16)
-        self.preview_rae = QtWidgets.QCheckBox("RAE lines")
-        self.preview_rae.setToolTip("preview Radiative Auger Effect lines")
-        self.preview_rae.setMinimumSize(16, 16)
-        self.preview_edge = QtWidgets.QCheckBox('edges')
-        self.preview_edge.setToolTip('preview absorption edges')
-        self.preview_edge.setMinimumSize(16, 16)
-        self.preview_edge_curve = QtWidgets.QCheckBox('continuum')
-        self.preview_edge_curve.setToolTip("preview absorption curves (NIST)")
-        self.preview_edge_curve.setMinimumSize(16, 16)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.icon_provider = IconProvider(self)
         self.siegbahn = QtWidgets.QPushButton('Siegbahn')
         self.siegbahn.setCheckable(True)
         self.siegbahn.setChecked(True)
@@ -255,28 +314,14 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.hv_value.setRange(0.1, 1e4)
         # add those parameters to the groupbox:
         self.g_line_par_group = QtWidgets.QFrame()
-        #self.g_line_par_group.setFrameStyle(QtWidgets.QFrame.StyledPanel | QtWidgets.QFrame.Sunken)
         self.g_line_par_group.setLayout(QtWidgets.QFormLayout())
-        self.preview_group = QtWidgets.QFrame()
-        self.preview_group.setLayout(QtWidgets.QGridLayout())
-        self.p_layout = self.preview_group.layout()
         self.g_layout = self.g_line_par_group.layout()
         self.g_layout.setVerticalSpacing(1)
         self.g_layout.setContentsMargins(6, 0, 6, 6)
         self.layout().addWidget(self.g_line_par_group, 0, 2, 3, 10)
-        self.layout().addWidget(self.preview_group, 9, 0, 1, 18)
-        self.p_layout.setContentsMargins(2, 6, 2, 2)
-        self.p_layout.setHorizontalSpacing(1)
-        self.p_layout.setVerticalSpacing(1)
-        self.p_layout.addWidget(QLabel('emission:'), 0, 0, 1, 1)
-        self.p_layout.addWidget(QLabel("Absorption:"), 1, 0, 1, 1)
-        self.p_layout.addWidget(self.preview, 0, 1, 1, 1)
-        self.p_layout.addWidget(self.preview_sat, 0, 2, 1, 1)
-        self.p_layout.addWidget(self.preview_rae, 0, 3, 1, 1)
-        self.p_layout.addWidget(self.preview_edge, 1, 1, 1, 1)
-        self.p_layout.addWidget(self.preview_edge_curve, 1, 2, 1, 1)
+        self._setup_hidden_settings()
         # set the default states:
-        self.preview.setCheckState(Qt.Checked)
+        self.preview_main_emission.setChecked(True)
         self.hv_value.setValue(15.)
         self.preview_edge.setCheckState(Qt.Checked)
         self.orders_interface = QtWidgets.QLineEdit()
@@ -285,7 +330,6 @@ class XRayElementTable(qpet.ElementTableGUI):
                                             QSizePolicy.Preferred)
         self.g_layout.addRow("orders", self.orders_interface)
         self.g_layout.addRow("HV limit", self.hv_value)
-        self.g_layout.addRow("notation", self.siegbahn)
         self.orders_interface.setToolTip("orders of diffracted lines\n"
                                          "to be shown on the plot")
         self.orders = set([1])
@@ -293,6 +337,300 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.orders_interface.setClearButtonEnabled(True)
         self.orders_interface.returnPressed.connect(self.parseOrders)
         self.siegbahn.toggled.connect(self.set_notation_btn_text)
+        self.preview_tab_settings.setVisible(False)
+        icon = QIcon(self.icon_provider.get_icon_path(
+                     'line_preview_settings.svg'))
+        self.settings_button = QtWidgets.QPushButton(self)
+        self.settings_button.setIcon(icon)
+        self.settings_button.setCheckable(True)
+        self.settings_button.toggled.connect(
+            self.preview_tab_settings.setVisible)
+        prev_shortcut_toggles = QtWidgets.QWidget()
+        prev_shortcut_toggles.setLayout(QHBoxLayout())
+        pst_l = prev_shortcut_toggles.layout()
+        pst_l.setContentsMargins(0, 0, 0, 0)
+        emi_icon = QIcon(self.icon_provider.get_icon_path('emission.svg'))
+        self.all_emission_preview = QtWidgets.QCheckBox('')
+        self.all_emission_preview.setToolTip(
+            "Show Emission lines\n"
+            "(for customisation look at settings\n"
+            "at right)")
+        self.all_emission_preview.setChecked(True)
+        self.all_emission_preview.setMinimumSize(QSize(16, 16))
+        self.all_emission_preview.setIcon(emi_icon)
+        pst_l.addWidget(self.all_emission_preview)
+        abs_icon = QIcon(self.icon_provider.get_icon_path("absorption.svg"))
+        self.all_absorption_preview = QtWidgets.QCheckBox('')
+        self.all_absorption_preview.setMinimumSize(QSize(16, 16))
+        self.all_absorption_preview.setToolTip("Show Absorptions")
+        self.all_absorption_preview.setChecked(True)
+        self.all_absorption_preview.setIcon(abs_icon)
+        pst_l.addWidget(self.all_absorption_preview)
+        self.g_layout.addRow("on hover:", prev_shortcut_toggles)
+        self.settings_button.toggled.connect(
+            self.move_settings_but)
+        self.settings_button.show()
+        self.layout().addWidget(self.settings_button, 0, 18, 9, 1)
+        self.settings_button.setMinimumSize(QSize(16, 16))
+        self.settings_button.setMaximumHeight(1000)
+        self.settings_button.setSizePolicy(QSizePolicy.Preferred,
+                                           QSizePolicy.Expanding)
+        self.layout().addWidget(self.preview_tab_settings, 0, 18, 9, 1)
+        self.preview_tab_settings.setSizePolicy(QSizePolicy.Preferred,
+                                                QSizePolicy.Preferred)
+        self.preview_tab_settings.setMaximumWidth(160)
+        self.settings_button.setToolTip("Show/hide preview-on-hover settings")
+        self.prev_check_boxes = [self.preview_main_emission,
+                                 self.preview_sat,
+                                 self.preview_rae]
+        self._temp_prev_states = [a.isChecked()
+                                  for a in self.prev_check_boxes]
+        self._temp_abs_states = [self.preview_edge.isChecked(),
+                                 self.preview_edge_curve.isChecked()]
+        self.all_emission_preview.toggled.connect(
+            self.gatekeep_emission_preview)
+        self.preview_main_emission.toggled.connect(
+            self.keep_incheck_preview_gatekeeper)
+        self.preview_sat.toggled.connect(
+            self.keep_incheck_preview_gatekeeper)
+        self.preview_rae.toggled.connect(
+            self.keep_incheck_preview_gatekeeper)
+        self.preview_edge.toggled.connect(
+            self.keep_incheck_abs_gatekeeper)
+        self.all_absorption_preview.toggled.connect(
+            self.gatekeep_absorption_preview)
+
+    def keep_incheck_preview_gatekeeper(self, box_checked):
+        if box_checked:
+            if self.all_emission_preview.isChecked():
+                return
+            else:
+                self.all_emission_preview.blockSignals(True)
+                self.all_emission_preview.setChecked(True)
+                self.all_emission_preview.blockSignals(False)
+        else:
+            if not self.all_emission_preview.isChecked():
+                return
+            if any([a.isChecked() for a in self.prev_check_boxes]):
+                return
+            else:
+                self.all_emission_preview.setChecked(False)
+
+    def gatekeep_emission_preview(self, permit):
+        if permit:
+            if not any(self._temp_prev_states):
+                self.preview_main_emission.setChecked(True)
+            else:
+                for i, check_box in enumerate(self.prev_check_boxes):
+                    check_box.setChecked(self._temp_prev_states[i])
+        else:
+            self._temp_prev_states = [a.isChecked()
+                                      for a in self.prev_check_boxes]
+            for i in self.prev_check_boxes:
+                i.setChecked(False)
+
+    def keep_incheck_abs_gatekeeper(self, box_checked):
+        self.all_absorption_preview.blockSignals(True)
+        self.all_absorption_preview.setChecked(box_checked)
+        self.all_absorption_preview.blockSignals(False)
+
+    def gatekeep_absorption_preview(self, permit):
+        self.preview_edge.setChecked(permit)
+
+    def move_settings_but(self, state):
+        if state:
+            self.preview_tab_settings.setCornerWidget(self.settings_button)
+            self.settings_button.show()
+        else:
+            self.layout().addWidget(self.settings_button, 0, 18, 8, 1)
+
+    def _make_angle_spin_box(self, init_val):
+        angle_box = QtWidgets.QSpinBox()
+        angle_box.setValue(init_val)
+        angle_box.setMaximum(90)
+        angle_box.setMinimum(-90)
+        angle_box.setSingleStep(15)
+        angle_box.setPrefix("annot. ∡ ")
+        angle_box.setSuffix("°")
+        angle_box.setMinimumHeight(16)
+        return angle_box
+
+    def _setup_hidden_settings(self):
+        self.preview_main_emission = QCheckBox("diagram lines")
+        self.preview_main_emission.setToolTip(
+            'preview-on-hover emission lines')
+        self.preview_sat = QCheckBox('satelite lines')
+        self.preview_sat.setToolTip("preview on hover sattelite lines")
+        self.preview_sat.setMinimumSize(16, 16)
+        self.preview_rae = QCheckBox("RAE lines")
+        self.preview_rae.setToolTip("preview Radiative Auger Effect lines")
+        self.preview_rae.setMinimumSize(16, 16)
+        self.preview_edge = QCheckBox('edges')
+        self.preview_edge.setToolTip('preview absorption edges')
+        self.preview_edge.setMinimumSize(16, 16)
+        self.preview_edge_curve = QCheckBox('spectrum')
+        self.preview_edge_curve.setDisabled(True)
+        #TODO hard disabled until curve data will be included
+        self.preview_edge_curve.setToolTip("preview absorption curves (NIST)")
+        self.preview_edge_curve.setMinimumSize(16, 16)
+        self.preview_tab_settings = QTabWidget(self)
+        self.emi_setup_group = QWidget()
+        self.emi_setup_group.setLayout(QGridLayout())
+        self.emi_layout = self.emi_setup_group.layout()
+        self.emi_layout.setContentsMargins(2, 2, 2, 2)
+        self.emi_layout.setHorizontalSpacing(1)
+        self.emi_layout.setVerticalSpacing(1)
+        self.emi_layout.addWidget(self.preview_main_emission, 0, 0, 1, 1)
+        self.emi_layout.addWidget(self.siegbahn, 1, 0, 1, 1,
+                                  Qt.AlignRight)
+        self.emi_layout.addWidget(self.preview_sat, 2, 0, 1, 1)
+        self.emi_layout.addWidget(self.preview_rae, 3, 0, 1, 1)
+        self.emi_annot_rotator = self._make_angle_spin_box(0)
+        self.emi_layout.addWidget(self.emi_annot_rotator, 4, 0, 2, 0)
+        self.abs_setup_group = QWidget()
+        self.abs_setup_group.setLayout(QGridLayout())
+        self.abs_layout = self.abs_setup_group.layout()
+        self.abs_layout.setContentsMargins(2, 2, 2, 2)
+        self.abs_layout.setHorizontalSpacing(1)
+        self.abs_layout.setVerticalSpacing(1)
+        self.abs_layout.addWidget(self.preview_edge, 0, 0, 1, 1)
+        self.abs_layout.addWidget(self.preview_edge_curve, 1, 0, 1, 1)
+        self.prev_line_style_btn = LineStyleButton(size=None)
+        self.prev_line_style_btn.setMinimumHeight(18)
+        self.prev_line_style_btn.setMinimumWidth(18)
+        self.emi_layout.addWidget(self.prev_line_style_btn, 0, 2, 3, 1)
+        self.prev_line_style_btn.setSizePolicy(QSizePolicy.Expanding,
+                                               QSizePolicy.Expanding)
+        self.abs_style_btn = LineStyleButton(size=None)
+        self.abs_style_btn.setMinimumHeight(18)
+        self.abs_style_btn.setMinimumWidth(18)
+        self.abs_layout.addWidget(self.abs_style_btn, 0, 1, 1, 1)
+        self.preview_tab_settings.tabBar().setExpanding(False)
+        self.preview_tab_settings.setStyleSheet(
+            "QTabBar::tab { width: 44px; height:24px; }")
+        tab_idx = self.preview_tab_settings.addTab(
+            self.emi_setup_group,
+            QIcon(self.icon_provider.get_icon_path('emission.svg')),
+            "")
+        self.preview_tab_settings.setTabToolTip(
+            tab_idx, "emission preview settings")
+        tab_idx = self.preview_tab_settings.addTab(
+            self.abs_setup_group,
+            QIcon(self.icon_provider.get_icon_path('absorption.svg')),
+            "")
+        self.preview_tab_settings.setTabToolTip(
+            tab_idx, "absorption preview settings")
+        self.notation_setup_group = QWidget()
+        self.notation_setup_group.setLayout(QGridLayout())
+        self.notation_layout = self.notation_setup_group.layout()
+        self.notation_font_cb = QtWidgets.QFontComboBox()
+        self.notation_font_cb.setMinimumWidth(48)
+        self.notation_layout.addWidget(self.notation_font_cb, 0, 0, 1, 2)
+        self.notation_layout.setContentsMargins(2, 2, 2, 2)
+        self.notation_layout.setSpacing(1)
+        self.notation_font_size_cb = QComboBox(self)
+        self.notation_font_size_cb.setEditable(True)
+        self.notation_font_size_cb.setValidator(QIntValidator(4, 100))
+        self.notation_font_size_cb.addItems(
+            [str(i) for i in [6, 8, 10, 12, 14, 16, 18, 20, 24, 32, 48, 72]])
+        self.notation_font_size_cb.setCurrentIndex(2)
+        self.notation_font_size_cb.setMinimumWidth(24)
+        self.notation_layout.addWidget(self.notation_font_size_cb, 1, 0, 1, 1)
+        self.notation_font_color = pg.ColorButton(self)
+        self.notation_font_color.setMinimumWidth(24)
+        self.notation_layout.addWidget(self.notation_font_color, 1, 1, 1, 1)
+        self.annot_sample_anchor = QWidget()
+        self.annot_sample_anchor.setLayout(QGridLayout())
+        self.annot_anch_layout = self.annot_sample_anchor.layout()
+        self.annot_anch_layout.setContentsMargins(1, 1, 1, 1)
+        self.annot_anch_layout.setSpacing(0)
+        self.radio_boxes = [QtWidgets.QRadioButton("", self) for i in range(5)]
+        self.preview_text = QLabel("Ti K<i>α</i><sub>1</sub><sup>2nd</sup>")
+        self.preview_text.setMaximumHeight(44)
+        self.preview_text.setMaximumWidth(112)
+        self.annot_anch_layout.addWidget(self.preview_text, 0, 1, 1, 1)
+        self.annot_anch_layout.addWidget(
+            self.radio_boxes[0], 0, 0, 1, 1, Qt.AlignRight)
+        self.radio_boxes[1].setChecked(True)
+        self.annot_anch_layout.addWidget(
+            self.radio_boxes[1], 1, 0, 1, 1, Qt.AlignRight | Qt.AlignTop)
+        self.annot_anch_layout.addWidget(self.radio_boxes[2], 1, 1, 1, 1,
+                                         Qt.AlignCenter | Qt.AlignTop)
+        self.annot_anch_layout.addWidget(self.radio_boxes[3], 1, 2, 1, 1,
+                                         Qt.AlignLeft | Qt.AlignTop)
+        self.annot_anch_layout.addWidget(self.radio_boxes[4], 0, 2, 1, 1)
+        # self.text_anchor_group = QtWidgets.QButtonGroup()
+        # Unfortunately Button group has changing api between different Qt version
+        # it albeit would be more elegant way TODO in future
+
+        #for i, check_box in enumerate(self.radio_boxes):
+        #    self.text_anchor_group.addButton(check_box, i)
+        #self.text_anchor_group.buttonPressed.connect(self.change_anchor)
+        self.radio_boxes[0].pressed.connect(self.emit_anchor_0)
+        self.radio_boxes[1].pressed.connect(self.emit_anchor_1)
+        self.radio_boxes[2].pressed.connect(self.emit_anchor_2)
+        self.radio_boxes[3].pressed.connect(self.emit_anchor_3)
+        self.radio_boxes[4].pressed.connect(self.emit_anchor_4)
+        spacer = QSpacerItem(
+            0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.annot_anch_layout.addItem(spacer, 2, 3, 1, 1)
+        self.notation_font_cb.currentFontChanged.connect(
+            self.annot_change_font_family)
+        self.notation_font_size_cb.currentTextChanged.connect(
+            self.annot_change_font_size)
+        self.notation_font_color.sigColorChanged.connect(
+            self.annot_change_color)
+        self.notation_layout.addWidget(self.annot_sample_anchor, 2, 0, 1, 2)
+        self.annot_sample_anchor.setToolTip(
+            "annotation sample and direction of anchor"
+            "\n(the top of line which is annotated)"
+        )
+        tab_idx = self.preview_tab_settings.addTab(
+            self.notation_setup_group,
+            QIcon(self.icon_provider.get_icon_path('gtk-select-font.svg')),
+            "")
+        self.preview_tab_settings.setTabToolTip(
+            tab_idx, "annotation font settings (for preview)")
+
+    def emit_anchor_0(self):
+        self.annotAnchorChanged.emit(0)
+
+    def emit_anchor_1(self):
+        self.annotAnchorChanged.emit(1)
+
+    def emit_anchor_2(self):
+        self.annotAnchorChanged.emit(2)
+
+    def emit_anchor_3(self):
+        self.annotAnchorChanged.emit(3)
+
+    def emit_anchor_4(self):
+        self.annotAnchorChanged.emit(4)
+
+    def annot_change_font_family(self, family_font):
+        family_font = QFont(family_font)
+        new_family = family_font.family()
+        pt_font = self.preview_text.font()
+        pt_font.setFamily(new_family)
+        self.preview_text.setFont(pt_font)
+        self.fontStyleChanged.emit(pt_font)
+
+    def annot_change_font_size(self, size_str):
+        pt_font = self.preview_text.font()
+        new_size = int(size_str)
+        pt_font.setPointSize(new_size)
+        self.preview_text.setFont(pt_font)
+        self.fontStyleChanged.emit(pt_font)
+
+    def annot_change_color(self, pg_color_button):
+        palette = self.preview_text.palette()
+        qcolor = pg_color_button.color()
+        palette.setColor(QPalette.WindowText, qcolor)
+        self.preview_text.setPalette(palette)
+        self.fontColorChanged.emit(qcolor)
+
+    #def change_anchor(self, index):
+    #    self.annotAnchorChanged.emit(index)
 
     def parseOrders(self):
         """curently up to 15 orders (more is not very practical)"""
@@ -318,15 +656,17 @@ class XRayElementTable(qpet.ElementTableGUI):
     def set_notation_btn_text(self, state):
         if state:
             self.siegbahn.setText('Siegbahn')
+            self.siegbahn.adjustSize()
         else:
             self.siegbahn.setText('IUPAC')
+            self.siegbahn.adjustSize()
 
 
 class DockableXRayElementTable(QtWidgets.QDockWidget):
     def __init__(self, parent=None, **kwargs):
         QtWidgets.QDockWidget.__init__(self, parent=parent, **kwargs)
         self.restricted = False
-        self.pet = XRayElementTable(parent=self)
+        self.pet = XRayElementTable(parent=self, disable_fancy=True)
         self.pet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setWindowTitle('Element Table')
         if parent is not None:
@@ -343,24 +683,26 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent=parent, **kwargs)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.restricted = False
-        self.pet = XRayElementTable(parent=self)
+        self.pet = XRayElementTable(parent=self, disable_fancy=True)
         self.pet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.label = QtWidgets.QLabel('Element Table')
         self.label.setFrameStyle(QtWidgets.QFrame.StyledPanel | QtWidgets.QFrame.Sunken)
         self.label.setAlignment(Qt.AlignHCenter)
-        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         if parent is not None:
             self.set_new_title(self.parent().name)
             self.parent().sig_name_had_changed.connect(self.set_new_title)
         self.layout().addWidget(self.label)
         self.layout().addWidget(self.pet)
-        sizegrip = QSizeGrip(self)
-        self.pet.layout().addWidget(sizegrip, 9, 17, 1, 1,
+        self.sizegrip = QSizeGrip(self)
+        self.pet.layout().addWidget(self.sizegrip, 8, 18, 1, 1,
                                     Qt.AlignBottom | Qt.AlignRight)
+        self.pet.layout()
         self.layout().setContentsMargins(0, 1, 0, 0)
         self.layout().setSpacing(0)
         parent.widgetFullscreened.connect(self.setEmbeddedMode)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
     def set_new_title(self, new_text):
         self.label.setText('Element Table of {}'.format(new_text))
@@ -382,6 +724,7 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
             self.move(event.globalPos() - self._mouse_clicked_pos)
 
     def setEmbeddedMode(self, fullscreen):
+        visible = self.isVisible()
         if fullscreen:
             self.setWindowFlags(Qt.SubWindow)
             self.setAutoFillBackground(True)
@@ -391,6 +734,8 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
         else:
             self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
             self.restricted = False
+        if visible:
+            self.show()
 
 
 class AutoEditor(QtWidgets.QDialog):
@@ -618,6 +963,7 @@ class PenEditor(QtWidgets.QDialog):
 class XrayCanvas(pg.PlotWidget):
 
     xAxisUnitsChanged = Signal(str)
+    yAxisUnitsChanged = Signal()
 
     def __init__(self, kv=15, initial_mode='energy', dark_mode=False):
         plot_bkg_color = pg.mkColor(22, 33, 44) \
@@ -628,6 +974,7 @@ class XrayCanvas(pg.PlotWidget):
             axisItems={'left': CustomAxisItem('left'),
                        'bottom': CustomAxisItem('bottom')},
             background=plot_bkg_color)
+        self.hideButtons()
         self.dark_mode = dark_mode
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         # p1 the main plotItem/canvas
@@ -642,6 +989,7 @@ class XrayCanvas(pg.PlotWidget):
         self.x_axis_mode = initial_mode
         self.y_axis_mode = 'cps'  # default
         self._gen_axis_actions()
+        self._original_K = None
         self.xtal_family_text_item = pg.TextItem(
             html='XTAL',
             anchor=(1, 1))
@@ -654,22 +1002,33 @@ class XrayCanvas(pg.PlotWidget):
         self.set_connections()
         self.init_x_axis()
         self.siegbahn = True
+        self.annot_anchor = (0., 1.)
+        self.abs_annot_angle = 90.
+        self.emi_annot_angle = 0.
         self.p1.vb.sigResized.connect(self.updateViews)
         self.prev_text_font = QFont()
         if self.dark_mode:
-            prev_marker_col = pg.mkColor((255, 200, 255, 180))
+            prev_marker_col = pg.mkColor((255, 255, 200, 180))
             self.prev_edge_text_color = pg.mkColor((200, 200, 200))
             self.prev_edge_pen = mkPen((200, 200, 200, 200), width=2,
                                        dash=[0.5, 1.5])
+            self.prev_text_color = pg.mkColor((200, 200, 200))
         else:
             prev_marker_col = pg.mkColor((35, 10, 20, 180))
             self.prev_edge_text_color = pg.mkColor((50, 50, 50))
-            self.prev_edge_pen = pg.mkPen((50, 50, 50, 200), width=2,
+            self.prev_edge_pen = pg.mkPen((50, 50, 75, 200), width=2,
                                           dash=[0.5, 1.5])
+            self.prev_text_color = pg.mkColor((50, 50, 50))
+        self.css_annot_color = color_to_css(self.prev_text_color)
+        # TODO: maybe instead of darken_lighten better effect would be to decolorise 
+        # as darken_lighten currently works poor over 7-8 orders.
+        if self.dark_mode:
+            self.dl_order_mode = "darken"
+        else:
+            self.dl_order_mode = "lighten"
         self.prev_marker_pen = [pg.mkPen(i, width=2) for i in
-                                darken_lighten(prev_marker_col, 14,
-                                               dark_mode=self.dark_mode)]
-        self.prev_text_color = pg.mkColor((175, 175, 175))
+                                desaturate(prev_marker_col, 15,
+                                           lighten_darken=self.dl_order_mode)]
 
         self.p1.setLimits(yMin=0)
         self.p2.setLimits(yMin=0)
@@ -679,6 +1038,17 @@ class XrayCanvas(pg.PlotWidget):
         self.xray_edge_cache = {}
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.xtal_family_text_item.setPos(0, self.bottom_axis.height())
+
+    def set_annot_anchor(self, anchor_index):
+        anchors = {0: (0., 0.5),
+                   1: (0., 1.),
+                   2: (0.5, 1.),
+                   3: (1., 1.),
+                   4: (1., 0.5)}
+        self.annot_anchor = anchors[anchor_index]
+
+    def set_emi_annot_angle(self, angle):
+        self.emi_annot_angle = angle
 
     def _gen_axis_actions(self):
         self.x_axis_ag = QtWidgets.QActionGroup(self)
@@ -725,7 +1095,7 @@ class XrayCanvas(pg.PlotWidget):
     def set_axis_from_gui(self, action):
         if action in self.x_actions:
             i = self.x_actions.index(action)
-            x_mode = ['energy', 'cameca', 'wavelenth'][i]
+            x_mode = ['energy', 'cameca', 'wavelength'][i]
             self.set_x_mode(x_mode)
             y_mode = self.y_axis_mode
         else:
@@ -733,6 +1103,7 @@ class XrayCanvas(pg.PlotWidget):
             j = self.y_actions.index(action)
             y_mode = ['cts', 'cps', 'cpsna'][j]
             self.y_axis_mode = y_mode
+            self.yAxisUnitsChanged.emit()
         for item in self.p1.curves:
             if isinstance(item, SpectrumCurveItem):
                 item.set_spectrum_data(x_mode=x_mode, y_mode=y_mode)
@@ -741,7 +1112,7 @@ class XrayCanvas(pg.PlotWidget):
     def init_x_axis(self):
         if self.x_axis_mode == 'cameca':
             self.x_actions[1].trigger()
-        elif self.x_axis_mode == 'wavelenth':
+        elif self.x_axis_mode == 'wavelength':
             self.x_actions[2].trigger()
         else:
             self.x_actions[0].trigger()
@@ -754,11 +1125,18 @@ class XrayCanvas(pg.PlotWidget):
         if style_dlg.exec_():
             values = style_dlg.return_styles()
             self.prev_text_font, self.prev_text_color, prev_marker_pen = values
-            colors = darken_lighten(prev_marker_pen.color(), 14,
-                                    dark_mode=self.dark_mode)
+            colors = desaturate(prev_marker_pen.color(), 15)
             width = prev_marker_pen.widthF()
             self.prev_marker_pen = [mkPen(color, width=width)
                                     for color in colors]
+
+    def set_preview_pens(self, new_pen):
+        colors = desaturate(new_pen.color(), 15,
+                            lighten_darken=self.dl_order_mode)
+        self.prev_marker_pen = [mkPen(new_pen) for i in range(15)]
+        for i, pen in enumerate(self.prev_marker_pen):
+            pen.setColor(colors[i])
+        return colors
 
     def set_xtal(self, family_name, two_D, K, html=None):
         if html is not None:
@@ -768,7 +1146,17 @@ class XrayCanvas(pg.PlotWidget):
         self.xtal_family_name = family_name
         self.two_D = two_D
         self.K = K
+        self._original_K = None
         self.axis_quotient = xu.calc_scale_to_sin_theta(two_D, K)
+
+    def set_tweeked_K(self, new_val):
+        if self._original_K is None:
+            self._original_K = self.K
+        self.K = new_val
+
+    def restore_original_K(self):
+        self.K = self._original_K
+        self._original_K = None
 
     def set_x_mode(self, mode):
         self.x_axis_mode = mode
@@ -784,7 +1172,7 @@ class XrayCanvas(pg.PlotWidget):
             self.wds_orders = [1]
             self.xtal_family_text_item.setVisible(True)
             self.xtal_family_text_family.setVisible(True)
-        elif mode == 'wavelenth':
+        elif mode == 'wavelength':
             self.p1.setLimits(xMin=0, xMax=5)
             self.setXRange(0, 100)
             self.xtal_family_text_item.setVisible(False)
@@ -800,7 +1188,7 @@ class XrayCanvas(pg.PlotWidget):
         self.p2.setGeometry(self.p1.vb.sceneBoundingRect())
         self.p2.linkedViewChanged(self.p1.vb, self.p2.XAxis)
 
-    def previewEdges(self, element):
+    def previewEdges(self, element, order=1):
         self.p2.setZValue(9999)
         xec = self.xray_edge_cache
         xam = self.x_axis_mode
@@ -820,11 +1208,18 @@ class XrayCanvas(pg.PlotWidget):
                         self.p2.addItem(item)
                     return
         if xam == 'energy':
-            lines = xu.xray_shells_for_plot(element)
+            lines = xu.xray_shells_for_keV(element)
         elif xam == 'cameca':
-            lines = xu.xray_shells_for_plot_wds(element,
-                                                two_D=self.two_D,
-                                                K=self.K)
+            lines = xu.xray_shells_for_sin_θ_100k(element,
+                                                  two_D=self.two_D,
+                                                  K=self.K,
+                                                  order=order)
+            if element in GAS_IN_COUNTER:
+                higher_order = xu.xray_shells_for_sin_θ_100k(
+                    element, two_D=self.two_D, K=self.K, order=2)
+                for line in higher_order:
+                    line[0] = string_with_order(line[0], 2)
+                lines.extend(higher_order)
         if xam == 'energy':
             elem_dict[xam] = []
         elif xam == 'cameca':
@@ -835,12 +1230,12 @@ class XrayCanvas(pg.PlotWidget):
             line = pg.PlotCurveItem([i[1], i[1]], [0.06, 1.2],
                                     pen=self.prev_edge_pen)
             self.p2.addItem(line)
-            text = pg.TextItem(text="{0} {1}".format(element, i[0]),
-                               anchor=(0., 1.),
-                               angle=90)
+            text = pg.TextItem(html="{0} {1}".format(element, i[0]),
+                               anchor=(1., 1.),
+                               angle=self.abs_annot_angle)
             text.setFont(self.prev_text_font)
             self.p2.addItem(text)
-            text.setPos(i[1], 1.)
+            text.setPos(i[1], 1.10)
             if xam == 'energy':
                 final_list = elem_dict[xam]
             elif xam == 'cameca':
@@ -850,6 +1245,89 @@ class XrayCanvas(pg.PlotWidget):
             final_list.append(line)
             final_list.append(text)
 
+    def previewSatLines(self, element, kv=None):
+        if kv is None:
+            kv = self.kv
+        self.p2.setZValue(9999)
+        if element not in xu.sattelite_lines:
+            return
+        if self.x_axis_mode == 'energy':
+            lines = {1: xu.sat_lines_for_keV(element, kv)}
+        elif self.x_axis_mode == 'cameca':
+            min_x, max_x = self.getAxis('bottom').range
+            orders = [o for o in self.orders if o < 4]
+            lines = {o: xu.sat_lines_for_sin_θ_100k(
+                element, two_D=self.two_D, K=self.K, xmax=max_x,
+                xmin=min_x, hv=kv, order=o)
+                     for o in orders}
+        for o in lines:  # for order
+            for i in lines[o]:
+                self._show_line(i, order=o)
+                self._show_annot(i[1], i[2], i[0].split(maxsplit=1)[1],
+                                 order=o)
+
+    def _show_line(self, line_list, order=1):
+        line = pg.PlotCurveItem([line_list[1], line_list[1]],
+                                [0, line_list[2]],
+                                pen=self.prev_marker_pen[order-1])
+        self.p2.addItem(line)
+
+    def _show_annot(self, x, y, text, order=1,
+                    anchor=None, angle=None):
+        if angle is None:
+            angle = self.emi_annot_angle
+        if anchor is None:
+            anchor = self.annot_anchor
+        text = pg.TextItem(html="""<body style="color:{0};">
+{1}</body>""".format(self.css_annot_color,
+                     string_with_order(text, order)),
+                           anchor=anchor,
+                           angle=angle)
+        text.setFont(self.prev_text_font)
+        self.p2.addItem(text)
+        text.setPos(x, y)
+
+    def previewRaeLines(self, element, kv=None):
+        if kv is None:
+            kv = self.kv
+        if element not in xu.rae_lines:
+            return
+        self.p2.setZValue(9999)
+        if self.x_axis_mode == 'energy':
+            lines = {1: xu.rae_line_for_keV(element, kv)}
+            arrow_text = '⟵'
+            arrow_anchor = (1., 0.5)
+            annot_anchor = (1., 1.)
+        elif self.x_axis_mode == 'cameca':
+            min_x, max_x = self.getAxis('bottom').range
+            orders = [o for o in self.orders if o < 4]
+            lines = {o: xu.rae_line_for_sin_θ_100k(
+                element, two_D=self.two_D, K=self.K, xmax=max_x,
+                xmin=min_x, hv=kv, order=o)
+                     for o in orders}
+            arrow_text = '⟶'
+            arrow_anchor = (0., 0.5)
+            annot_anchor = (0., 1.0)
+        for o in lines:  # for order
+            i = lines[o]
+            if i is not None:
+                self._show_line(i, order=o)
+                arrow = pg.TextItem(text=arrow_text,
+                                    color=self.prev_marker_pen[o-1].color(),
+                                    anchor=arrow_anchor)
+                font = arrow.textItem.font()
+                font.setPointSize(12)
+                font.setBold(True)
+                arrow.setFont(font)
+                arrow.setPos(i[1], i[2] / 2)
+                self.p2.addItem(arrow)
+                self._show_annot(i[1],
+                                 i[2],
+                                 " ".join([element, "KLL"]),
+                                 order=o,
+                                 anchor=annot_anchor,
+                                 angle=0)
+
     def previewLines(self, element, kv=None, lines=None, siegbahn=None):
         if kv is None:
             kv = self.kv
@@ -857,36 +1335,24 @@ class XrayCanvas(pg.PlotWidget):
             siegbahn = self.siegbahn
         # self.p2.clear()
         self.p2.setZValue(9999)
-        css_color = color_to_css(self.prev_text_color)
         if lines is None:
             if self.x_axis_mode == 'energy':
-                lines = {1: xu.xray_lines_for_plot(element, kv, siegbahn)}
+                lines = {1: xu.xray_lines_for_keV(element, kv)}
             elif self.x_axis_mode == 'cameca':
                 min_x, max_x = self.getAxis('bottom').range
-                lines = {i: xu.xray_lines_for_plot_wds(element,
-                                                       two_D=self.two_D,
-                                                       K=self.K,
-                                                       xmax=max_x,
-                                                       xmin=min_x,
-                                                       hv=kv,
-                                                       siegbahn=siegbahn,
-                                                       order=i)
-                         for i in self.orders}
+                lines = {o: xu.xray_lines_for_sin_θ_100k(
+                    element, two_D=self.two_D, K=self.K, xmax=max_x,
+                    xmin=min_x, hv=kv, order=o)
+                         for o in self.orders}
         else:
             # TODO
             pass
-        for j in lines:
-            for i in lines[j]:
-                line = pg.PlotCurveItem([i[1], i[1]],
-                                        [0, i[2]],
-                                        pen=self.prev_marker_pen[j-1])
-                self.p2.addItem(line)
-                text = pg.TextItem(html="""<body style="color:{0};">
-{1} {2}</body>""".format(css_color, element, format_line(i[0], j)),
-                                   anchor=(0., 1.))
-                text.setFont(self.prev_text_font)
-                self.p2.addItem(text)
-                text.setPos(i[1], i[2])
+        for o in lines:  # for order
+            for i in lines[o]:
+                self._show_line(i, order=o)
+                txt = " ".join([element,
+                                format_line_annotation(i[0], siegbahn)])
+                self._show_annot(i[1], i[2], txt, order=o)
 
     def previewOneLine(self, element, line):
         x_pos = xu.xray_energy(element, line)
@@ -939,7 +1405,32 @@ class PositionMarkers:
         if canvas is not None:
             self.canvas = canvas
             self.initiate_lines()
-            self.x_axis_mode = self.canvas.x_axis_mode
+            
+    def transform_to_other_axis_units(self, new_mode):
+        if new_mode == self.x_axis_mode:
+            return
+        if "cameca" in [new_mode, self.x_axis_mode]:
+            quotient_e_sin = xu.calc_scale_to_sin_theta(
+                self.canvas.two_D, self.canvas.K)
+        if "wavelength" in [new_mode, self.x_axis_mode]:
+            quotient_e_wav = xu.X_RAY_CONST / 1000_000
+        if all(e in [self.x_axis_mode, new_mode] for e in ["cameca", "energy"]):
+            self.move_by_funct(quotient_e_sin.__truediv__)
+        elif all(e in [self.x_axis_mode, new_mode] for e in ["wavelength", "energy"]):
+            self.move_by_funct(quotient_e_wav.__truediv__)
+        elif (self.x_axis_mode == "cameca") and (new_mode == "wavelength"):
+            self.move_by_funct((quotient_e_wav/quotient_e_sin).__mul__)
+        elif (self.x_axis_mode == "wavelength") and (new_mode == "cameca"):
+            self.move_by_funct((quotient_e_sin/quotient_e_wav).__mul__)
+        self.x_axis_mode = new_mode
+
+    def move_by_funct(self, function):
+        self.m_line.setPos(function(self.m_line.getXPos()))
+        if self.bg1_line is not None:
+            self.bg1_line.setPos(function(self.bg1_line.getXPos()))
+        if self.bg2_line is not None:
+            self.bg2_line.setPos(function(self.bg2_line.getXPos()))
+        self.m_line.sigPositionChanged.emit(self.m_line)
 
     def set_mode(self, mode):
         if mode not in ('two_bkgd', 'single_bkgd', 'solo'):
@@ -954,12 +1445,12 @@ class PositionMarkers:
         if self.type == 'generic':
             axis_range = self.canvas.getAxis('bottom').range
             width = axis_range[1] - axis_range[0]
-            if self.mode in ('two_bkgd', 'single_bkgd'):
+            if self.mode == 'two_bkgd':
                 lower = axis_range[0] + width * 0.25
             else:
                 lower = None
             middle = axis_range[0] + width * 0.5
-            if self.mode == 'two_bkgd':
+            if self.mode in ('two_bkgd', 'single_bkgd'):
                 higher = axis_range[0] + width * 0.75
             else:
                 higher = None
@@ -973,14 +1464,15 @@ class PositionMarkers:
 
     def initiate_lines(self):
         if self.canvas.dark_mode:
-            color = 'w'
+            color = '#eff0f1'
         else:
-            color = 'k'
+            color = '232629'
         lower, middle, higher = self.gen_positions()
         self.m_line = InfiniteLine(middle, movable=True,
                                    pen=mkPen(color, width=3.),
                                    name='main',
                                    markers=[('^', 0.99, 6.0)])
+        self.m_line.setZValue(3000)
         if lower is not None:
             self.bg1_line = InfiniteLine(lower, movable=True,
                                          pen=mkPen(color, width=1.5),
@@ -1005,6 +1497,11 @@ class PositionMarkers:
         self.update_marker_str()
         self.m_line.sigPositionChanged.connect(self.update_marker_str)
         self.add_to_canvas()
+        # set a record of mode in case it would change:
+        # so that it would be clear how to convert and move
+        # markers
+        self.x_axis_mode = self.canvas.x_axis_mode
+        self.canvas.xAxisUnitsChanged.connect(self.transform_to_other_axis_units)
 
     def initiate_positions(self):
         lower, middle, higher = self.gen_positions()
@@ -1053,6 +1550,10 @@ class PositionMarkers:
             self.canvas.addItem(self.bg2_line)
 
     def remove_from_canvas(self):
+        try:
+            self.canvas.xAxisUnitsChanged.disconnect(self.transform_to_other_axis_units)
+        except(TypeError):
+            pass  # it is not connected
         if self.m_line is not None:
             self.m_text_pos = self.m_text.orthoPos
             self.canvas.removeItem(self.m_line)
@@ -1220,22 +1721,23 @@ class SloppedBackground(pg.PlotDataItem):
         self.setZValue(3001)  # over 3000
         pos_markers = self.pw.pos_markers
         self.pm = pos_markers
-        self.bg1_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
-                                                       color=color))
+        self.bg_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
+                                                      color=color))
         self.pw.avg_poly_order_spin.valueChanged.connect(
             self.update_background)
         self.pw.avg_win_size_spin.valueChanged.connect(
             self.update_background)
-        self.pw.canvas.addItem(self.bg1_avg_curve)
-        self.bg1_avg_curve.setZValue(3002)
+        self.pw.canvas.addItem(self.bg_avg_curve)
+        self.bg_avg_curve.setZValue(3002)
         self.signal_header = spect_xtal
-        self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
+        self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
         self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.sm = self.pw.wds_tree_selection_model
         self.sm.currentChanged.connect(self.update_background)
         self.pw.slope_spin_box.sigValueChanging.connect(
             self.slope_from_spin_box)
         self.slope_from_spin_box(self.pw.slope_spin_box)
+        self.pw.canvas.xAxisUnitsChanged.connect(self.update_background)
 
     def slope_from_spin_box(self, spin_box):
         self.slope = spin_box.value()
@@ -1255,8 +1757,8 @@ class SloppedBackground(pg.PlotDataItem):
         else:
             return
         m_pos = self.pm.m_line.getXPos()
-        bg1_pos = self.pm.bg1_line.getXPos()
-        lenght = bg1_pos - m_pos
+        bg_pos = self.pm.bg2_line.getXPos()
+        lenght = bg_pos - m_pos
         plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
                                                   Qt.UserRole)
         if plot_curves is None:
@@ -1267,7 +1769,7 @@ class SloppedBackground(pg.PlotDataItem):
         else:
             return
         data_x, data_y = curve.x_ref, curve.y_ref
-        idx = np.abs(data_x - bg1_pos).argmin()
+        idx = np.abs(data_x - bg_pos).argmin()
         avg_window = self.pw.avg_win_size_spin.value()
         order = self.pw.avg_poly_order_spin.value()
         if avg_window == 0:
@@ -1280,16 +1782,16 @@ class SloppedBackground(pg.PlotDataItem):
             xses1 = data_x[i1_min:i1_max+1]
             ys1 = data_y[i1_min:i1_max+1]
             poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
-            y_pos = np.polynomial.polynomial.polyval(bg1_pos, poly1)
-            self.bg1_avg_curve.setData(
+            y_pos = np.polynomial.polynomial.polyval(bg_pos, poly1)
+            self.bg_avg_curve.setData(
                 xses1,
                 np.polynomial.polynomial.polyval(xses1, poly1))
-            x_pos = bg1_pos
+            x_pos = bg_pos
         y_pos_main = y_pos * slope
         h = y_pos - y_pos_main
         m = h / lenght
-        min_pos = min(bg1_pos,  m_pos)
-        max_pos = max(bg1_pos,  m_pos)
+        min_pos = min(bg_pos,  m_pos)
+        max_pos = max(bg_pos,  m_pos)
         if self.pw.canvas.x_axis_mode == "cameca":  # sin_theta space
             extrusion = 10000
         else:  # rather keV or  space
@@ -1301,13 +1803,13 @@ class SloppedBackground(pg.PlotDataItem):
         self.setData(x_linespace, x_linespace * m + b)
 
     def prepare_to_destroy(self):
-        self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
+        self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
         self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
         self.pw.avg_poly_order_spin.valueChanged.disconnect(
             self.update_background)
         self.pw.avg_win_size_spin.valueChanged.disconnect(
             self.update_background)
-        self.pw.canvas.removeItem(self.bg1_avg_curve)
+        self.pw.canvas.removeItem(self.bg_avg_curve)
         self.sm.currentChanged.disconnect(self.update_background)
         self.pw.slope_spin_box.sigValueChanging.disconnect(
             self.slope_from_spin_box)
@@ -1338,7 +1840,7 @@ class XraySpectraGUI(cw.FullscreenableWidget):
             in WDS tree view, and checked xtal-spectrometer combinations
             enabled/checked in below attached widget.</p>
             <p>right clicking on y or x axis alows to change units;
-            in case of changing x units to wavelenth or energy - that
+            in case of changing x units to wavelength or energy - that
             unlocks possibility to check xtal-spec combinations from
             different xtal families allowing to plot and compare overlapping
             spectral regions</p>""")
@@ -1389,74 +1891,60 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         else:
             self.pet.elementConsidered.disconnect(self.canvas.previewEdges)
 
+    @Slot(bool)
+    def preview_satelite_toggle(self, state):
+        if state:
+            self.pet.elementConsidered.connect(self.canvas.previewSatLines)
+        else:
+            self.pet.elementConsidered.disconnect(self.canvas.previewSatLines)
+
+    @Slot(bool)
+    def preview_rae_toggle(self, state):
+        if state:
+            self.pet.elementConsidered.connect(self.canvas.previewRaeLines)
+        else:
+            self.pet.elementConsidered.disconnect(self.canvas.previewRaeLines)
+
     def _setup_toolbar(self):
         # add spacer:
         self._empty2 = QtWidgets.QWidget()
         self._empty2.setSizePolicy(QSizePolicy.Expanding,
                                    QSizePolicy.Expanding)
         self.toolbar.addWidget(self._empty2)
-        self.element_table_button = cw.CustomToolButton(self)
-        self.toolbar.addWidget(self.element_table_button)
-        self._setup_table_button()
-        self.toolbar.addSeparator()
-        self.auto_button = cw.CustomToolButton(self)
-        self.auto_button.setWhatsThis(
-            "This automatically adjust x and/or y axis range")
-        self._setup_auto()
-        self.toolbar.addWidget(self.auto_button)
-        self._empty1 = QtWidgets.QWidget()
-        self._empty1.setSizePolicy(QSizePolicy.Expanding,
-                                   QSizePolicy.Expanding)
-        self.toolbar.addWidget(self._empty1)
-
-    def _setup_auto(self):
-        menu = QMenu('auto range')
-        self.auto_all = QAction(
-            QIcon(self.icon_provider.get_icon_path('auto_all.svg')),
-            'all',
-            self.auto_button)
-        self.auto_width = QAction(
-            QIcon(self.icon_provider.get_icon_path('auto_width.svg')),
-            'width',
-            self.auto_button)
-        self.auto_height = QAction(
-            QIcon(self.icon_provider.get_icon_path('auto_height.svg')),
-            'height',
-            self.auto_button)
-        self.auto_custom = QAction(
-            QIcon(self.icon_provider.get_icon_path('auto_custom.svg')),
-            'custom',
-            self.auto_button)
-        self.custom_conf = QAction('custom config.', self.auto_button)
-        action_list = [self.auto_all, self.auto_width, self.auto_height,
-                       self.auto_custom, self.custom_conf]
-        for i in action_list[:-1]:
-            i.triggered.connect(self.auto_button.set_action_to_default)
-        menu.addActions(action_list)
-        self.auto_button.setMenu(menu)
-        self.auto_button.setDefaultAction(self.auto_all)
-
-    def _setup_table_button(self):
-        menu = QMenu('Element Table')
         self.action_element_table = QAction(self)
         self.action_element_table.setIcon(
             QIcon(self.icon_provider.get_icon_path('pt.svg')))
         self.action_element_table.setToolTip("show/hide element table")
         self.action_element_table.setWhatsThis("show/hide element table")
         self.action_element_table.triggered.connect(self.show_pet)
-        self.config_preview = QAction(
-            QIcon(self.icon_provider.get_icon_path(
-                'line_preview_settings.svg')),
-            'preview style',
-            self.element_table_button)
-        self.config_burned = QAction(
-            QIcon(self.icon_provider.get_icon_path('line_burn_settings.svg')),
-            'burned style',
-            self.element_table_button)
-        menu.addActions([self.config_preview,
-                         self.config_burned])
-        self.element_table_button.setMenu(menu)
-        self.element_table_button.setDefaultAction(self.action_element_table)
+        self.toolbar.addAction(self.action_element_table)
+        self.toolbar.addSeparator()
+        self._setup_auto()
+        self.toolbar.addActions([self.auto_all, self.auto_width,
+                                 self.auto_height, self.auto_custom])
+        self._empty1 = QtWidgets.QWidget()
+        self._empty1.setSizePolicy(QSizePolicy.Expanding,
+                                   QSizePolicy.Expanding)
+        self.toolbar.addWidget(self._empty1)
+
+    def _setup_auto(self):
+        self.auto_all = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_all.svg')),
+            'all',
+            self)
+        self.auto_width = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_width.svg')),
+            'width',
+            self)
+        self.auto_height = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_height.svg')),
+            'height',
+            self)
+        self.auto_custom = QAction(
+            QIcon(self.icon_provider.get_icon_path('auto_custom.svg')),
+            'custom',
+            self)
+        self.auto_custom.setDisabled(True)  # TODO not implemented
 
     def _setup_pet(self):
         self.dock_line_win = QtWidgets.QDockWidget('Line selection', self)
@@ -1479,8 +1967,6 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self.pet.elementConsidered.connect(self.canvas.previewEdges)
         self.pet.elementConsidered.connect(self.canvas.previewLines)
         self.pet.elementUnconsidered.connect(self.canvas.clearPreview)
-        self.config_preview.triggered.connect(
-            self.canvas.tweek_preview_style)
         self.pet.hv_value.valueChanged.connect(self.canvas.set_kv)
         self.pet.elementRightClicked.connect(
             self.lineSelector.set_element_lines)
@@ -1490,8 +1976,48 @@ class XraySpectraGUI(cw.FullscreenableWidget):
             self.canvas.clearPreview)
         self.pet.siegbahn.toggled.connect(self.canvas.set_siegbahn_state)
         self.pet.ordersChanged.connect(self.broker_orders_state_to_canvas)
-        self.pet.preview.toggled.connect(self.preview_toggle)
+        self.pet.preview_main_emission.toggled.connect(self.preview_toggle)
         self.pet.preview_edge.toggled.connect(self.preview_edges_toggle)
+        self.pet.preview_sat.toggled.connect(self.preview_satelite_toggle)
+        self.pet.preview_rae.toggled.connect(self.preview_rae_toggle)
+        # set colors and connections:
+        self.pet.prev_line_style_btn.setPen(self.canvas.prev_marker_pen[0])
+        self.pet.abs_style_btn.setPen(self.canvas.prev_edge_pen)
+        self.pet.fontStyleChanged.connect(self.set_notation_font)
+        self.pet.fontColorChanged.connect(self.set_notation_font_color)
+        self.pet.annotAnchorChanged.connect(self.canvas.set_annot_anchor)
+        self.pet.emi_annot_rotator.valueChanged.connect(
+            self.set_emi_annot_angle)
+        self.pet.prev_line_style_btn.penChanged.connect(
+            self.change_prev_marker_pen)
+        self.pet.abs_style_btn.penChanged.connect(
+            self.change_prev_edge_pen)
+
+    def set_emi_annot_angle(self, value):
+        self.canvas.emi_annot_angle = value
+
+    def set_notation_font(self, qfont):
+        self.canvas.prev_text_font = qfont
+        self.clear_cache()
+
+    def clear_cache(self):
+        self.canvas.xray_line_cache = {}
+        self.canvas.xray_edge_cache = {}
+
+    def set_notation_font_color(self, qcolor):
+        self.canvas.prev_text_color = qcolor
+        self.canvas.css_annot_color = color_to_css(self.canvas.prev_text_color)
+        self.clear_cache()
+
+    def change_prev_marker_pen(self, pen):
+        colors = self.canvas.set_preview_pens(pen)
+        self.canvas.xray_line_cache = {}
+        tool_tip = make_color_html_string(colors)
+        self.pet.prev_line_style_btn.setToolTip(tool_tip)
+
+    def change_prev_edge_pen(self, pen):
+        self.canvas.prev_edge_pen = pen
+        self.canvas.xray_edge_cache = {}
 
     def show_pet(self):
         if self.pet is None:
@@ -1591,14 +2117,36 @@ class WDSSpectraGUI(XraySpectraGUI):
             self.set_background_model)
 
     def _setup_wds_additions(self):
-        self.marker_button = cw.CustomToolButton(self)
-        self.marker_button.setWhatsThis(
-            """This adds movable line marker with single, double or any
-            background line markers; Drop down menu of this widget allows to
-            set some available background modeling for selected markers"""
-        )
-        self.toolbar.addWidget(self.marker_button)
         self._setup_markers()
+        self.toolbar.addActions([self.action_marker_only,
+                                 self.action_marker_and_1bkg,
+                                 self.action_marker_bgx2])
+        self.toolbar.addSeparator()
+        self.action_linear_background = QAction(self)
+        self.lin_bkd_icons = {
+            "lin": QIcon(self.icon_provider.get_icon_path(
+                'linear_bkd.svg')),
+            "slopped": QIcon(self.icon_provider.get_icon_path(
+                'slopped_bkd.svg'))}
+        self.action_linear_background.setIcon(self.lin_bkd_icons["lin"])
+        self.action_linear_background.setCheckable(True)
+        self.action_linear_background.setEnabled(False)
+        self.action_linear_background.setToolTip('linear background')
+        # self.action_linear_background.setDisabled(True)
+        self.toolbar.addAction(self.action_linear_background)
+        self.action_linear_background.toggled.connect(
+            self.set_background_model)
+        self.action_exp_background = QAction(self)
+        self.action_exp_background.setIcon(
+            QIcon(self.icon_provider.get_icon_path("exp_bkd.svg")))
+        self.action_exp_background.setCheckable(True)
+        self.action_exp_background.setEnabled(False)
+        self.action_exp_background.setToolTip(
+            'exponential background\n(as in Quanti of Cameca Peaksight)')
+        self.toolbar.addAction(self.action_exp_background)
+        self.action_exp_background.toggled.connect(
+            self.set_background_model)
+        self.toolbar.addSeparator()
         self.actionWDSSelector = QAction(self)
         self.actionWDSSelector.setIcon(QIcon(
             self.icon_provider.get_icon_path('wds_selection.svg')))
@@ -1617,7 +2165,7 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.actionClearMarker.triggered.connect(
             self.pos_markers.remove_from_canvas)
 
-    def set_background_model(self):
+    def set_background_model(self, *args):
         self.clear_background_models()
         xtal_spect_combi = self.xtal_model.get_checked_combinations()
         if len(xtal_spect_combi) == 0:
@@ -1653,6 +2201,7 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.pos_markers.register_canvas(self.canvas)
         self.action_exp_background.setEnabled(True)
         self.action_linear_background.setEnabled(True)
+        self.action_linear_background.setIcon(self.lin_bkd_icons["lin"])
         self.slope_spin_box.setEnabled(False)
         self.set_background_model()
 
@@ -1661,6 +2210,8 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.pos_markers.set_mode('single_bkgd')
         self.pos_markers.register_canvas(self.canvas)
         self.action_linear_background.setEnabled(True)
+        self.action_linear_background.setIcon(
+            self.lin_bkd_icons["slopped"])
         self.action_exp_background.setEnabled(False)
         self.action_exp_background.setChecked(False)
         self.slope_spin_box.setEnabled(True)
@@ -1683,43 +2234,23 @@ class WDSSpectraGUI(XraySpectraGUI):
             self.bkgd_helper_widget.hide()
 
     def _setup_markers(self):
-        menu = QMenu('markers and backgrounds')
         self.action_marker_bgx2 = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_bgx2.svg')),
             'peak and 2 background',
-            self.marker_button)
+            self)
         self.action_marker_bgx2.triggered.connect(
             self.update_bkgd_helper_box_visibility)
         self.action_marker_and_1bkg = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_pk_1xbkg.svg')),
             'peak and single background',
-            self.marker_button)
+            self)
         self.action_marker_and_1bkg.triggered.connect(
             self.update_bkgd_helper_box_visibility)
         self.action_marker_only = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
             'single marker only',
-            self.marker_button)
+            self)
         self.action_marker_only.triggered.connect(self.bkgd_helper_widget.hide)
-        self.action_linear_background = QAction('linear background')
-        self.action_linear_background.toggled.connect(
-            self.set_background_model)
-        self.action_linear_background.setCheckable(True)
-        self.action_exp_background = QAction('exponential background')
-        self.action_exp_background.setCheckable(True)
-        self.action_exp_background.toggled.connect(
-            self.set_background_model)
-        for action in [self.action_marker_bgx2, self.action_marker_and_1bkg,
-                       self.action_marker_only]:
-            action.triggered.connect(self.marker_button.set_action_to_default)
-        menu.addAction(self.action_marker_bgx2)
-        menu.addAction(self.action_marker_and_1bkg)
-        menu.addAction(self.action_marker_only)
-        menu.addSection("Background models:")
-        menu.addAction(self.action_linear_background)
-        menu.addAction(self.action_exp_background)
-        self.marker_button.setMenu(menu)
-        self.marker_button.setDefaultAction(self.action_marker_bgx2)
         self.action_marker_bgx2.triggered.connect(
             self.show_three_markers_on_canvas)
         self.action_marker_and_1bkg.triggered.connect(
@@ -1800,5 +2331,4 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.canvas.p1.clear()
         if hasattr(self, 'pet_win'):
             self.pet_win.close()
-
 

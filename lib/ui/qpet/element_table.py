@@ -161,8 +161,8 @@ class HoverableButton(QToolButton):
         self.setText(name)
         if is_checkable:
             self.setCheckable(True)
-        if not self.fancy:
-            self.setAutoRaise(True)
+        #if not self.fancy:
+        #    self.setAutoRaise(True)
         self.hover_state = False
         self.orig_size = self.geometry()
         self.installEventFilter(self)

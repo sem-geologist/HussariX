@@ -269,7 +269,8 @@ class HussariX(QtWidgets.QMainWindow):
                                   self.wds_files_selection_model)
         plotting_dw = Dock('WDS Plot {}'.format(self.plot_n), widget=widget,
                            autoOrientation=False)
-        widget.attachedToParentWidget.connect(plotting_dw.setVisible)
+        #widget.attachedToParentWidget.connect(plotting_dw.setVisible)
+        widget.widgetFullscreened.connect(plotting_dw.setHidden)
         widget.name = plotting_dw.title()
         self.plot_widgets.append(widget)
         self.docking_widgets.append(plotting_dw)

@@ -62,7 +62,7 @@ class WDSPlotItem(SpectrumCurveItem):
             x = self.signal.x_100k_sin_theta
         elif x_mode == 'energy':
             x = self.signal.x_keV
-        elif x_mode == 'wavelenth':
+        elif x_mode == 'wavelength':
             x = self.signal.x_nm
         if y_mode is None:
             y_mode = self.canvas_widget.y_axis_mode
