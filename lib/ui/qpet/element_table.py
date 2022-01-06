@@ -475,8 +475,14 @@ class ElementTableGUI(QWidget):
 
     def keyPressEvent(self, event):
         """Jump to text interface at shift key press"""
-        if event.key() == QtCore.Qt.Key_Shift:
+        if (event.modifiers() == QtCore.Qt.ShiftModifier) and \
+                (not self.textInterface.hasFocus())and \
+                (QtCore.Qt.Key_A <= event.key() <= QtCore.Qt.Key_Z):
             self.textInterface.setFocus()
+            self.textInterface.clear()
+            self.textInterface.insert(event.key().to_bytes(1, 'big').decode())
+        else:
+            super().keyPressEvent(event)
 
     # @QtCore.pyqtSlot(QtCore.QObject)  # NOTE decorators are commented out
     # as pyQt5.7 made regression with using QObject or QWidget in signals

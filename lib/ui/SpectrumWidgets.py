@@ -400,6 +400,14 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.all_absorption_preview.toggled.connect(
             self.gatekeep_absorption_preview)
 
+    def keyPressEvent(self, event):
+        """Reimplementation of keyPressEvents to deal with
+        CLI stealing the keyboard"""
+        if self.notation_font_cb.hasFocus():
+            event.ignore()
+        else:
+            super().keyPressEvent(event)
+
     def keep_incheck_preview_gatekeeper(self, box_checked):
         if box_checked:
             if self.all_emission_preview.isChecked():
