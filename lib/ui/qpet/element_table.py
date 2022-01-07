@@ -161,8 +161,8 @@ class HoverableButton(QToolButton):
         self.setText(name)
         if is_checkable:
             self.setCheckable(True)
-        if not self.fancy:
-            self.setAutoRaise(True)
+        #if not self.fancy:
+        #    self.setAutoRaise(True)
         self.hover_state = False
         self.orig_size = self.geometry()
         self.installEventFilter(self)
@@ -474,15 +474,25 @@ class ElementTableGUI(QWidget):
         self.signalMapper2.blockSignals(False)
 
     def keyPressEvent(self, event):
-        """Jump to text interface at shift key press"""
-        if event.key() == QtCore.Qt.Key_Shift:
+        """Focus to text interface at starting typing any element abreviation
+        (shift key press + any letter Key);
+        This captures the first letter and sends it to the textInterface which
+        is getting focused.
+        There is no chemical element starting with Q or J, but that is not
+        checked here, and simplified lookup in range of keys from a to z is
+        used here"""
+        if (not self.textInterface.hasFocus()) and \
+                (event.modifiers() == QtCore.Qt.ShiftModifier) and \
+                (QtCore.Qt.Key_A <= event.key() <= QtCore.Qt.Key_Z):  # int
             self.textInterface.setFocus()
+            self.textInterface.clear()
+            # Qt.key_ enums has same int as ascii for alphabet, thus
+            # key is decoded to letter and inserted to textInterface
+            self.textInterface.insert(event.key().to_bytes(1, 'big').decode())
+        else:
+            super().keyPressEvent(event)
 
-    # @QtCore.pyqtSlot(QtCore.QObject)  # NOTE decorators are commented out
-    # as pyQt5.7 made regression with using QObject or QWidget in signals
-    # or is it the problem with mapping of signals?
     def previewToggler(self, button):
-        # if button.isEnabled():
         if button.hover_state:
             self.elementConsidered.emit(button.text())
         else:

@@ -115,10 +115,10 @@ class WdsScanSignal(Cameca.WdsScanSignal):
 
     @cached_property
     def y_cts(self):
-        return self.y_cps * (
-            1 - self.y_cps *
-            self._parent.signal_header.counter_setting.dead_time / 1E6)\
-            * self.dwell_time
+        return self.y_cps / (
+            self.y_cps *
+            self._parent.signal_header.counter_setting.dead_time / 1E6 + 1)\
+            / self.dwell_time
 
     @cached_property
     def y_cps_per_nA(self):
