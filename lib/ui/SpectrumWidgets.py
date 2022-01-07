@@ -840,134 +840,6 @@ class LineEnabler(QWidget):
         self.lineView.setModel(model)
 
 
-class PenEditor(QtWidgets.QDialog):
-    def __init__(self, font, text_color, pen, dark_mode=False, parent=None):
-        QtWidgets.QDialog.__init__(self, parent)
-        self.setWindowTitle('customize preview')
-        self.dark_mode = dark_mode
-        self.verticalLayout = QtWidgets.QVBoxLayout(self)
-        self.groupBox1 = QtWidgets.QGroupBox("Text Style", self)
-        self.formLayout = QtWidgets.QFormLayout(self.groupBox1)
-        self.formLayout.setWidget(0,
-                                  QtWidgets.QFormLayout.LabelRole,
-                                  QLabel('color'))
-        self.text_color_btn = pg.ColorButton()
-        self.formLayout.setWidget(0,
-                                  QtWidgets.QFormLayout.FieldRole,
-                                  self.text_color_btn)
-        self.formLayout.setWidget(1,
-                                  QtWidgets.QFormLayout.LabelRole,
-                                  QLabel('size'))
-        self.font_btn = QtWidgets.QToolButton()
-        self.font_btn.setText('Fe_Ka')
-        self.formLayout.setWidget(1,
-                                  QtWidgets.QFormLayout.FieldRole,
-                                  self.font_btn)
-        self.verticalLayout.addWidget(self.groupBox1)
-
-        self.groupBox2 = QtWidgets.QGroupBox("Line Style", self)
-        self.formLayout2 = QtWidgets.QFormLayout(self.groupBox2)
-        self.formLayout2.setWidget(0,
-                                   QtWidgets.QFormLayout.LabelRole,
-                                   QLabel('color'))
-        self.line_color_btn = pg.ColorButton()
-        self.formLayout2.setWidget(0,
-                                   QtWidgets.QFormLayout.FieldRole,
-                                   self.line_color_btn)
-        self.formLayout2.setWidget(1,
-                                   QtWidgets.QFormLayout.LabelRole,
-                                   QLabel('width'))
-        self.line_width_spn = pg.SpinBox(value=2, bounds=(0.1, 10),
-                                         dec=1, minStep=0.1)
-        self.formLayout2.setWidget(1,
-                                   QtWidgets.QFormLayout.FieldRole,
-                                   self.line_width_spn)
-        self.verticalLayout.addWidget(self.groupBox2)
-        self.buttonBox = QtWidgets.QDialogButtonBox(self)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel |
-                                          QtWidgets.QDialogButtonBox.Ok)
-        self.verticalLayout.addWidget(self.buttonBox)
-        self._setup_connections(font, text_color, pen)
-        self.setColorTooltip()
-
-    def _setup_connections(self, font, text_color, pen):
-        self.font_btn.setFont(font)
-        self.text_color_btn.setColor(text_color)
-        self.line_color_btn.setColor(pen.color())
-        self.line_color_btn.sigColorChanged.connect(self.setColorTooltip)
-        self.line_width_spn.setValue(pen.width())
-        self.buttonBox.rejected.connect(self.reject)
-        self.buttonBox.accepted.connect(self.accept)
-        self.font_btn.clicked.connect(self.set_font)
-
-    def set_font(self):
-        font_dlg = QtWidgets.QFontDialog()
-        font, ok = font_dlg.getFont(self.font_btn.font(), parent=self)
-        if ok:
-            self.font_btn.setFont(font)
-            self.font_btn.adjustSize()
-
-    def make_color_html_string(self):
-        colors = [i.name()
-                  for i in darken_lighten(self.line_color_btn.color(), 8,
-                                          dark_mode=self.dark_mode)]
-        string = """
-<table>
-  <tr>
-    <td>Color</td>
-    <td></td>
-  </tr>
-  <tr>
-    <td style='background-color:{}; width:30px'></td>
-    <td >1<sup>st</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >2<sup>nd</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >3<sup>rd</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >4<sup>th</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >5<sup>th</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >6<sup>th</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >7<sup>th</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >8<sup>th</sup> order</td>
-  </tr>
-  <tr>
-    <td style='background-color:{}'></td>
-    <td >9<sup>th</sup> order</td>
-  </tr>
-</table>
-        """.format(*colors)
-        return string
-
-    def setColorTooltip(self):
-        self.line_color_btn.setToolTip(self.make_color_html_string())
-
-    def return_styles(self):
-        font = self.font_btn.font()
-        text_color = self.text_color_btn.color()
-        line_pen = mkPen(color=self.line_color_btn.color(),
-                         width=self.line_width_spn.value())
-        return font, text_color, line_pen
-
-
 class XrayCanvas(pg.PlotWidget):
 
     xAxisUnitsChanged = Signal(str)
@@ -1028,8 +900,6 @@ class XrayCanvas(pg.PlotWidget):
                                           dash=[0.5, 1.5])
             self.prev_text_color = pg.mkColor((50, 50, 50))
         self.css_annot_color = color_to_css(self.prev_text_color)
-        # TODO: maybe instead of darken_lighten better effect would be to decolorise 
-        # as darken_lighten currently works poor over 7-8 orders.
         if self.dark_mode:
             self.dl_order_mode = "darken"
         else:
@@ -1124,19 +994,6 @@ class XrayCanvas(pg.PlotWidget):
             self.x_actions[2].trigger()
         else:
             self.x_actions[0].trigger()
-
-    def tweek_preview_style(self):
-        style_dlg = PenEditor(self.prev_text_font,
-                              self.prev_text_color,
-                              self.prev_marker_pen[0],
-                              dark_mode=self.dark_mode)
-        if style_dlg.exec_():
-            values = style_dlg.return_styles()
-            self.prev_text_font, self.prev_text_color, prev_marker_pen = values
-            colors = desaturate(prev_marker_pen.color(), 15)
-            width = prev_marker_pen.widthF()
-            self.prev_marker_pen = [mkPen(color, width=width)
-                                    for color in colors]
 
     def set_preview_pens(self, new_pen):
         colors = desaturate(new_pen.color(), 15,
@@ -1379,6 +1236,7 @@ class XrayCanvas(pg.PlotWidget):
         pass
 
     def auto_custom(self):
+        # TODO do we need that?
         pass
 
 
@@ -1413,7 +1271,7 @@ class PositionMarkers:
         if canvas is not None:
             self.canvas = canvas
             self.initiate_lines()
-            
+
     def transform_to_other_axis_units(self, new_mode):
         if new_mode == self.x_axis_mode:
             return
@@ -1422,9 +1280,11 @@ class PositionMarkers:
                 self.canvas.two_D, self.canvas.K)
         if "wavelength" in [new_mode, self.x_axis_mode]:
             quotient_e_wav = xu.X_RAY_CONST / 1000_000
-        if all(e in [self.x_axis_mode, new_mode] for e in ["cameca", "energy"]):
+        if all(e in [self.x_axis_mode, new_mode] for e in ["cameca",
+                                                           "energy"]):
             self.move_by_funct(quotient_e_sin.__truediv__)
-        elif all(e in [self.x_axis_mode, new_mode] for e in ["wavelength", "energy"]):
+        elif all(e in [self.x_axis_mode, new_mode] for e in ["wavelength",
+                                                             "energy"]):
             self.move_by_funct(quotient_e_wav.__truediv__)
         elif (self.x_axis_mode == "cameca") and (new_mode == "wavelength"):
             self.move_by_funct((quotient_e_wav/quotient_e_sin).__mul__)
@@ -1509,7 +1369,8 @@ class PositionMarkers:
         # so that it would be clear how to convert and move
         # markers
         self.x_axis_mode = self.canvas.x_axis_mode
-        self.canvas.xAxisUnitsChanged.connect(self.transform_to_other_axis_units)
+        self.canvas.xAxisUnitsChanged.connect(
+            self.transform_to_other_axis_units)
 
     def initiate_positions(self):
         lower, middle, higher = self.gen_positions()
@@ -1559,7 +1420,8 @@ class PositionMarkers:
 
     def remove_from_canvas(self):
         try:
-            self.canvas.xAxisUnitsChanged.disconnect(self.transform_to_other_axis_units)
+            self.canvas.xAxisUnitsChanged.disconnect(
+                self.transform_to_other_axis_units)
         except(TypeError):
             pass  # it is not connected
         if self.m_line is not None:
@@ -1583,12 +1445,8 @@ class PositionMarkers:
 
     def register_canvas(self, canvas):
         self.canvas = canvas
-        # if self.m_line is None:
         self.remove_from_canvas()
         self.initiate_lines()
-        # else:
-        #    self.initiate_positions()
-        #    self.add_to_canvas()
 
 
 class TwoPointBackground(pg.PlotDataItem):
@@ -1824,6 +1682,10 @@ class SloppedBackground(pg.PlotDataItem):
 
 
 class XraySpectraGUI(cw.FullscreenableWidget):
+    """this is glue-like GUI widget with plotting widget and controls
+    including the periodic element table, and managing interaction between
+    different controls and widgets (i.e. previewing lines when interacting
+    with periodic element table)."""
     sig_name_had_changed = Signal(str)
 
     def __init__(self, parent=None, icon_size=None,
@@ -1929,7 +1791,7 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self.toolbar.addSeparator()
         self._setup_auto()
         self.toolbar.addActions([self.auto_all, self.auto_width,
-                                 self.auto_height, self.auto_custom])
+                                 self.auto_height])  #, self.auto_custom])
         self._empty1 = QtWidgets.QWidget()
         self._empty1.setSizePolicy(QSizePolicy.Expanding,
                                    QSizePolicy.Expanding)
@@ -1952,7 +1814,8 @@ class XraySpectraGUI(cw.FullscreenableWidget):
             QIcon(self.icon_provider.get_icon_path('auto_custom.svg')),
             'custom',
             self)
-        self.auto_custom.setDisabled(True)  # TODO not implemented
+        # TODO currently not implemented:
+        self.auto_custom.setDisabled(True)
 
     def _setup_pet(self):
         self.dock_line_win = QtWidgets.QDockWidget('Line selection', self)
@@ -2339,4 +2202,3 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.canvas.p1.clear()
         if hasattr(self, 'pet_win'):
             self.pet_win.close()
-
