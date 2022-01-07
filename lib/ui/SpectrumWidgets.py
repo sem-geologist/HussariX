@@ -1969,9 +1969,6 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.bkgd_helper_widget.setSizePolicy(size_policy)
         self.bkgd_helper_widget.hide()
         self.splitter.addWidget(self.spect_xtal_combo_view)
-        self.actionWDSSelector.toggled.connect(
-            self.spect_xtal_combo_view.setVisible)
-        self.actionWDSSelector.setChecked(True)
         self.xtal_model = SpecXTALCombiModel(wds_tree_model)
         self.spect_xtal_combo_view.setModel(self.xtal_model)
         self.wds_tree_model = wds_tree_model
@@ -2017,14 +2014,6 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.toolbar.addAction(self.action_exp_background)
         self.action_exp_background.toggled.connect(
             self.set_background_model)
-        self.toolbar.addSeparator()
-        self.actionWDSSelector = QAction(self)
-        self.actionWDSSelector.setIcon(QIcon(
-            self.icon_provider.get_icon_path('wds_selection.svg')))
-        self.actionWDSSelector.setCheckable(True)
-        self.actionWDSSelector.setToolTip(
-            'hide/show WDS-XTAL-spectrometer combination categories')
-        self.toolbar.addAction(self.actionWDSSelector)
 
     def _setup_marker_remove(self):
         menu = self.canvas.p1.getViewBox().menu
@@ -2181,7 +2170,7 @@ class WDSSpectraGUI(XraySpectraGUI):
 
     def remove_spectrum_curves(self, spect_header):
         # we cant iterate over canvas.p1.items, while removing,
-        # we need a copy of list to iterate through
+        # we need a copy of list to iterate through:
         curves_list = [i for i in self.canvas.p1.curves
                        if isinstance(i, WDSPlotItem) and
                        (i.signal_header == spect_header)]
