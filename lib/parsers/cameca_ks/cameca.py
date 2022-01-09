@@ -1141,7 +1141,7 @@ class Cameca(KaitaiStruct):
                 return self._m_rev_name if hasattr(self, '_m_rev_name') else None
 
             _pos = self._io.pos()
-            self._io.seek((0 if self.first_byte > 0 else 1))
+            self._io.seek((0 if self.first_byte > 0x20 else 1))
             self._m_rev_name = (self._io.read_bytes_full()).decode(u"CP1252")
             self._io.seek(_pos)
             return self._m_rev_name if hasattr(self, '_m_rev_name') else None

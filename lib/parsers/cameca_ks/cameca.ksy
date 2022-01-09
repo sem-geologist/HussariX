@@ -533,7 +533,7 @@ types:
     instances:
       rev_name:
         size-eos: true
-        pos: 'first_byte > 0 ? 0 : 1'
+        pos: 'first_byte > 0x20 ? 0 : 1'
         type: str
       full_name:
         value: rev_name.reverse
