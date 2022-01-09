@@ -138,7 +138,7 @@ class SpecXTALCombiModel(QAbstractListModel):
             qpix = QPixmap(48, 4)
             qpix.fill(Qt.transparent)
             painter = QPainter(qpix)
-            pen = QPen(cam_def_colors[node.xtal.family_name], 4,
+            pen = QPen(cam_def_colors[node.family_name], 4,
                        node.q_pen_style)
             painter.setPen(pen)
             painter.drawLine(0, 1, 48, 1)
@@ -226,16 +226,16 @@ class SpecXTALCombiModel(QAbstractListModel):
                     self.selected_xtal_family is None):
                 self.set_xtal_family(spect_header)
             elif spect_header.q_checked_state:
-                if self.selected_xtal_family != spect_header.xtal.family_name:
+                if self.selected_xtal_family != spect_header.family_name:
                     self.setData(self.index(i), 0, Qt.CheckStateRole)
 
     def set_xtal_family(self, header):
-        self.selected_xtal_family = header.xtal.family_name
+        self.selected_xtal_family = header.family_name
         html_family_str = """<div style="background-color:{};color:#000000;">
                              &nbsp;{}&nbsp;</div>""".format(
-                cam_def_colors[header.xtal.family_name].name(),
-                header.xtal.family_name)
-        self.xtalFamilyChanged.emit(header.xtal.family_name,
+                cam_def_colors[header.family_name].name(),
+                header.family_name)
+        self.xtalFamilyChanged.emit(header.family_name,
                                     header.two_d,
                                     header.k,
                                     html_family_str)
@@ -243,7 +243,7 @@ class SpecXTALCombiModel(QAbstractListModel):
     def flags(self, index):
         if self.ignore_family_constrain or self.selected_xtal_family is None:
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
-        if self.combinations[index.row()].xtal.family_name == \
+        if self.combinations[index.row()].family_name == \
                 self.selected_xtal_family:
             return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
         return Qt.NoItemFlags
