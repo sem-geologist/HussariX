@@ -159,6 +159,21 @@ Cameca.WdsScanSignal = WdsScanSignal
 
 
 class XraySignalHeader(Cameca.XraySignalHeader):
+
+    @cached_property
+    def family_name(self):
+        if self.combi_string == "EDX":
+            return "EDX"
+        else:
+            return self.xtal.family_name
+
+    @cached_property
+    def combi_string(self):
+        if self.spect_no == 0 and self.k == 0 and self.two_d == 20:
+            return "EDX"
+        else:
+            return '{0}: {1}'.format(self.spect_no, self.xtal.full_name)
+
     def __eq__(self, other):
         return self.combi_string == other.combi_string
 
