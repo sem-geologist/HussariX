@@ -378,7 +378,8 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.layout().addWidget(self.preview_tab_settings, 0, 18, 9, 1)
         self.preview_tab_settings.setSizePolicy(QSizePolicy.Preferred,
                                                 QSizePolicy.Preferred)
-        self.preview_tab_settings.setMaximumWidth(160)
+        self.preview_tab_settings.setMinimumWidth(160)
+        self.preview_tab_settings.setMaximumWidth(180)
         self.settings_button.setToolTip("Show/hide preview-on-hover settings")
         self.prev_check_boxes = [self.preview_main_emission,
                                  self.preview_sat,
@@ -704,6 +705,7 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
         self.layout().addWidget(self.label)
         self.layout().addWidget(self.pet)
         self.sizegrip = QSizeGrip(self)
+        self.sizegrip.setAttribute(Qt.WA_NoMousePropagation)
         self.pet.layout().addWidget(self.sizegrip, 8, 18, 1, 1,
                                     Qt.AlignBottom | Qt.AlignRight)
         self.pet.layout()
@@ -711,6 +713,7 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
         self.layout().setSpacing(0)
         parent.widgetFullscreened.connect(self.setEmbeddedMode)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        self.setEmbeddedMode(self.isFullScreen())
 
     def set_new_title(self, new_text):
         self.label.setText('Element Table of {}'.format(new_text))
@@ -737,11 +740,17 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
             self.setWindowFlags(Qt.SubWindow)
             self.setAutoFillBackground(True)
             self.restricted = True
+            self._old_pos = self.pos()
             if not self.parent().rect().contains(self.geometry()):
-                self.move(self.parent().rect().center())
+                p_r = self.parent().rect()
+                self.move(p_r.center().x(), p_r.top())
         else:
             self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
             self.restricted = False
+            if hasattr(self, "_old_pos"):
+                self.move(self._old_pos)
+            else:
+                self.move(self.parent().rect().center())
         if visible:
             self.show()
 
@@ -1893,7 +1902,10 @@ class XraySpectraGUI(cw.FullscreenableWidget):
     def show_pet(self):
         if self.pet is None:
             self._setup_pet()
-            self.pet_win.move(self.mapToGlobal(self.pos() + QPoint(5, 5)))
+            if self.isFullScreen():
+                self.pet_win.move(self.pos() + QPoint(self.width() // 2, 0))
+            else:
+                self.pet_win.move(self.mapToGlobal(self.pos() + QPoint(self.width() // 2, 0)))
         if self.pet_win.isVisible():
             self.pet_win.hide()
         else:
