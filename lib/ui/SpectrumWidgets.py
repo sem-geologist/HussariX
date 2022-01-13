@@ -1302,21 +1302,21 @@ class PositionMarkers(QObject):
                 decimals = 5
             if obj == self.m_text:
                 new_val = QInputDialog.getDouble(
-                    self.parent(), "enter new", "position",
+                    self.parent(), "move to", "absolute position",
                     self.m_line.pos().x(), lin_min, lin_max,
                     decimals)
                 if new_val[1]:
                     self.m_line.setPos(new_val[0])
             elif obj == self.bg1_text:
                 new_val = QInputDialog.getDouble(
-                    self.parent(), "enter new", "position",
+                    self.parent(), "move to", "relative position",
                     self.bg1_line.pos().x() - self.m_line.pos().x(), -90000,
                     90000, decimals)
                 if new_val[1]:
                     self.bg1_line.setPos(self.m_line.pos().x() + new_val[0])
             elif obj == self.bg2_text:
                 new_val = QInputDialog.getDouble(
-                    self.parent(), "enter new", "position",
+                    self.parent(), "move to", "relative position:",
                     self.bg2_line.pos().x() - self.m_line.pos().x(), -90000,
                     90000, decimals)
                 if new_val[1]:
