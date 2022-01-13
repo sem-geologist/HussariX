@@ -25,7 +25,7 @@ from PyQt5 import QtWidgets
 import pyqtgraph as pg
 import numpy as np
 from pyqtgraph import InfiniteLine, mkPen
-from PyQt5.QtCore import Qt, QPoint, QSize, QSignalBlocker
+from PyQt5.QtCore import Qt, QPoint, QSize, QSignalBlocker, QEvent, QObject
 from PyQt5.QtCore import pyqtSignal as Signal
 from PyQt5.QtCore import pyqtSlot as Slot
 from PyQt5.QtGui import QIcon, QFont, QColor, QIntValidator, QPalette
@@ -43,7 +43,9 @@ from PyQt5.QtWidgets import (QWidget,
                              QSpinBox,
                              QSizeGrip,
                              QSpacerItem,
-                             QTabWidget)
+                             QTabWidget,
+                             QInputDialog)
+
 
 from .CamecaQtModels import (WDSPlotItem,
                              SpecXTALCombiModel)
@@ -1249,7 +1251,7 @@ class XrayCanvas(pg.PlotWidget):
         pass
 
 
-class PositionMarkers:
+class PositionMarkers(QObject):
     def __init__(self, canvas=None,
                  initial_values=None):
         """
@@ -1259,6 +1261,7 @@ class PositionMarkers:
         marker set (name, peak_position, left_relative_position,
         right_relative_position, slope_val, background_modeling_mode)
         """
+        QObject.__init__(self)
         if initial_values is not None:
             self.type = 'particular'
             self.initial_values = initial_values
@@ -1274,12 +1277,52 @@ class PositionMarkers:
         self.bg2_line = None
         self.bg1_text = None
         self.bg2_text = None
+        self.m_text = None
         self.m_text_pos = 0.80
         self.bg1_text_pos = 0.75
         self.bg2_text_pos = 0.75
         if canvas is not None:
             self.canvas = canvas
             self.initiate_lines()
+
+    def eventFilter(self, obj, event):
+        if (obj in [self.bg1_text, self.bg2_text, self.m_text]
+                and event.type() == QEvent.GraphicsSceneMouseDoubleClick):
+            if self.x_axis_mode == "cameca":
+                lin_min = 15000
+                lin_max = 95000
+                decimals = 0
+            elif self.x_axis_mode == "energy":
+                lin_min = -0.8
+                lin_max = 50
+                decimals = 5
+            else:
+                lin_min = 0
+                lin_max = 1000
+                decimals = 5
+            if obj == self.m_text:
+                new_val = QInputDialog.getDouble(
+                    self.parent(), "enter new", "position",
+                    self.m_line.pos().x(), lin_min, lin_max,
+                    decimals)
+                if new_val[1]:
+                    self.m_line.setPos(new_val[0])
+            elif obj == self.bg1_text:
+                new_val = QInputDialog.getDouble(
+                    self.parent(), "enter new", "position",
+                    self.bg1_line.pos().x() - self.m_line.pos().x(), -90000,
+                    90000, decimals)
+                if new_val[1]:
+                    self.bg1_line.setPos(self.m_line.pos().x() + new_val[0])
+            elif obj == self.bg2_text:
+                new_val = QInputDialog.getDouble(
+                    self.parent(), "enter new", "position",
+                    self.bg2_line.pos().x() - self.m_line.pos().x(), -90000,
+                    90000, decimals)
+                if new_val[1]:
+                    self.bg2_line.setPos(self.m_line.pos().x() + new_val[0])
+            return True
+        return False
 
     def transform_to_other_axis_units(self, new_mode):
         if new_mode == self.x_axis_mode:
@@ -1350,6 +1393,7 @@ class PositionMarkers:
                                    name='main',
                                    markers=[('^', 0.99, 6.0)])
         self.m_line.setZValue(3000)
+
         if lower is not None:
             self.bg1_line = InfiniteLine(lower, movable=True,
                                          pen=mkPen(color, width=1.5),
@@ -1358,6 +1402,7 @@ class PositionMarkers:
             self.bg1_text = pg.InfLineLabel(self.bg1_line, movable=True,
                                             color=color,
                                             position=self.bg1_text_pos)
+            self.bg1_text.installEventFilter(self)
             self.bg1_line.sigPositionChanged.connect(self.update_marker_str)
 
         if higher is not None:
@@ -1368,9 +1413,11 @@ class PositionMarkers:
             self.bg2_text = pg.InfLineLabel(self.bg2_line, movable=True,
                                             color=color,
                                             position=self.bg2_text_pos)
+            self.bg2_text.installEventFilter(self)
             self.bg2_line.sigPositionChanged.connect(self.update_marker_str)
         self.m_text = pg.InfLineLabel(self.m_line, movable=True, color=color,
                                       position=self.m_text_pos)
+        self.m_text.installEventFilter(self)
         self.update_marker_str()
         self.m_line.sigPositionChanged.connect(self.update_marker_str)
         self.add_to_canvas()
