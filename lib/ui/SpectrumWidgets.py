@@ -41,6 +41,7 @@ from PyQt5.QtWidgets import (QWidget,
                              QHBoxLayout,
                              QGridLayout,
                              QSpinBox,
+                             QDoubleSpinBox,
                              QSizeGrip,
                              QSpacerItem,
                              QTabWidget,
@@ -1358,8 +1359,7 @@ class PositionMarkers(QObject):
                            "['two_bkgd', 'single_bkgd', 'solo']")
         if mode == self.mode:
             return
-        else:
-            self.mode = mode
+        self.mode = mode
 
     def gen_positions(self):
         if self.type == 'generic':
@@ -1392,7 +1392,7 @@ class PositionMarkers(QObject):
                                    pen=mkPen(color, width=3.),
                                    name='main',
                                    markers=[('^', 0.99, 6.0)])
-        self.m_line.setZValue(3000)
+        self.m_line.setZValue(3001)
 
         if lower is not None:
             self.bg1_line = InfiniteLine(lower, movable=True,
@@ -1403,6 +1403,7 @@ class PositionMarkers(QObject):
                                             color=color,
                                             position=self.bg1_text_pos)
             self.bg1_text.installEventFilter(self)
+            self.bg1_line.setZValue(3000)
             self.bg1_line.sigPositionChanged.connect(self.update_marker_str)
 
         if higher is not None:
@@ -1414,6 +1415,7 @@ class PositionMarkers(QObject):
                                             color=color,
                                             position=self.bg2_text_pos)
             self.bg2_text.installEventFilter(self)
+            self.bg2_line.setZValue(3000)
             self.bg2_line.sigPositionChanged.connect(self.update_marker_str)
         self.m_text = pg.InfLineLabel(self.m_line, movable=True, color=color,
                                       position=self.m_text_pos)
@@ -1505,21 +1507,88 @@ class PositionMarkers(QObject):
         self.initiate_lines()
 
 
-class TwoPointBackground(pg.PlotDataItem):
+class NoBackground:
     def __init__(self, plotting_widget, spect_xtal):
+        # background needs to stand out from multiple
+        # colorful curves - thus it is set to pure yellow or red
+        # and depart here from concept of using more mild colors in UI.
+        # Milder versions of these makes it less visible
+        # The avg curves is mildified a bit
         self.pw = plotting_widget
+        self.pm = self.pw.pos_markers
         if self.pw.canvas.dark_mode:
-            color = 'y'
+            self.BKGD_COL = "#ffff00"
+            self.FIT_COL = "#fdbc4b"
         else:
-            color = 'r'
-        super().__init__(pen=mkPen(width=2, color=color))
+            self.BKGD_COL = "#FF0000"
+            self.FIT_COL = "#ED1515"
+        self.m_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
+                                                     color=self.FIT_COL))
+        self.pw.canvas.addItem(self.m_avg_curve)
+        self.m_avg_curve.setZValue(3002)
+        self.signal_header = spect_xtal
+        self.sm = self.pw.wds_tree_selection_model
+        self.sm.currentChanged.connect(self.update_peak)
+        self.pm.m_line.sigPositionChanged.connect(self.update_peak)
+        self.pw.avg_m_win_spin.valueChanged.connect(self.update_peak)
+        self.pw.avg_m_po_spin.valueChanged.connect(self.update_peak)
+        self.update_peak()
+
+    def get_last_highlighted_curve(self):
+        def filter_curve(curve):
+            if (curve.signal_header == self.signal_header) and\
+                    (curve in self.pw.canvas.p1.curves):
+                return True
+            return False
+
+        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
+                                                  Qt.UserRole)
+        if plot_curves is None:
+            return
+        filtered = list(filter(filter_curve, plot_curves))
+        if len(filtered) == 1:
+            return filtered[0]
+        return
+
+    def update_peak(self, *args, **kwargs):
+        curve = self.get_last_highlighted_curve()
+        if curve is None:
+            return
+        m_pos = self.pm.m_line.getXPos()
+        data_x, data_y = curve.x_ref, curve.y_ref
+        idx = np.abs(data_x - m_pos).argmin()
+        avg_window = self.pw.avg_m_win_spin.value()
+        order = self.pw.avg_m_po_spin.value()
+        data_len = len(data_x)
+        i1_min, i1_max = validate_idx_range(data_len, idx,
+                                            avg_window)
+        xses1 = data_x[i1_min:i1_max+1]
+        ys1 = data_y[i1_min:i1_max+1]
+        poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
+        y_pos = np.polynomial.polynomial.polyval(m_pos, poly1)
+        self.m_abs_value = y_pos
+        xses_hr = np.linspace(data_x[i1_min], data_x[i1_max])
+        self.m_avg_curve.setData(
+            xses_hr,
+            np.polynomial.polynomial.polyval(xses_hr, poly1))
+
+    def prepare_to_destroy(self):
+        self.pm.m_line.sigPositionChanged.disconnect(self.update_peak)
+        self.pw.avg_m_win_spin.valueChanged.disconnect(self.update_peak)
+        self.pw.avg_m_po_spin.valueChanged.disconnect(self.update_peak)
+        self.sm.currentChanged.disconnect(self.update_peak)
+        self.pw.canvas.removeItem(self.m_avg_curve)
+
+
+class TwoPointBackground(NoBackground, pg.PlotDataItem):
+    def __init__(self, plotting_widget, spect_xtal):
+        NoBackground.__init__(self, plotting_widget, spect_xtal)
+        pg.PlotDataItem.__init__(self, pen=mkPen(width=2, color=self.BKGD_COL))
         self.setZValue(3001)  # over 3000
-        pos_markers = self.pw.pos_markers
-        self.pm = pos_markers
         self.bg1_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
-                                                       color=color))
+                                                       color=self.FIT_COL))
         self.bg2_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
-                                                       color=color))
+                                                       color=self.FIT_COL))
         self.pw.avg_poly_order_spin.valueChanged.connect(
             self.update_background)
         self.pw.avg_win_size_spin.valueChanged.connect(
@@ -1528,35 +1597,21 @@ class TwoPointBackground(pg.PlotDataItem):
         self.pw.canvas.addItem(self.bg2_avg_curve)
         self.bg1_avg_curve.setZValue(3002)
         self.bg2_avg_curve.setZValue(3002)
-        self.signal_header = spect_xtal
         self.pm.bg1_line.sigPositionChanged.connect(self.update_background)
         self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
-        self.pm.m_line.sigPositionChanged.connect(self.update_background)
-        self.sm = self.pw.wds_tree_selection_model
         self.sm.currentChanged.connect(self.update_background)
+        self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.update_background()
 
     def update_background(self):
-        def filter_curve(curve):
-            if (curve.signal_header == self.signal_header) and\
-                    (curve in self.pw.canvas.p1.curves):
-                return True
-            return False
-
         bg1_pos = self.pm.bg1_line.getXPos()
         bg2_pos = self.pm.bg2_line.getXPos()
         m_pos = self.pm.m_line.getXPos()
         min_pos = min(bg1_pos, bg2_pos, m_pos)
         max_pos = max(bg1_pos, bg2_pos, m_pos)
         width = max_pos - min_pos
-        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
-                                                  Qt.UserRole)
-        if plot_curves is None:
-            return
-        filtered = list(filter(filter_curve, plot_curves))
-        if len(filtered) == 1:
-            curve = filtered[0]
-        else:
+        curve = self.get_last_highlighted_curve()
+        if curve is None:
             return
         data_x, data_y = curve.x_ref, curve.y_ref
         idx1 = np.abs(data_x - bg1_pos).argmin()
@@ -1598,6 +1653,8 @@ class TwoPointBackground(pg.PlotDataItem):
                                   num=512)
         y = self.get_background(x_pos1, x_pos2, y_pos1, y_pos2, x_linespace)
         self.setData(x_linespace, y)
+        self.pw.amp_val_w.setValue(
+            self.m_abs_value - self.get_background(x_pos1, x_pos2, y_pos1, y_pos2, m_pos))
 
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
@@ -1610,6 +1667,7 @@ class TwoPointBackground(pg.PlotDataItem):
         self.pw.canvas.removeItem(self.bg2_avg_curve)
         self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
         self.sm.currentChanged.disconnect(self.update_background)
+        NoBackground.prepare_to_destroy(self)
 
 
 class LinearBackground(TwoPointBackground):
@@ -1632,33 +1690,25 @@ class ExponentialBackground(TwoPointBackground):
             return x_linespace * m + b
 
 
-class SloppedBackground(pg.PlotDataItem):
+class SloppedBackground(NoBackground, pg.PlotDataItem):
     def __init__(self, plotting_widget, spect_xtal):
-        self.pw = plotting_widget
-        if self.pw.canvas.dark_mode:
-            color = 'y'
-        else:
-            color = 'r'
-        super().__init__(pen=mkPen(width=2, color=color))
+        NoBackground.__init__(self, plotting_widget, spect_xtal)
+        pg.PlotDataItem.__init__(self, pen=mkPen(width=2, color=self.BKGD_COL))
         self.setZValue(3001)  # over 3000
-        pos_markers = self.pw.pos_markers
-        self.pm = pos_markers
         self.bg_avg_curve = pg.PlotDataItem(pen=mkPen(width=3,
-                                                      color=color))
+                                                      color=self.FIT_COL))
         self.pw.avg_poly_order_spin.valueChanged.connect(
             self.update_background)
         self.pw.avg_win_size_spin.valueChanged.connect(
             self.update_background)
         self.pw.canvas.addItem(self.bg_avg_curve)
         self.bg_avg_curve.setZValue(3002)
-        self.signal_header = spect_xtal
         self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
-        self.pm.m_line.sigPositionChanged.connect(self.update_background)
-        self.sm = self.pw.wds_tree_selection_model
-        self.sm.currentChanged.connect(self.update_background)
         self.pw.slope_spin_box.sigValueChanging.connect(
             self.slope_from_spin_box)
         self.slope_from_spin_box(self.pw.slope_spin_box)
+        self.sm.currentChanged.connect(self.update_background)
+        self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.pw.canvas.xAxisUnitsChanged.connect(self.update_background)
 
     def slope_from_spin_box(self, spin_box):
@@ -1666,12 +1716,6 @@ class SloppedBackground(pg.PlotDataItem):
         self.update_background(slope=self.slope)
 
     def update_background(self, *args, slope=None):
-        def filter_curve(curve):
-            if (curve.signal_header == self.signal_header) and\
-                    (curve in self.pw.canvas.p1.curves):
-                return True
-            return False
-
         if slope is None:
             slope = self.slope
         elif slope > 0.:
@@ -1681,14 +1725,8 @@ class SloppedBackground(pg.PlotDataItem):
         m_pos = self.pm.m_line.getXPos()
         bg_pos = self.pm.bg2_line.getXPos()
         lenght = bg_pos - m_pos
-        plot_curves = self.pw.wds_tree_model.data(self.sm.currentIndex(),
-                                                  Qt.UserRole)
-        if plot_curves is None:
-            return
-        filtered = list(filter(filter_curve, plot_curves))
-        if len(filtered) == 1:
-            curve = filtered[0]
-        else:
+        curve = self.get_last_highlighted_curve()
+        if curve is None:
             return
         data_x, data_y = curve.x_ref, curve.y_ref
         idx = np.abs(data_x - bg_pos).argmin()
@@ -1723,6 +1761,7 @@ class SloppedBackground(pg.PlotDataItem):
                                   num=512)
         b = y_pos - x_pos * m
         self.setData(x_linespace, x_linespace * m + b)
+        self.pw.amp_val_w.setValue(self.m_abs_value - y_pos_main)
 
     def prepare_to_destroy(self):
         self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
@@ -1735,6 +1774,7 @@ class SloppedBackground(pg.PlotDataItem):
         self.sm.currentChanged.disconnect(self.update_background)
         self.pw.slope_spin_box.sigValueChanging.disconnect(
             self.slope_from_spin_box)
+        NoBackground.prepare_to_destroy(self)
 
 
 class XraySpectraGUI(cw.FullscreenableWidget):
@@ -1745,8 +1785,7 @@ class XraySpectraGUI(cw.FullscreenableWidget):
     sig_name_had_changed = Signal(str)
 
     def __init__(self, parent=None, icon_size=None,
-                 pet_opacity=None, initial_mode='energy',
-                 name='Plot Widget',
+                 pet_opacity=None, initial_mode='energy', name='Plot Widget',
                  pet_frameless=True):
         cw.FullscreenableWidget.__init__(self, parent, icon_size)
         self._name = name
@@ -1756,7 +1795,6 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self.pet = None
         self.splitter = QtWidgets.QSplitter(Qt.Vertical)
         self.setCentralWidget(self.splitter)
-        self.bkgd_helper_widget = QWidget(self.splitter)
         self._setup_toolbar()
         self.canvas = XrayCanvas(initial_mode=initial_mode,
                                  dark_mode=self.dark_mode)
@@ -1847,7 +1885,7 @@ class XraySpectraGUI(cw.FullscreenableWidget):
         self.toolbar.addSeparator()
         self._setup_auto()
         self.toolbar.addActions([self.auto_all, self.auto_width,
-                                 self.auto_height])  #, self.auto_custom])
+                                 self.auto_height])  # , self.auto_custom])
         self._empty1 = QtWidgets.QWidget()
         self._empty1.setSizePolicy(QSizePolicy.Expanding,
                                    QSizePolicy.Expanding)
@@ -1993,7 +2031,11 @@ class WDSSpectraGUI(XraySpectraGUI):
     def __init__(self, wds_tree_model, wds_tree_selection_model):
         XraySpectraGUI.__init__(self, pet_opacity=0.9,
                                 initial_mode='cameca')
+        self.m_val_label = QLabel("peak-bkgd (cps/nA):")
         self.pos_markers = PositionMarkers()
+        self.bkgd_helper_widget = QWidget(self.splitter)
+        self.amplitude_widget = QWidget(self.splitter)
+        self.splitter.insertWidget(0, self.amplitude_widget)
         self.backgrounds = []
         self._setup_wds_additions()
         self._setup_markers()
@@ -2005,15 +2047,39 @@ class WDSSpectraGUI(XraySpectraGUI):
         size_policy.setHorizontalPolicy(QSizePolicy.Minimum)
         self.spect_xtal_combo_view.setSizePolicy(size_policy)
         self.splitter.addWidget(self.bkgd_helper_widget)
+        amp_layout = QHBoxLayout(self.amplitude_widget)
+        amp_layout.addWidget(self.m_val_label,
+                             alignment=Qt.AlignRight)
+        self.amp_val_w = QDoubleSpinBox(self.amplitude_widget)
+        self.amp_val_w.setReadOnly(True)
+        self.amp_val_w.setKeyboardTracking(False)
+        self.amp_val_w.setMinimum(-10E8)
+        self.amp_val_w.setMaximum(10E7)
+        self.amp_val_w.setButtonSymbols(self.amp_val_w.NoButtons)
+        self.avg_m_win_spin = QSpinBox()
+        self.avg_m_win_spin.setValue(5)
+        self.avg_m_win_spin.setRange(1, 50)
+        self.avg_m_win_spin.setSingleStep(1)
+        self.avg_m_po_spin = QSpinBox()
+        self.avg_m_po_spin.setValue(1)
+        self.avg_m_po_spin.setRange(1, 15)
+        self.avg_m_po_spin.setSingleStep(1)
+        amp_layout.addWidget(self.amp_val_w, stretch=2)
+        amp_layout.addWidget(QLabel("avg. size:"), alignment=Qt.AlignRight)
+        amp_layout.addWidget(self.avg_m_win_spin)
+        amp_layout.addWidget(QLabel("poly. ord.:"), alignment=Qt.AlignRight)
+        amp_layout.addWidget(self.avg_m_po_spin)
+        amp_layout.setContentsMargins(2, 2, 2, 2)
+        self.amplitude_widget.setMaximumHeight(28)
         bkgd_layout = QHBoxLayout(self.bkgd_helper_widget)
-        bkgd_layout.addWidget(QLabel("Bkgd. slope:"))
+        bkgd_layout.addWidget(QLabel("Bkgd. slope:"), alignment=Qt.AlignRight)
         bkgd_layout.setContentsMargins(2, 2, 2, 2)
         self.bkgd_helper_widget.setMaximumHeight(28)
         self.slope_spin_box = pg.SpinBox(
             value=1.0, dec=True, min=0.001, max=1000, decimals=6,
             compactHeight=False)
         bkgd_layout.addWidget(self.slope_spin_box)
-        bkgd_layout.addWidget(QLabel("avg. size:"))
+        bkgd_layout.addWidget(QLabel("avg. size:"), alignment=Qt.AlignRight)
         self.avg_win_size_spin = QSpinBox()
         self.avg_win_size_spin.setValue(10)
         self.avg_win_size_spin.setRange(1, 100)
@@ -2083,6 +2149,7 @@ class WDSSpectraGUI(XraySpectraGUI):
             self.clear_background_models)
         self.actionClearMarker.triggered.connect(
             self.pos_markers.remove_from_canvas)
+        self.m_val_label.setText("abs. I:")
 
     def set_background_model(self, *args):
         self.clear_background_models()
@@ -2149,14 +2216,17 @@ class WDSSpectraGUI(XraySpectraGUI):
         if self.action_linear_background.isChecked() or \
                 self.action_exp_background.isChecked():
             self.bkgd_helper_widget.show()
+            self.m_val_label.setText("peak - bkgd.:")
         else:
             self.bkgd_helper_widget.hide()
+            self.m_val_label.setText("abs. I:")
 
     def _setup_markers(self):
         self.action_marker_bgx2 = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_bgx2.svg')),
             'peak and 2 background',
             self)
+        self.action_marker_bgx2.triggered.connect(self.amplitude_widget.show)
         self.action_marker_bgx2.triggered.connect(
             self.update_bkgd_helper_box_visibility)
         self.action_marker_and_1bkg = QAction(
@@ -2165,11 +2235,13 @@ class WDSSpectraGUI(XraySpectraGUI):
             self)
         self.action_marker_and_1bkg.triggered.connect(
             self.update_bkgd_helper_box_visibility)
+        self.action_marker_and_1bkg.triggered.connect(self.amplitude_widget.show)
         self.action_marker_only = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
             'single marker only',
             self)
         self.action_marker_only.triggered.connect(self.bkgd_helper_widget.hide)
+        self.action_marker_only.triggered.connect(self.amplitude_widget.show)
         self.action_marker_bgx2.triggered.connect(
             self.show_three_markers_on_canvas)
         self.action_marker_and_1bkg.triggered.connect(
