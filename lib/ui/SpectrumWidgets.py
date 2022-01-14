@@ -993,10 +993,13 @@ class XrayCanvas(pg.PlotWidget):
             j = self.y_actions.index(action)
             y_mode = ['cts', 'cps', 'cpsna'][j]
             self.y_axis_mode = y_mode
-            self.yAxisUnitsChanged.emit()
         for item in self.p1.curves:
             if isinstance(item, SpectrumCurveItem):
                 item.set_spectrum_data(x_mode=x_mode, y_mode=y_mode)
+        if action in self.y_actions:
+            self.yAxisUnitsChanged.emit()
+        else:
+            self.xAxisUnitsChanged.emit(x_mode)
         self.autoRange()
 
     def init_x_axis(self):
@@ -1026,7 +1029,7 @@ class XrayCanvas(pg.PlotWidget):
         self._original_K = None
         self.axis_quotient = xu.calc_scale_to_sin_theta(two_D, K)
 
-    def set_tweeked_K(self, new_val):
+    def set_modified_K(self, new_val):
         if self._original_K is None:
             self._original_K = self.K
         self.K = new_val
@@ -1054,7 +1057,6 @@ class XrayCanvas(pg.PlotWidget):
             self.setXRange(0, 100)
             self.xtal_family_text_item.setVisible(False)
             self.xtal_family_text_family.setVisible(False)
-        self.xAxisUnitsChanged.emit(mode)
 
     def set_kv(self, kv):
         self.kv = kv
@@ -1532,6 +1534,8 @@ class NoBackground:
         self.pm.m_line.sigPositionChanged.connect(self.update_peak)
         self.pw.avg_m_win_spin.valueChanged.connect(self.update_peak)
         self.pw.avg_m_po_spin.valueChanged.connect(self.update_peak)
+        self.pw.canvas.xAxisUnitsChanged.connect(self.update_peak)
+        self.pw.canvas.yAxisUnitsChanged.connect(self.update_peak)
         self.update_peak()
 
     def get_last_highlighted_curve(self):
@@ -1577,6 +1581,8 @@ class NoBackground:
         self.pw.avg_m_win_spin.valueChanged.disconnect(self.update_peak)
         self.pw.avg_m_po_spin.valueChanged.disconnect(self.update_peak)
         self.sm.currentChanged.disconnect(self.update_peak)
+        self.pw.canvas.xAxisUnitsChanged.disconnect(self.update_peak)
+        self.pw.canvas.yAxisUnitsChanged.disconnect(self.update_peak)
         self.pw.canvas.removeItem(self.m_avg_curve)
 
 
@@ -1601,6 +1607,8 @@ class TwoPointBackground(NoBackground, pg.PlotDataItem):
         self.pm.bg2_line.sigPositionChanged.connect(self.update_background)
         self.sm.currentChanged.connect(self.update_background)
         self.pm.m_line.sigPositionChanged.connect(self.update_background)
+        self.pw.canvas.xAxisUnitsChanged.connect(self.update_background)
+        self.pw.canvas.yAxisUnitsChanged.connect(self.update_background)
         self.update_background()
 
     def update_background(self):
@@ -1654,7 +1662,8 @@ class TwoPointBackground(NoBackground, pg.PlotDataItem):
         y = self.get_background(x_pos1, x_pos2, y_pos1, y_pos2, x_linespace)
         self.setData(x_linespace, y)
         self.pw.amp_val_w.setValue(
-            self.m_abs_value - self.get_background(x_pos1, x_pos2, y_pos1, y_pos2, m_pos))
+            self.m_abs_value - self.get_background(x_pos1, x_pos2, y_pos1,
+                                                   y_pos2, m_pos))
 
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
@@ -1666,6 +1675,8 @@ class TwoPointBackground(NoBackground, pg.PlotDataItem):
         self.pw.canvas.removeItem(self.bg1_avg_curve)
         self.pw.canvas.removeItem(self.bg2_avg_curve)
         self.pm.m_line.sigPositionChanged.disconnect(self.update_background)
+        self.pw.canvas.xAxisUnitsChanged.disconnect(self.update_background)
+        self.pw.canvas.yAxisUnitsChanged.disconnect(self.update_background)
         self.sm.currentChanged.disconnect(self.update_background)
         NoBackground.prepare_to_destroy(self)
 
@@ -1708,8 +1719,9 @@ class SloppedBackground(NoBackground, pg.PlotDataItem):
             self.slope_from_spin_box)
         self.slope_from_spin_box(self.pw.slope_spin_box)
         self.sm.currentChanged.connect(self.update_background)
-        self.pm.m_line.sigPositionChanged.connect(self.update_background)
         self.pw.canvas.xAxisUnitsChanged.connect(self.update_background)
+        self.pw.canvas.yAxisUnitsChanged.connect(self.update_background)
+        self.pm.m_line.sigPositionChanged.connect(self.update_background)
 
     def slope_from_spin_box(self, spin_box):
         self.slope = spin_box.value()
@@ -1772,6 +1784,8 @@ class SloppedBackground(NoBackground, pg.PlotDataItem):
             self.update_background)
         self.pw.canvas.removeItem(self.bg_avg_curve)
         self.sm.currentChanged.disconnect(self.update_background)
+        self.pw.canvas.xAxisUnitsChanged.disconnect(self.update_background)
+        self.pw.canvas.yAxisUnitsChanged.disconnect(self.update_background)
         self.pw.slope_spin_box.sigValueChanging.disconnect(
             self.slope_from_spin_box)
         NoBackground.prepare_to_destroy(self)
@@ -1990,7 +2004,9 @@ class XraySpectraGUI(cw.FullscreenableWidget):
             if self.isFullScreen():
                 self.pet_win.move(self.pos() + QPoint(self.width() // 2, 0))
             else:
-                self.pet_win.move(self.mapToGlobal(self.pos() + QPoint(self.width() // 2, 0)))
+                self.pet_win.move(
+                    self.mapToGlobal(
+                        self.pos() + QPoint(self.width() // 2, 0)))
         if self.pet_win.isVisible():
             self.pet_win.hide()
         else:
@@ -2057,11 +2073,11 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.amp_val_w.setMaximum(10E7)
         self.amp_val_w.setButtonSymbols(self.amp_val_w.NoButtons)
         self.avg_m_win_spin = QSpinBox()
-        self.avg_m_win_spin.setValue(5)
+        self.avg_m_win_spin.setValue(2)
         self.avg_m_win_spin.setRange(1, 50)
         self.avg_m_win_spin.setSingleStep(1)
         self.avg_m_po_spin = QSpinBox()
-        self.avg_m_po_spin.setValue(1)
+        self.avg_m_po_spin.setValue(2)
         self.avg_m_po_spin.setRange(1, 15)
         self.avg_m_po_spin.setSingleStep(1)
         amp_layout.addWidget(self.amp_val_w, stretch=2)
@@ -2235,7 +2251,8 @@ class WDSSpectraGUI(XraySpectraGUI):
             self)
         self.action_marker_and_1bkg.triggered.connect(
             self.update_bkgd_helper_box_visibility)
-        self.action_marker_and_1bkg.triggered.connect(self.amplitude_widget.show)
+        self.action_marker_and_1bkg.triggered.connect(
+            self.amplitude_widget.show)
         self.action_marker_only = QAction(
             QIcon(self.icon_provider.get_icon_path('lines_1x_only.svg')),
             'single marker only',
