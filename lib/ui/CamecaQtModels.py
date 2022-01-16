@@ -364,11 +364,14 @@ class CamecaWDSTreeModel(QAbstractItemModel):
         if role == Qt.ToolTipRole:
             if isinstance(node, Cameca.Dataset):
                 ts = node.extras.datetime_and_pos[0].datetime.unix_timestamp
-                return 'dataset {} contains:\n  '.format(row + 1) + \
-                    '\n  '.join([('CORRUPTED! ' if i.signal.corrupted else '')
-                                 + str(i.signal_header)
-                                 for i in node.items]) + '\n ' + \
-                    datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+                return "".join(
+                    [f"dataset {row + 1} contains:\n  ",
+                     '\n  '.join([
+                         ('CORRUPTED! ' if i.signal.corrupted else '')
+                         + str(i.signal_header)
+                         + f" {i.signal_header.beam_current:.1f} nA with dt {i.signal.dwell_time:.4g} s/chan"
+                         for i in node.items]),
+                     datetime.fromtimestamp(ts).strftime("\n %Y-%m-%d %H:%M")])
 
         if (role == Qt.ForegroundRole and
                 isinstance(node, Cameca.Dataset) and
