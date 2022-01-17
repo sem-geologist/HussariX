@@ -724,6 +724,9 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
     def mousePressEvent(self, event):
         self._mouse_clicked_pos = event.pos()
 
+    def mouseReleaseEvent(self, event):
+        self.unsetCursor()  # reset cursor
+
     def mouseMoveEvent(self, event):
         if self.restricted:
             gp = self.parent().mapFromGlobal(event.globalPos())
@@ -733,9 +736,12 @@ class FramelessXRayElementTable(QtWidgets.QWidget):
                 x = lt_pos.x()
             if (lt_pos.y() >= 0) and ((lt_pos.y() + self.height()) <= self.parent().height()):
                 y = lt_pos.y()
-            self.move(x, y)
+            delta = QPoint(x, y)
         else:
-            self.move(event.globalPos() - self._mouse_clicked_pos)
+            delta = event.globalPos() - self._mouse_clicked_pos
+        if self.cursor() == Qt.ArrowCursor:
+            self.setCursor(Qt.DragMoveCursor)
+        self.move(delta)
 
     def setEmbeddedMode(self, fullscreen):
         visible = self.isVisible()
