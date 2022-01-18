@@ -72,14 +72,11 @@ main_path = path.join(path.dirname(__file__), path.pardir)
 conf_path = path.join(main_path,
                       'configurations',
                       'lines.json')
-#TODO coliding name, and oversimpilified json
+
+#TODO REDO: coliding name, and oversimpilified json
 with open(conf_path) as fn:
     jsn = fn.read()
 lines = json.loads(jsn)
-
-# TODO remove this
-# dealling with windows-mind-slaves casted greek letters into latin:
-dos_greek = {'a': 'α', 'b': 'β', 'c': 'γ', 'z': 'ζ'}
 
 
 # QColor.name() returns the RGB not RGBA
@@ -91,30 +88,30 @@ def color_to_css(qcolor):
     return css_color
 
 
-def desaturate(init_color, times, desat=True, lighten_darken="darken"):
+def desaturate(init_color, n_orders, desat=True, lighten_darken="darken"):
     """return the list of recursively desaturated QColors
     desaturated and brightened/darkened (optionanly) at HSV space"""
     hsv = (init_color.hue(), init_color.hsvSaturation(),
            init_color.value(), init_color.alpha())
     if lighten_darken == "lighten":
-        value_step = (hsv[2] - 255) // (times + 1)
+        value_step = (hsv[2] - 255) // (n_orders + 1)
     elif lighten_darken == "darken":
-        value_step = hsv[2] // (times + 1)
+        value_step = hsv[2] // (n_orders + 1)
     else:
         value_step = 0
     if desat:
-        desat_step = hsv[1] // (times + 1)
+        desat_step = hsv[1] // (n_orders + 1)
     else:
         desat_step = 0
     color_list = [QColor.fromHsv(hsv[0],
                                  hsv[1] - desat_step * i,
                                  hsv[2] - value_step * i,
                                  hsv[3])
-                  for i in range(times)]
+                  for i in range(n_orders)]
     return color_list
 
 
-def make_color_html_string(colors):
+def orders_as_html_color_lines(colors):
     """makes tooltip string with colors from color list"""
     colors = (i.name() for i in colors[:9])
     string = """
@@ -163,7 +160,7 @@ def make_color_html_string(colors):
     """.format(*colors)
     return string
 
-
+# NOT used anymore, some parameters (darker, .lighter) could be reused in desaturate.
 def darken_lighten(color, times, color_list=None, dark_mode=False):
     """return the list of recursively darkened/lighten QtColors
     darkening or lightening is chosen depending from dark_mode/used theme"""
@@ -175,16 +172,6 @@ def darken_lighten(color, times, color_list=None, dark_mode=False):
         darken_lighten(color, times - 1, color_list=color_list,
                        dark_mode=dark_mode)
     return color_list
-
-
-# TODO Remove this
-def utfize(text):
-    """replace the a,b,c latin letters used by retards stuck in
-    ms-dos age to greek α, β, γ
-    """
-    return ''.join(dos_greek[s] if s in dos_greek else s for s in text)
-
-# pg.setConfigOptions(background=pg.mkColor(0, 43, 54))
 
 
 def format_line_annotation(text, siegbahn=False):
@@ -208,22 +195,30 @@ def string_with_order(string, order):
     return string
 
 
-def validate_idx_range(data_len, idx, window_size):
-    """return min and max indexes for given distance from given index
-    so that min and max values would stay in bounts of data length"""
-    if idx - window_size > 0:
-        idx_min = idx - window_size
+def validate_idx_range(data_len, idx, half_window_size):
+    """return min and max indexes for given window from middle index in the window,
+    so that min and max indexes would stay in bounds of provided data lenght,
+    and if not, it would point to indexes coresponding to window_sized slice of
+    data either from beginning or end of data array
+    ----
+    data_len - size of array or list,
+    idx - index of middle point of slice,
+    half_window_size - the integer size of window to one side from the idx"""
+    if idx - half_window_size > 0:
+        idx_min = idx - half_window_size
     else:
         idx_min = 0
-    if idx + window_size < data_len - 1:
-        idx_max = idx + window_size
+    if idx + half_window_size < data_len - 1:
+        idx_max = idx + half_window_size
     else:
         idx_max = data_len - 1
     return idx_min, idx_max
 
 
 class XtalListView(QListView):
-
+    """Custom View for showing XTAL-Spectrometer combinations (model) with
+    some additional functionality of changing spectrum curve linewidth
+    or/and character (solid, dotted...) with right mouse click menu."""
     def __init__(self, parent=None):
         QListView.__init__(self, parent=parent)
         line_pattern_menu = QMenu("line pattern")
@@ -245,6 +240,8 @@ class XtalListView(QListView):
         self.line_style_menu = QMenu()
         self.line_style_menu.addMenu(line_pattern_menu)
         self.line_style_menu.addMenu(line_width_menu)
+        # icon mode is used to show selected pen character
+        # and default XTAL color for faster recignition. 
         self.setViewMode(QListView.IconMode)
         self.setResizeMode(QListView.Adjust)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -322,7 +319,7 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.g_layout.setVerticalSpacing(1)
         self.g_layout.setContentsMargins(6, 0, 6, 6)
         self.layout().addWidget(self.g_line_par_group, 0, 2, 3, 10)
-        self._setup_hidden_settings()
+        self._setup_preview_settings()
         # set the default states:
         self.preview_main_emission.setChecked(True)
         self.hv_value.setValue(15.)
@@ -406,13 +403,16 @@ class XRayElementTable(qpet.ElementTableGUI):
 
     def keyPressEvent(self, event):
         """Reimplementation of keyPressEvents to deal with
-        CLI stealing the keyboard"""
+        text input widget stealing the keyboard, from font
+        dropdown, when manually writting Uppercase font name."""
         if self.notation_font_cb.hasFocus():
             event.ignore()
         else:
             super().keyPressEvent(event)
 
     def keep_incheck_preview_gatekeeper(self, box_checked):
+        """control the shortcut of emission lines visibility checkbox
+        with other checkboxes in hiddenable setting panel"""
         if box_checked:
             if self.all_emission_preview.isChecked():
                 return
@@ -429,6 +429,9 @@ class XRayElementTable(qpet.ElementTableGUI):
                 self.all_emission_preview.setChecked(False)
 
     def gatekeep_emission_preview(self, permit):
+        """uncheck all/ restore previous/ or check only main emission line
+        checkboxes depending from previous states with emission preview
+        checkbox shortcut"""
         if permit:
             if not any(self._temp_prev_states):
                 self.preview_main_emission.setChecked(True)
@@ -456,7 +459,8 @@ class XRayElementTable(qpet.ElementTableGUI):
         else:
             self.layout().addWidget(self.settings_button, 0, 18, 8, 1)
 
-    def _make_angle_spin_box(self, init_val):
+    @staticmethod
+    def _make_angle_spin_box(init_val):
         angle_box = QtWidgets.QSpinBox()
         angle_box.setValue(init_val)
         angle_box.setMaximum(90)
@@ -467,7 +471,8 @@ class XRayElementTable(qpet.ElementTableGUI):
         angle_box.setMinimumHeight(16)
         return angle_box
 
-    def _setup_hidden_settings(self):
+    def _setup_preview_settings(self):
+        # preview emission lines settings:
         self.preview_main_emission = QCheckBox("diagram lines")
         self.preview_main_emission.setToolTip(
             'preview-on-hover emission lines')
@@ -480,11 +485,60 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.preview_edge = QCheckBox('edges')
         self.preview_edge.setToolTip('preview absorption edges')
         self.preview_edge.setMinimumSize(16, 16)
+        self.prev_line_style_btn = LineStyleButton(size=None)
+        self.prev_line_style_btn.setMinimumHeight(18)
+        self.prev_line_style_btn.setMinimumWidth(18)
+        self.prev_line_style_btn.setSizePolicy(QSizePolicy.Expanding,
+                                               QSizePolicy.Expanding)
+
+        # absorption preview settings
         self.preview_edge_curve = QCheckBox('spectrum')
         self.preview_edge_curve.setDisabled(True)
         #TODO hard disabled until curve data will be included
         self.preview_edge_curve.setToolTip("preview absorption curves (NIST)")
         self.preview_edge_curve.setMinimumSize(16, 16)
+        self.abs_style_btn = LineStyleButton(size=None)
+        self.abs_style_btn.setMinimumHeight(18)
+        self.abs_style_btn.setMinimumWidth(18)
+
+        # font settings
+        self.notation_font_cb = QtWidgets.QFontComboBox()
+        self.notation_font_cb.setMinimumWidth(48)
+        self.notation_font_size_cb = QComboBox(self)
+        self.notation_font_size_cb.setEditable(True)
+        self.notation_font_size_cb.setValidator(QIntValidator(4, 100))
+        self.notation_font_size_cb.addItems(
+            [str(i) for i in [6, 8, 10, 12, 14, 16, 18, 20, 24, 32, 48, 72]])
+        self.notation_font_size_cb.setCurrentIndex(2)
+        self.notation_font_size_cb.setMinimumWidth(24)
+        self.notation_font_color = pg.ColorButton(self)
+        self.notation_font_color.setMinimumWidth(24)
+        self.annot_sample_anchor = QWidget()
+        self.annot_sample_anchor.setLayout(QGridLayout())
+        self.annot_anch_layout = self.annot_sample_anchor.layout()
+        self.annot_anch_layout.setContentsMargins(1, 1, 1, 1)
+        self.annot_anch_layout.setSpacing(0)
+        self.radio_boxes = [QtWidgets.QRadioButton("", self)
+                            for i in range(5)]
+        self.preview_text = QLabel("Ti K<i>α</i><sub>1</sub><sup>2nd</sup>")
+        self.preview_text.setMaximumHeight(44)
+        self.preview_text.setMaximumWidth(112)
+        self.annot_anch_layout.addWidget(self.preview_text, 0, 1, 1, 1)
+        self.annot_anch_layout.addWidget(self.radio_boxes[0], 0, 0, 1, 1,
+                                         Qt.AlignRight)
+        self.radio_boxes[1].setChecked(True)
+        self.annot_anch_layout.addWidget(self.radio_boxes[1], 1, 0, 1, 1,
+                                         Qt.AlignRight | Qt.AlignTop)
+        self.annot_anch_layout.addWidget(self.radio_boxes[2], 1, 1, 1, 1,
+                                         Qt.AlignCenter | Qt.AlignTop)
+        self.annot_anch_layout.addWidget(self.radio_boxes[3], 1, 2, 1, 1,
+                                         Qt.AlignLeft | Qt.AlignTop)
+        self.annot_anch_layout.addWidget(self.radio_boxes[4], 0, 2, 1, 1)
+        spacer = QSpacerItem(0, 0,
+                             QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.annot_anch_layout.addItem(spacer, 2, 3, 1, 1)
+
+        # composition of GUI
         self.preview_tab_settings = QTabWidget(self)
         self.emi_setup_group = QWidget()
         self.emi_setup_group.setLayout(QGridLayout())
@@ -499,6 +553,7 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.emi_layout.addWidget(self.preview_rae, 3, 0, 1, 1)
         self.emi_annot_rotator = self._make_angle_spin_box(0)
         self.emi_layout.addWidget(self.emi_annot_rotator, 4, 0, 2, 0)
+        self.emi_layout.addWidget(self.prev_line_style_btn, 0, 2, 3, 1)
         self.abs_setup_group = QWidget()
         self.abs_setup_group.setLayout(QGridLayout())
         self.abs_layout = self.abs_setup_group.layout()
@@ -507,15 +562,6 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.abs_layout.setVerticalSpacing(1)
         self.abs_layout.addWidget(self.preview_edge, 0, 0, 1, 1)
         self.abs_layout.addWidget(self.preview_edge_curve, 1, 0, 1, 1)
-        self.prev_line_style_btn = LineStyleButton(size=None)
-        self.prev_line_style_btn.setMinimumHeight(18)
-        self.prev_line_style_btn.setMinimumWidth(18)
-        self.emi_layout.addWidget(self.prev_line_style_btn, 0, 2, 3, 1)
-        self.prev_line_style_btn.setSizePolicy(QSizePolicy.Expanding,
-                                               QSizePolicy.Expanding)
-        self.abs_style_btn = LineStyleButton(size=None)
-        self.abs_style_btn.setMinimumHeight(18)
-        self.abs_style_btn.setMinimumWidth(18)
         self.abs_layout.addWidget(self.abs_style_btn, 0, 1, 1, 1)
         self.preview_tab_settings.tabBar().setExpanding(False)
         self.preview_tab_settings.setStyleSheet(
@@ -535,57 +581,25 @@ class XRayElementTable(qpet.ElementTableGUI):
         self.notation_setup_group = QWidget()
         self.notation_setup_group.setLayout(QGridLayout())
         self.notation_layout = self.notation_setup_group.layout()
-        self.notation_font_cb = QtWidgets.QFontComboBox()
-        self.notation_font_cb.setMinimumWidth(48)
         self.notation_layout.addWidget(self.notation_font_cb, 0, 0, 1, 2)
         self.notation_layout.setContentsMargins(2, 2, 2, 2)
         self.notation_layout.setSpacing(1)
-        self.notation_font_size_cb = QComboBox(self)
-        self.notation_font_size_cb.setEditable(True)
-        self.notation_font_size_cb.setValidator(QIntValidator(4, 100))
-        self.notation_font_size_cb.addItems(
-            [str(i) for i in [6, 8, 10, 12, 14, 16, 18, 20, 24, 32, 48, 72]])
-        self.notation_font_size_cb.setCurrentIndex(2)
-        self.notation_font_size_cb.setMinimumWidth(24)
         self.notation_layout.addWidget(self.notation_font_size_cb, 1, 0, 1, 1)
-        self.notation_font_color = pg.ColorButton(self)
-        self.notation_font_color.setMinimumWidth(24)
         self.notation_layout.addWidget(self.notation_font_color, 1, 1, 1, 1)
-        self.annot_sample_anchor = QWidget()
-        self.annot_sample_anchor.setLayout(QGridLayout())
-        self.annot_anch_layout = self.annot_sample_anchor.layout()
-        self.annot_anch_layout.setContentsMargins(1, 1, 1, 1)
-        self.annot_anch_layout.setSpacing(0)
-        self.radio_boxes = [QtWidgets.QRadioButton("", self) for i in range(5)]
-        self.preview_text = QLabel("Ti K<i>α</i><sub>1</sub><sup>2nd</sup>")
-        self.preview_text.setMaximumHeight(44)
-        self.preview_text.setMaximumWidth(112)
-        self.annot_anch_layout.addWidget(self.preview_text, 0, 1, 1, 1)
-        self.annot_anch_layout.addWidget(
-            self.radio_boxes[0], 0, 0, 1, 1, Qt.AlignRight)
-        self.radio_boxes[1].setChecked(True)
-        self.annot_anch_layout.addWidget(
-            self.radio_boxes[1], 1, 0, 1, 1, Qt.AlignRight | Qt.AlignTop)
-        self.annot_anch_layout.addWidget(self.radio_boxes[2], 1, 1, 1, 1,
-                                         Qt.AlignCenter | Qt.AlignTop)
-        self.annot_anch_layout.addWidget(self.radio_boxes[3], 1, 2, 1, 1,
-                                         Qt.AlignLeft | Qt.AlignTop)
-        self.annot_anch_layout.addWidget(self.radio_boxes[4], 0, 2, 1, 1)
         # self.text_anchor_group = QtWidgets.QButtonGroup()
         # Unfortunately Button group has changing api between different Qt version
         # it albeit would be more elegant way TODO in future
 
         #for i, check_box in enumerate(self.radio_boxes):
         #    self.text_anchor_group.addButton(check_box, i)
+        
+        # signal connections and initiation.
         #self.text_anchor_group.buttonPressed.connect(self.change_anchor)
         self.radio_boxes[0].pressed.connect(self.emit_anchor_0)
         self.radio_boxes[1].pressed.connect(self.emit_anchor_1)
         self.radio_boxes[2].pressed.connect(self.emit_anchor_2)
         self.radio_boxes[3].pressed.connect(self.emit_anchor_3)
         self.radio_boxes[4].pressed.connect(self.emit_anchor_4)
-        spacer = QSpacerItem(
-            0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.annot_anch_layout.addItem(spacer, 2, 3, 1, 1)
         self.notation_font_cb.currentFontChanged.connect(
             self.annot_change_font_family)
         self.notation_font_size_cb.currentTextChanged.connect(
@@ -1516,6 +1530,10 @@ class PositionMarkers(QObject):
 
 
 class NoBackground:
+    """defines Background colors, brokers the access to ploting widget,
+    gets value under the main position marker,
+    updates that value in external widget depending from the presence or
+    no presence of Background model"""
     def __init__(self, plotting_widget, spect_xtal):
         # background needs to stand out from multiple
         # colorful curves - thus it is set to pure yellow or red
@@ -1588,6 +1606,7 @@ class NoBackground:
         self.update_peak_height()
 
     def update_peak_height(self):
+        """update the value to plotting widget amplitude widget"""
         if self.m_abs_value is None:
             return
         if self.m_bkgd_value is not None:
@@ -1606,6 +1625,7 @@ class NoBackground:
 
 
 class TwoPointBackground(NoBackground, pg.PlotDataItem):
+    """Common class for two point exponential and linear models."""
     def __init__(self, plotting_widget, spect_xtal):
         NoBackground.__init__(self, plotting_widget, spect_xtal)
         pg.PlotDataItem.__init__(self, pen=mkPen(width=2, color=self.BKGD_COL))
@@ -2011,7 +2031,7 @@ class XraySpectraGUI(cw.FullscreenableWidget):
     def change_prev_marker_pen(self, pen):
         colors = self.canvas.set_preview_pens(pen)
         self.canvas.xray_line_cache = {}
-        tool_tip = make_color_html_string(colors)
+        tool_tip = orders_as_html_color_lines(colors)
         self.pet.prev_line_style_btn.setToolTip(tool_tip)
 
     def change_prev_edge_pen(self, pen):
