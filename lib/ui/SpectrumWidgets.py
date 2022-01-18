@@ -1522,6 +1522,8 @@ class NoBackground:
         # and depart here from concept of using more mild colors in UI.
         # Milder versions of these makes it less visible
         # The avg curves is mildified a bit
+        self.m_abs_value = None
+        self.m_bkgd_value = None
         self.pw = plotting_widget
         self.pm = self.pw.pos_markers
         if self.pw.canvas.dark_mode:
@@ -1577,10 +1579,21 @@ class NoBackground:
         poly1 = np.polynomial.polynomial.polyfit(xses1, ys1, order)
         y_pos = np.polynomial.polynomial.polyval(m_pos, poly1)
         self.m_abs_value = y_pos
+        # make some better resollution linspace, as peaks
+        # often are sharper than sampled:
         xses_hr = np.linspace(data_x[i1_min], data_x[i1_max])
         self.m_avg_curve.setData(
             xses_hr,
             np.polynomial.polynomial.polyval(xses_hr, poly1))
+        self.update_peak_height()
+
+    def update_peak_height(self):
+        if self.m_abs_value is None:
+            return
+        if self.m_bkgd_value is not None:
+            self.pw.amp_val_w.setValue(self.m_abs_value - self.m_bkgd_value)
+        else:
+            self.pw.amp_val_w.setValue(self.m_abs_value)
 
     def prepare_to_destroy(self):
         self.pm.m_line.sigPositionChanged.disconnect(self.update_peak)
@@ -1667,9 +1680,9 @@ class TwoPointBackground(NoBackground, pg.PlotDataItem):
                                   num=512)
         y = self.get_background(x_pos1, x_pos2, y_pos1, y_pos2, x_linespace)
         self.setData(x_linespace, y)
-        self.pw.amp_val_w.setValue(
-            self.m_abs_value - self.get_background(x_pos1, x_pos2, y_pos1,
-                                                   y_pos2, m_pos))
+        self.m_bkgd_value = self.get_background(x_pos1, x_pos2, y_pos1,
+                                                y_pos2, m_pos)
+        self.update_peak_height()
 
     def prepare_to_destroy(self):
         self.pm.bg1_line.sigPositionChanged.disconnect(self.update_background)
@@ -1779,7 +1792,8 @@ class SloppedBackground(NoBackground, pg.PlotDataItem):
                                   num=512)
         b = y_pos - x_pos * m
         self.setData(x_linespace, x_linespace * m + b)
-        self.pw.amp_val_w.setValue(self.m_abs_value - y_pos_main)
+        self.m_bkgd_value = y_pos_main
+        self.update_peak_height()
 
     def prepare_to_destroy(self):
         self.pm.bg2_line.sigPositionChanged.disconnect(self.update_background)
@@ -2057,6 +2071,7 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.pos_markers = PositionMarkers()
         self.bkgd_helper_widget = QWidget(self.splitter)
         self.amplitude_widget = QWidget(self.splitter)
+        self.amplitude_widget.setVisible(False)
         self.splitter.insertWidget(0, self.amplitude_widget)
         self.backgrounds = []
         self._setup_wds_additions()
@@ -2194,6 +2209,12 @@ class WDSSpectraGUI(XraySpectraGUI):
                 bkg = ExponentialBackground(self, combi)
                 self.backgrounds.append(bkg)
                 self.canvas.addItem(bkg)
+        if not any((self.action_linear_background.isChecked(),
+                    self.action_exp_background.isChecked())) and \
+                self.pos_markers.m_line is not None:
+            for combi in xtal_spect_combi:
+                bkg = NoBackground(self, combi)
+                self.backgrounds.append(bkg)
         self.update_bkgd_helper_box_visibility()
 
     def clear_background_models(self):
@@ -2202,6 +2223,7 @@ class WDSSpectraGUI(XraySpectraGUI):
                 bkgd.prepare_to_destroy()
                 self.canvas.p1.removeItem(bkgd)
             self.backgrounds.clear()  # just to be sure none left
+            self.amplitude_widget.setVisible(False)
 
     def show_three_markers_on_canvas(self):
         self.clear_background_models()
@@ -2233,6 +2255,7 @@ class WDSSpectraGUI(XraySpectraGUI):
         self.pos_markers.register_canvas(self.canvas)
         self.action_linear_background.setEnabled(False)
         self.action_exp_background.setEnabled(False)
+        self.set_background_model()
 
     def update_bkgd_helper_box_visibility(self):
         if self.action_linear_background.isChecked() or \
@@ -2242,6 +2265,8 @@ class WDSSpectraGUI(XraySpectraGUI):
         else:
             self.bkgd_helper_widget.hide()
             self.m_val_label.setText("abs. I:")
+        if self.pos_markers.m_line is not None:
+            self.amplitude_widget.setVisible(True)
 
     def _setup_markers(self):
         self.action_marker_bgx2 = QAction(
