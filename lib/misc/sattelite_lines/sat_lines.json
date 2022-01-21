@@ -742,13 +742,6 @@
       "family": "K"
     },
     {
-      "energy": 11962.0,
-      "weight": 0.1875,
-      "full_html_str": "Br K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Br;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 11958.0,
       "weight": 0.125,
       "full_html_str": "Br K<i>α</i>′",
@@ -1880,13 +1873,6 @@
       "family": "K"
     },
     {
-      "energy": 11260.0,
-      "weight": 0.1875,
-      "full_html_str": "Se K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Se;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 11251.0,
       "weight": 0.125,
       "full_html_str": "Se K<i>α</i>′",
@@ -1963,13 +1949,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "Kr K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "Kr;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 12656.0,
-      "weight": 0.1875,
-      "full_html_str": "Kr K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Kr;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -2370,13 +2349,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "As K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "As;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 10578.0,
-      "weight": 0.1875,
-      "full_html_str": "As K<i>α</i><sub>3</sub>",
-      "html_str_parted": "As;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -2960,13 +2932,6 @@
       "family": "K"
     },
     {
-      "energy": 9920.1,
-      "weight": 0.1875,
-      "full_html_str": "Ge K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Ge;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 9916.3,
       "weight": 0.125,
       "full_html_str": "Ge K<i>α</i>′",
@@ -3227,13 +3192,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "Ga K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "Ga;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 9284.2,
-      "weight": 0.1875,
-      "full_html_str": "Ga K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Ga;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -3499,13 +3457,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "Zn K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "Zn;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 8670.0,
-      "weight": 0.1875,
-      "full_html_str": "Zn K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Zn;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -3837,13 +3788,6 @@
       "family": "K"
     },
     {
-      "energy": 8078.2,
-      "weight": 0.1875,
-      "full_html_str": "Cu K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Cu;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 8070.75,
       "weight": 0.125,
       "full_html_str": "Cu K<i>α</i>′",
@@ -4144,13 +4088,6 @@
       "family": "K"
     },
     {
-      "energy": 7507.4,
-      "weight": 0.1875,
-      "full_html_str": "Ni K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Ni;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 7503.95,
       "weight": 0.001388888888888889,
       "full_html_str": "Ni K<i>α</i>″<sub>3</sub>",
@@ -4313,13 +4250,6 @@
       "weight": 0.15,
       "full_html_str": "Co K<i>α</i><sub>4</sub>",
       "html_str_parted": "Co;K<i>α</i>;;<sub>4</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 6958.3,
-      "weight": 0.1875,
-      "full_html_str": "Co K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Co;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -4576,13 +4506,6 @@
       "family": "K"
     },
     {
-      "energy": 6430.95,
-      "weight": 0.1875,
-      "full_html_str": "Fe K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Fe;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 6427.55,
       "weight": 0.001388888888888889,
       "full_html_str": "Fe K<i>α</i>″<sub>3</sub>",
@@ -4736,13 +4659,6 @@
       "family": "K"
     },
     {
-      "energy": 5924.65,
-      "weight": 0.1875,
-      "full_html_str": "Mn K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Mn;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 5921.75,
       "weight": 0.001388888888888889,
       "full_html_str": "Mn K<i>α</i>″<sub>3</sub>",
@@ -4865,13 +4781,6 @@
       "weight": 0.15,
       "full_html_str": "Cr K<i>α</i><sub>4</sub>",
       "html_str_parted": "Cr;K<i>α</i>;;<sub>4</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 5439.85,
-      "weight": 0.1875,
-      "full_html_str": "Cr K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Cr;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -5133,13 +5042,6 @@
       "family": "K"
     },
     {
-      "energy": 4976.7,
-      "weight": 0.1875,
-      "full_html_str": "V K<i>α</i><sub>3</sub>",
-      "html_str_parted": "V;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 4973.4,
       "weight": 0.001388888888888889,
       "full_html_str": "V K<i>α</i>″<sub>3</sub>",
@@ -5202,13 +5104,6 @@
       "weight": 0.15,
       "full_html_str": "Ti K<i>α</i><sub>4</sub>,α′₃",
       "html_str_parted": "Ti;K<i>α</i>;;<sub>4</sub>;,α′₃",
-      "family": "K"
-    },
-    {
-      "energy": 4537.2,
-      "weight": 0.1875,
-      "full_html_str": "Ti K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Ti;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -5367,13 +5262,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "Sc K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "Sc;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 4111.71,
-      "weight": 0.1875,
-      "full_html_str": "Sc K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Sc;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -5746,13 +5634,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "Ca K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "Ca;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 3711.64,
-      "weight": 0.1875,
-      "full_html_str": "Ca K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Ca;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -6345,13 +6226,6 @@
       "family": "K"
     },
     {
-      "energy": 3332.1,
-      "weight": 0.1875,
-      "full_html_str": "K K<i>α</i><sub>3</sub>",
-      "html_str_parted": "K;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 3329.35,
       "weight": 0.001388888888888889,
       "full_html_str": "K K<i>α</i>″<sub>3</sub>",
@@ -6677,13 +6551,6 @@
       "weight": 0.15,
       "full_html_str": "Ar K<i>α</i><sub>4</sub>",
       "html_str_parted": "Ar;K<i>α</i>;;<sub>4</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 2974.0,
-      "weight": 0.1875,
-      "full_html_str": "Ar K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Ar;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -7078,13 +6945,6 @@
       "family": "K"
     },
     {
-      "energy": 2631.6,
-      "weight": 0.1875,
-      "full_html_str": "Cl K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Cl;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 2631.25,
       "weight": 0.125,
       "full_html_str": "Cl K<i>α</i>′",
@@ -7350,13 +7210,6 @@
       "family": "K"
     },
     {
-      "energy": 2321.3,
-      "weight": 0.1875,
-      "full_html_str": "S K<i>α</i><sub>3</sub>",
-      "html_str_parted": "S;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 2319.95,
       "weight": 0.001388888888888889,
       "full_html_str": "S K<i>α</i>″<sub>3</sub>",
@@ -7454,13 +7307,6 @@
       "weight": 0.0020833333333333333,
       "full_html_str": "P K<i>α</i>′<sub>3</sub>",
       "html_str_parted": "P;K<i>α</i>;′;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 2026.9,
-      "weight": 0.1875,
-      "full_html_str": "P K<i>α</i><sub>3</sub>",
-      "html_str_parted": "P;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
@@ -7638,13 +7484,6 @@
       "family": "K"
     },
     {
-      "energy": 1751.05,
-      "weight": 0.1875,
-      "full_html_str": "Si K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Si;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 1747.54,
       "weight": 0.125,
       "full_html_str": "Si K<i>α</i>′",
@@ -7808,13 +7647,6 @@
       "family": "K"
     },
     {
-      "energy": 1496.35,
-      "weight": 0.1875,
-      "full_html_str": "Al K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Al;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 1493.13,
       "weight": 0.125,
       "full_html_str": "Al K<i>α</i>′",
@@ -7950,13 +7782,6 @@
       "family": "K"
     },
     {
-      "energy": 1261.96,
-      "weight": 0.1875,
-      "full_html_str": "Mg K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Mg;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 1258.3,
       "weight": 0.125,
       "full_html_str": "Mg K<i>α</i>′",
@@ -8071,13 +7896,6 @@
       "family": "K"
     },
     {
-      "energy": 1048.1,
-      "weight": 0.1875,
-      "full_html_str": "Na K<i>α</i><sub>3</sub>",
-      "html_str_parted": "Na;K<i>α</i>;;<sub>3</sub>;",
-      "family": "K"
-    },
-    {
       "energy": 1045.2,
       "weight": 0.125,
       "full_html_str": "Na K<i>α</i>′",
@@ -8121,13 +7939,6 @@
       "weight": 0.15,
       "full_html_str": "O K<i>α</i><sub>4</sub>",
       "html_str_parted": "O;K<i>α</i>;;<sub>4</sub>;",
-      "family": "K"
-    },
-    {
-      "energy": 526.3,
-      "weight": 0.1875,
-      "full_html_str": "O K<i>α</i><sub>3</sub>",
-      "html_str_parted": "O;K<i>α</i>;;<sub>3</sub>;",
       "family": "K"
     },
     {
