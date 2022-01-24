@@ -948,6 +948,13 @@ class XrayCanvas(pg.PlotWidget):
         self.xray_edge_cache = {}
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.xtal_family_text_item.setPos(0, self.bottom_axis.height())
+        self.p1.ctrl.logYCheck.toggled.connect(self.set_y_low_limit)
+
+    def set_y_low_limit(self, log_mode):
+        if log_mode:
+            self.p1.setLimits(yMin=-3)  # which in pg means in this case 10^-3
+        else:
+            self.p1.setLimits(yMin=0)
 
     def set_annot_anchor(self, anchor_index):
         anchors = {0: (0., 0.5),
