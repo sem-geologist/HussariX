@@ -941,8 +941,8 @@ class XrayCanvas(pg.PlotWidget):
                                            lighten_darken=self.dl_order_mode)]
 
         self.p1.setLimits(yMin=0)
-        self.p2.setLimits(yMin=0)
-        self.p2.setYRange(0, 1)
+        self.p2.setLimits(yMin=0, yMax=1.1)
+        self.p2.setYRange(0, 1.1)
         self.orders = set([1])
         self.xray_line_cache = {}
         self.xray_edge_cache = {}
@@ -2145,13 +2145,13 @@ class WDSSpectraGUI(XraySpectraGUI):
         bkgd_layout.addWidget(self.slope_spin_box)
         bkgd_layout.addWidget(QLabel("avg. size:"), alignment=Qt.AlignRight)
         self.avg_win_size_spin = QSpinBox()
-        self.avg_win_size_spin.setValue(10)
+        self.avg_win_size_spin.setValue(5)   # TODO customisable defaults
         self.avg_win_size_spin.setRange(1, 100)
         self.avg_win_size_spin.setSingleStep(1)
         bkgd_layout.addWidget(self.avg_win_size_spin)
         bkgd_layout.addWidget(QLabel("poly. ord.:"))
         self.avg_poly_order_spin = QSpinBox()
-        self.avg_poly_order_spin.setValue(1)
+        self.avg_poly_order_spin.setValue(2)  # TODO customisable defaults
         self.avg_poly_order_spin.setRange(1, 15)
         self.avg_poly_order_spin.setSingleStep(1)
         bkgd_layout.addWidget(self.avg_poly_order_spin)
