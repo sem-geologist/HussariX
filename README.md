@@ -23,7 +23,11 @@ Maybe in the far/near future this will have a bundled version (with everything i
 WIP. Major redesign (moving from manual python-written experimental parser for Cameca files to kaitai_stuct based parser with semi-stable API)
 
 Current state of (working) implementations:
-- [x] Cameca WDS scan (wdsDat) loading and plotting. 
+- [x] Cameca WDS scan (wdsDat) loading and plotting.
+
+## Some introduction video
+[![Hussarix Introduction on Youtube](https://img.youtube.com/vi/TGZewlsqFy0/0.jpg)](https://www.youtube.com/watch?v=TGZewlsqFy0)
+
 
 ## Licenses:
 - the license of this repository is GPL-3
