@@ -644,7 +644,7 @@ types:
           (dataset_type != dataset_type::line_stage) and
           (dataset_type != dataset_type::line_beam)
       - id: data
-        size: frame_size
+        type: lazy_data(_root._io.pos, frame_size)
         repeat: expr
         repeat-expr: n_of_frames
         doc: |
@@ -793,7 +793,7 @@ types:
         type: f4
       - id: enabled
         type: u4
-        doc: use in calculations
+        doc: is this item used in calculations
       - id: peak_raw_cts
         type: s4
       - id: bkgd_1_raw_cts
@@ -808,6 +808,10 @@ types:
         type: s4
       - id: reserved_4
         size-eos: true
+    instances:
+      net_intensity:
+        value: (peak_cps - bkgd_inter_cps) / beam_current
+    -webide-representation: '{net_intensity:str}'
 
   wds_qti_signal:
     params:
@@ -912,7 +916,7 @@ types:
       - id: data_array_size
         type: u4
       - id: data
-        size: data_array_size
+        type: lazy_data(_root._io.pos, data_array_size)
       - id: not_re_flag
         type: u4
       - id: signal_name
@@ -1407,6 +1411,29 @@ types:
         type: qti_wds_measurement_setups
         if: wds_measurement_struct_type >= 19
   
+  lazy_data:
+    doc: |
+          its _read method needs to be reimplemented in target language
+          to seek in the stream by provided size by parameter instead
+          of reading into memory
+    params:
+      - id: offset
+        type: u4
+      - id: size
+        type: u4
+    instances:
+      lazy_bytes:
+        io: _root._io
+        pos: offset
+        size: size
+        doc: "lazily parsed bytes on-demand"
+    seq:
+      - id: parsed_bytes
+        size: size
+        doc: |
+          this needs to be get rid off in target language and replaced with
+          relative seek.
+  
   wds_scan_spect_setup:
     seq:
       - id: xtal
@@ -1568,7 +1595,7 @@ types:
       unix_timestamp:
         value: ms_filetime / 10000000. - 11644473600
         doc: 'seconds since Jan 1 1970'
-  
+
   element_t:
     seq:
       - id: atomic_number

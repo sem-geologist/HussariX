@@ -625,7 +625,7 @@ class Cameca(KaitaiStruct):
 
             self.data = [None] * (self.n_of_frames)
             for i in range(self.n_of_frames):
-                self.data[i] = self._io.read_bytes(self.frame_size)
+                self.data[i] = self._root.LazyData(self._root._io.pos(), self.frame_size, self._io, self, self._root)
 
             self.reserved_0 = self._io.read_bytes(56)
             self.lut_name = self._root.CSharpString(self._io, self, self._root)
@@ -678,6 +678,36 @@ class Cameca(KaitaiStruct):
             self.action = (self._io.read_bytes_term(3, False, True, True)).decode(u"CP1252")
             self.description = (self._io.read_bytes_term(3, False, True, False)).decode(u"CP1252")
             self.user_comment = (self._io.read_bytes_full()).decode(u"CP1252")
+
+
+    class LazyData(KaitaiStruct):
+        """its _read method needs to be reimplemented in target language
+        to seek in the stream by provided size by parameter instead
+        of reading into memory
+        """
+        def __init__(self, offset, size, _io, _parent=None, _root=None):
+            self._io = _io
+            self._parent = _parent
+            self._root = _root if _root else self
+            self.offset = offset
+            self.size = size
+            self._read()
+
+        def _read(self):
+            self.parsed_bytes = self._io.read_bytes(self.size)
+
+        @property
+        def lazy_bytes(self):
+            """lazily parsed bytes on-demand."""
+            if hasattr(self, '_m_lazy_bytes'):
+                return self._m_lazy_bytes if hasattr(self, '_m_lazy_bytes') else None
+
+            io = self._root._io
+            _pos = io.pos()
+            io.seek(self.offset)
+            self._m_lazy_bytes = io.read_bytes(self.size)
+            io.seek(_pos)
+            return self._m_lazy_bytes if hasattr(self, '_m_lazy_bytes') else None
 
 
     class QtiDataItem(KaitaiStruct):
@@ -1124,6 +1154,14 @@ class Cameca(KaitaiStruct):
             self.reserved_3 = self._io.read_s4le()
             self.reserved_4 = self._io.read_bytes_full()
 
+        @property
+        def net_intensity(self):
+            if hasattr(self, '_m_net_intensity'):
+                return self._m_net_intensity if hasattr(self, '_m_net_intensity') else None
+
+            self._m_net_intensity = ((self.peak_cps - self.bkgd_inter_cps) / self.beam_current)
+            return self._m_net_intensity if hasattr(self, '_m_net_intensity') else None
+
 
     class XtalT(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
@@ -1141,7 +1179,7 @@ class Cameca(KaitaiStruct):
                 return self._m_rev_name if hasattr(self, '_m_rev_name') else None
 
             _pos = self._io.pos()
-            self._io.seek((0 if self.first_byte > 0x20 else 1))
+            self._io.seek((0 if self.first_byte > 32 else 1))
             self._m_rev_name = (self._io.read_bytes_full()).decode(u"CP1252")
             self._io.seek(_pos)
             return self._m_rev_name if hasattr(self, '_m_rev_name') else None
@@ -1517,7 +1555,7 @@ class Cameca(KaitaiStruct):
             self.dwell_time = self._io.read_f4le()
             self.beam_size = self._io.read_u4le()
             self.data_array_size = self._io.read_u4le()
-            self.data = self._io.read_bytes(self.data_array_size)
+            self.data = self._root.LazyData(self._root._io.pos(), self.data_array_size, self._io, self, self._root)
             self.not_re_flag = self._io.read_u4le()
             self.signal_name = self._root.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(4)

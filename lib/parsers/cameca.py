@@ -92,6 +92,29 @@ class ElementT(Cameca.ElementT):
 Cameca.ElementT = ElementT
 
 
+class LazyData(Cameca.LazyData):
+
+    def _read(self):
+        seek_to_pos = self.offset + self.size
+        self._root._io.seek(seek_to_pos)
+
+    @property
+    def lazy_bytes(self):
+        if not hasattr(self, "_m_lazy_bytes"):
+            io_fn = self._root._io._io.name
+            with open(io_fn, "rb") as fn:
+                fn.seek(self.offset)
+                self._m_lazy_bytes = fn.read(self.size)
+        return self._m_lazy_bytes
+
+    @lazy_bytes.deleter
+    def lazy_bytes(self):
+        del self._m_bytes
+
+
+Cameca.LazyData = LazyData
+
+
 class WdsScanSignal(Cameca.WdsScanSignal):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -110,7 +133,8 @@ class WdsScanSignal(Cameca.WdsScanSignal):
         if self._y_recalc_cps is not None:
             return self._y_recalc_cps
         if self._y_orig_cps is None:
-            self._y_orig_cps = np.frombuffer(self.data, dtype=np.float32)
+            self._y_orig_cps = np.frombuffer(self.data.lazy_bytes,
+                                             dtype=np.float32)
         return self._y_orig_cps
 
     @cached_property
