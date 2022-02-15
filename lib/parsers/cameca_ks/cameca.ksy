@@ -1421,14 +1421,8 @@ types:
         type: u4
       - id: size
         type: u4
-    instances:
-      lazy_bytes:
-        io: _root._io
-        pos: offset
-        size: size
-        doc: "lazily parsed bytes on-demand"
     seq:
-      - id: parsed_bytes
+      - id: bytes
         size: size
         doc: |
           this needs to be get rid off in target language and replaced with

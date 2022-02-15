@@ -694,20 +694,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.parsed_bytes = self._io.read_bytes(self.size)
-
-        @property
-        def lazy_bytes(self):
-            """lazily parsed bytes on-demand."""
-            if hasattr(self, '_m_lazy_bytes'):
-                return self._m_lazy_bytes if hasattr(self, '_m_lazy_bytes') else None
-
-            io = self._root._io
-            _pos = io.pos()
-            io.seek(self.offset)
-            self._m_lazy_bytes = io.read_bytes(self.size)
-            io.seek(_pos)
-            return self._m_lazy_bytes if hasattr(self, '_m_lazy_bytes') else None
+            self.bytes = self._io.read_bytes(self.size)
 
 
     class QtiDataItem(KaitaiStruct):
