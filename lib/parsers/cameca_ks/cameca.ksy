@@ -66,13 +66,18 @@ types:
       - id: comment
         type: c_sharp_string
       - id: reserved_0
-        size: 0x1C
+        size: 0x18
+      - id: reserved_v3
+        size: 0x4
+        if: sxf_version >= 3
       - id: n_file_modifications
         type: u4
+        if: sxf_version >= 3
       - id: file_changes
         type: file_modification
         repeat: expr
         repeat-expr: n_file_modifications
+        if: sxf_version >= 3
       - id: reserved_v4
         size: 8
         if: sxf_version >= 4
@@ -123,9 +128,9 @@ types:
       - id: focus_frequency
         type: u4
       - id: verify_xtal_after_flip
-        type: u4
+        type: s4
       - id: verify_xtal_before_start
-        type: u4
+        type: s4
       - id: bkgd_measure_every_nth
         type: u4
       - id: decontamination_time
@@ -142,11 +147,35 @@ types:
         type: c_sharp_string
       - id: not_re_global_options_2
         size: 216
-      - id: not_re_global_options_v4
-        size: 12
-        if: _root.header.sxf_version >= 4
+      - id: not_re_global_options_v12
+        size: 4
+        if: version >= 0xC
+      - id: eds_acquisition_time
+        type: f4
+        if: version >= 0xD
+      - id: not_re_global_option_v13
+        size: 4
+        if: version >= 0xD
     -webide-representation: 'v{version:dec}, {n_of_datasets:dec} datasets'
-       
+
+  polygon_selection:
+    seq:
+      - id: type
+        type: u4
+      - id: n_polygon_nodes
+        type: u4
+      - id: polygon_nodes
+        type: polygon_point
+        repeat: expr
+        repeat-expr: n_polygon_nodes
+      
+  polygon_point:
+    seq:
+      - id: x
+        type: f4
+      - id: y
+        type: f4
+
   dataset:
     doc: |
       Dataset is constructed form header, main and footer parts;
@@ -164,33 +193,51 @@ types:
       - id: reserved_0
         size: 32
       - id: n_extra_wds_stuff
-        doc: "looks similar to stuff per item"
+        doc: "looks similar to info per item"
         type: u4
       - id: extra_wds_stuff
         type: wds_item_extra_ending  # what about other types?
         repeat: expr
         repeat-expr: n_extra_wds_stuff
-      - id: template_flag
+      - id: has_overview_image
         type: u4
-      - id: reserved_tmp_sector_0
-        size: 8
-        if: template_flag == 1
-      - id: template
+        doc: "former template_flag"
+      - id: polygon_selection
+        type: polygon_selection
+        if: has_overview_image == 1
+      - id: overview_image_dataset
         type: dataset
-        if: template_flag == 1
-      - id: reserved_tmp_sector_1
-        size: 4
-        if: template_flag == 1
+        if: has_overview_image == 1
+      - id: polygon_selection_type
+        type: u4
+        enum: polygon_selection_mode
+        if: has_overview_image == 1
+      - id: is_video_capture_mode
+        type: u4
       - id: reserved_1
-        size: 104
+        size: 96
+        doc: |
+          probably contains frame time (enum) frame resolution (enum),
+          probably...
+      - id: reserved_v17 # or v16 without intermediate file hard to tell
+        size: 4
+        if: header.version >= 0x11
       - id: image_frames
         type: u4
         doc: |
           somehow images do not use n_accumulated, but this attribute;
           and profiles ignore this field (for profile it is filled 
           with value of previous item if it was img)
+        if: header.version >= 0x11
       - id: reserved_2
-        size: 12
+        size: 4
+        if: header.version >=0x11
+      - id: overscan_x
+        type: f4
+        if: header.version >=0x11
+      - id: overscan_y
+        type: f4
+        if: header.version >=0x11
       - id: reserved_v18
         size: 4
         if: header.version >= 0x12
@@ -209,7 +256,7 @@ types:
             'dataset_extras_type::qti_v5_footer': dts_qti_footer(dts_extras_type)
             'dataset_extras_type::qti_v6_footer': dts_qti_footer(dts_extras_type)
     -webide-representation: '{comment.text}'
-    
+       
   dts_qti_footer:
     params:
       - id: dts_extras_type
@@ -389,9 +436,9 @@ types:
       - id: stage_y
         type: s4
       - id: beam_x
-        type: s4
+        type: f4
       - id: beam_y
-        type: s4
+        type: f4
       - id: step_x
         type: f4
       - id: step_y
@@ -406,6 +453,8 @@ types:
         repeat-expr: 3
       - id: n_accumulation
         type: u4
+        doc: |
+          it is also called #Frames in GUI even for qti grid (?)
       - id: dwell_time
         type: f4
       - id: not_re_dataset_flag_4
@@ -430,7 +479,7 @@ types:
         type: u4
       - id: focus_freq
         type: u4
-      - id: load_setup_everyth_nth
+      - id: load_setup_every_nth
         type: s4
       - id: not_re_flag4  # TODO
         type: s4
@@ -473,22 +522,25 @@ types:
         type: u4
       - id: reserved_0
         size: 12
+        if: version >= 3
       - id: n_of_reserved_1_blocks
         type: u4
+        if: version >= 3
       - id: reserved_1_blocks
         size: 12
         repeat: expr
         repeat-expr: n_of_reserved_1_blocks
+        if: version >= 3
       - id: signal
         type:
           switch-on: _root.header.file_type
           cases:
-            'file_type::image_mapping_results': image_profile_signal(n_points)
+            'file_type::image_mapping_results': image_profile_signal
             'file_type::wds_results': wds_scan_signal
             'file_type::quanti_results': wds_qti_signal(n_points)
             'file_type::calibration_results': calib_signal
     -webide-representation: '{signal_type}'
-     
+
   xray_signal_header:
     seq:
       - id: element
@@ -509,7 +561,7 @@ types:
         type: f4
       - id: reserved_0
         size: 4
-      - id: hv_set
+      - id: hv
         type: f4
       - id: beam_current
         type: f4
@@ -579,7 +631,7 @@ types:
         enum: video_signal_type
       - id: padding_0
         size: 24
-      - id: hv_set
+      - id: hv
         type: f4
       - id: beam_current
         type: f4
@@ -587,9 +639,6 @@ types:
         size: 28
         
   image_profile_signal:
-    params:
-      - id: n_pixels
-        type: u4
     seq:
       - id: version
         type: u4
@@ -601,9 +650,9 @@ types:
       - id: stage_y
         type: s4
       - id: beam_x
-        type: s4
+        type: f4
       - id: beam_y
-        type: s4
+        type: f4
       - id: step_x
         type: f4
       - id: step_y
@@ -619,7 +668,7 @@ types:
         enum: image_array_dtype
       - id: dwell_time
         type: f4
-      - id: n_accumulation
+      - id: n_frames
         type: u4
         if: |
           (dataset_type != dataset_type::line_stage) and
@@ -685,9 +734,9 @@ types:
             (dataset_type == dataset_type::line_stage) or
             (dataset_type == dataset_type::line_beam) ? 0: 12)
       frame_size:
-        value: '(img_pixel_dtype.to_i == 0 ? 1 : 4) * n_pixels'
+        value: '(img_pixel_dtype.to_i == 0 ? 1 : 4) * height * width'
       n_of_frames:
-        value: array_data_size / frame_size
+        value: 'frame_size != 0 ? array_data_size / frame_size : 0'
   
   color_bar_ticks:
     seq:
@@ -1157,12 +1206,16 @@ types:
       - id: phase_something_str
         type: c_sharp_string
       - id: reserved_0
-        size: 300
+        size: 292
+      - id: overlayed_dataset
+        type: c_sharp_string
+      - id: reserved_01
+        size: 4
       - id: mosaic_rows
         type: u4
       - id: mosaic_cols
         type: u4
-      - id: mosaic_segment_enabled_flag_array
+      - id: mosaic_tiling_states
         type: s1
         repeat: expr
         repeat-expr: mosaic_rows * mosaic_cols
@@ -1702,7 +1755,13 @@ enums:
     6: sub_chi_p_b_p_b
     7: sub_chi_p_p_b_b
   
+  polygon_selection_mode:
+    0: none
+    1: on_image_positions
+    2: stage_positions
+  
   background_type:
+    #0: none ?
     1: linear
     2: exponential
     

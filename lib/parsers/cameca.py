@@ -92,6 +92,17 @@ class ElementT(Cameca.ElementT):
 Cameca.ElementT = ElementT
 
 
+class CSharpString(Cameca.CSharpString):
+    def __str__(self):
+        return self.text
+
+    def __repr__(self):
+        return self.text
+
+
+Cameca.CSharpString = CSharpString
+
+
 class LazyData(Cameca.LazyData):
 
     def _read(self):
@@ -180,6 +191,98 @@ class WdsScanSignal(Cameca.WdsScanSignal):
 
 
 Cameca.WdsScanSignal = WdsScanSignal
+
+
+class ImageProfileSignal(Cameca.ImageProfileSignal):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._main_frame = None
+        self._frames = None
+        self._tiles = None
+        self.optimize_func = None
+        if self.img_pixel_dtype.name == 'uint8':
+            self.dtype = (('u1', (self.width,)))
+        elif self.img_pixel_dtype.name == 'float32':
+            self.dtype = (('f4', (self.width,)))
+            if self._parent.signal_type.name == "video":
+                self.optimize_func = self.reduce_to_uint8
+        elif self.img_pixel_dtype.name == 'rgbx':
+            self.dtype = np.dtype((('u1', (4,)), (self.width,)))
+            self.optimize_func = self.trim_rgbx
+
+    @staticmethod
+    def reduce_to_uint8(array):
+        return array.astype('u1')
+
+    @staticmethod
+    def trim_rgbx(array):
+        return array[:, :, :3]
+
+    @property
+    def main_frame(self):
+        if self._main_frame is None:
+            self._main_frame = np.frombuffer(self.data[0].bytes,
+                                             dtype=self.dtype)
+            if self.optimize_func is not None:
+                self._main_frame = self.optimize_func(self._main_frame)
+                del self.data[0].bytes
+        return self._main_frame
+
+    @main_frame.deleter
+    def main_frame(self):
+        del self._main_frame
+        self._main_frame = None
+        if self.optimize_func is None:
+            del self.data[0].bytes
+
+    @property
+    def frames(self):
+        """return list of mutable frames"""
+        if not hasattr(self, "n_frames") or self.n_frames == 1:
+            raise ValueError("Dataset contain no frames")
+        if self._frames is None:
+            opt_func = self.optimize_func
+            if opt_func is None:
+                opt_func = np.copy
+            self._frames = []
+            for i in self.data[1:]:
+                self._frames.append(opt_func(np.frombuffer(i.bytes,
+                                                           dtype=self.dtype)))
+                del i.bytes
+        return self._frames
+
+    @frames.deleter
+    def frames(self):
+        del self._frames
+        self._frames = None
+
+    @property
+    def tiles(self):
+        """return tiles of mosaic"""
+        dts = self._parent._parent
+        if not dts.header.is_mosaic:
+            raise ValueError("Dataset is not mosaic")
+        if self._tiles is None:
+            opt_func = self.optimize_func
+            if opt_func is None:
+                opt_func = np.copy
+            self._tiles = []
+            for i, data in enumerate(self.data):
+                if dts.extras.subsections[0].mosaic_tiling_states[i]:
+                    self._tiles.append(
+                        opt_func(np.frombuffer(data.bytes, dtype=self.dtype)))
+                    del data.bytes
+                else:
+                    self._tiles.append(None)
+        return self._tiles
+
+    @tiles.deleter
+    def tiles(self):
+        del self._tiles
+        self._tiles = None
+
+
+Cameca.ImageProfileSignal = ImageProfileSignal
 
 
 class XraySignalHeader(Cameca.XraySignalHeader):
@@ -294,85 +397,3 @@ class CamecaImage(CamecaBase):
 class CamecaQuanti(CamecaBase):
     pass
 
-
-# class ImageDatasetItem(DatasetItem):
-#    img_data_t = {ArrayDataType.UINT8: np.dtype('u1'),      # uint8
-#                  # uint16?, int16?, uint32?, int32?
-#                  # what can fill 1-6 positions?
-#                  ArrayDataType.FLOAT32: np.dtype('f4'),    # float32
-#                  ArrayDataType.RGBX: np.dtype('4u1')       # RGB(X) -> RGBA
-#                  # other uint64, float64??
-#                  }
-#
-#    def __init__(self, fbio, parent=None):
-#        DatasetItem.__init__(self, fbio, parent)
-#        # skip unknown data
-#        if self.dataset_struct_version == 0x11:
-#            fbio.seek(164, 1)
-#        elif self.dataset_struct_version == 0x12:
-#            fbio.seek(168, 1)
-#        self.ref_data = self.parse_outer_metadata(fbio)
-#        fbio.seek(52, 1)
-#        # skip additional junk for image:
-#        fbio.seek(28, 1)
-#        read_c_hash_string(fbio)  # some crap
-#        fbio.seek(309, 1)
-#
-#    def read_item(self, fbio):
-#        item = self.read_start_of_item(fbio)
-#        data_struct_version = eval_struct_version(fbio, accepted=[5])
-#        field_names = ['definition_node', 'x_axis', 'y_axis', 'beam_x',
-#                       'beam_y', 'resolution_x', 'resolution_y', 'width',
-#                       'height', 'z_axis', 'img_cameca_dtype', 'dwell_time']
-#        print('item_definition starts at:', fbio.tell())
-#        values = unpack('<5i2f2I2if', fbio.read(48))
-#        item.update(dict(zip(field_names, values)))
-#        # skip section of three values 0,255.0,0 or 0,0, 255.0;
-#        # as dtype=3f? grey levels?
-#        if item['definition_node'] not in [DatasetDefType.LINE_BEAM,
-#                                           DatasetDefType.LINE_STAGE]:
-#            item['accumulation_n'], item['data_size'] = unpack('<I4xI12x',
-#                                                               fbio.read(24))
-#            item['data_size'] -= 12
-#        else:
-#            item['data_size'] = unpack('<4xI', fbio.read(8))[0]
-#        print('array starts at:', fbio.tell())
-#        self.read_array(fbio, item)
-#        print('position after data:', fbio.tell())
-#        fbio.seek(56, 1)  # skip unknown
-#        item['lut_name'] = read_c_hash_string(fbio)
-#        item['signal_name'] = read_c_hash_string(fbio)
-#        fbio.seek(52, 1)  # skip unknown
-#        item['img_rotation'] = unpack('<f', fbio.read(4))[0]
-#        fbio.seek(8, 1)  # skip unknown junk
-#        return item
-#
-#    def read_array(self, fbio, item):
-#        data_size = item['data_size']
-#        print('array_size:', data_size)
-#        pixels = item['width'] * item['height']
-#        dtype = self.img_data_t[item['img_cameca_dtype']]
-#        print('estimated size of one slice: ', pixels * dtype.itemsize)
-#        print(item['width'], item['height'], dtype.itemsize)
-#        if item['definition_node'] in [DatasetDefType.LINE_BEAM,
-#                                       DatasetDefType.LINE_STAGE]:
-#            item['data'] = np.fromstring(fbio.read(pixels * dtype.itemsize),
-#                                         dtype=dtype)
-#        else:
-#            item['data'] = np.fromstring(fbio.read(pixels * dtype.itemsize),
-#                                         dtype=dtype * item['width'])
-#            if item['img_cameca_dtype'] == ArrayDataType.FLOAT32:
-#                print('reading subsets: ', item['accumulation_n'])
-#                imgs = []
-#                # When signal is Video, it fills much more subsets
-#                # than declared with accumulation_n!;
-#                # the only safe way is deduce number of  arrays
-#                # programaticaly
-#                for i in range(data_size // (pixels * dtype.itemsize) - 1):
-#                    imgs.append(
-#                        np.fromstring(fbio.read(pixels * dtype.itemsize),
-#                                      dtype=dtype * item['width']))
-#                item['subcounting_data'] = imgs
-#            if item['img_cameca_dtype'] == ArrayDataType.RGBX:
-#                item['data'][:, :, 3] = 255  # set X into A - an alpha channel
-#

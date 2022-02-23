@@ -70,6 +70,11 @@ class Cameca(KaitaiStruct):
         average = 0
         sum = 1
 
+    class PolygonSelectionMode(Enum):
+        none = 0
+        on_image_positions = 1
+        stage_positions = 2
+
     class BackgroundType(Enum):
         linear = 1
         exponential = 2
@@ -276,7 +281,7 @@ class Cameca(KaitaiStruct):
             self.two_d = self._io.read_f4le()
             self.k = self._io.read_f4le()
             self.reserved_0 = self._io.read_bytes(4)
-            self.hv_set = self._io.read_f4le()
+            self.hv = self._io.read_f4le()
             self.beam_current = self._io.read_f4le()
             self.peak_pos = self._io.read_u4le()
             self.counter_setting = self._root.CounterSetting(self._io, self, self._root)
@@ -290,6 +295,18 @@ class Cameca(KaitaiStruct):
                 self._m_combi_string = str(self.spect_no) + u": " + self.xtal.full_name
 
             return self._m_combi_string if hasattr(self, '_m_combi_string') else None
+
+
+    class PolygonPoint(KaitaiStruct):
+        def __init__(self, _io, _parent=None, _root=None):
+            self._io = _io
+            self._parent = _parent
+            self._root = _root if _root else self
+            self._read()
+
+        def _read(self):
+            self.x = self._io.read_f4le()
+            self.y = self._io.read_f4le()
 
 
     class SubSetup(KaitaiStruct):
@@ -481,15 +498,21 @@ class Cameca(KaitaiStruct):
                 io = KaitaiStream(BytesIO(self._raw_signal_header))
                 self.signal_header = self._root.XraySignalHeader(io, self, self._root)
             self.not_re_flag = self._io.read_u4le()
-            self.reserved_0 = self._io.read_bytes(12)
-            self.n_of_reserved_1_blocks = self._io.read_u4le()
-            self.reserved_1_blocks = [None] * (self.n_of_reserved_1_blocks)
-            for i in range(self.n_of_reserved_1_blocks):
-                self.reserved_1_blocks[i] = self._io.read_bytes(12)
+            if self.version >= 3:
+                self.reserved_0 = self._io.read_bytes(12)
+
+            if self.version >= 3:
+                self.n_of_reserved_1_blocks = self._io.read_u4le()
+
+            if self.version >= 3:
+                self.reserved_1_blocks = [None] * (self.n_of_reserved_1_blocks)
+                for i in range(self.n_of_reserved_1_blocks):
+                    self.reserved_1_blocks[i] = self._io.read_bytes(12)
+
 
             _on = self._root.header.file_type
             if _on == self._root.FileType.image_mapping_results:
-                self.signal = self._root.ImageProfileSignal(self.n_points, self._io, self, self._root)
+                self.signal = self._root.ImageProfileSignal(self._io, self, self._root)
             elif _on == self._root.FileType.wds_results:
                 self.signal = self._root.WdsScanSignal(self._io, self, self._root)
             elif _on == self._root.FileType.quanti_results:
@@ -588,11 +611,10 @@ class Cameca(KaitaiStruct):
 
 
     class ImageProfileSignal(KaitaiStruct):
-        def __init__(self, n_pixels, _io, _parent=None, _root=None):
+        def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
             self._parent = _parent
             self._root = _root if _root else self
-            self.n_pixels = n_pixels
             self._read()
 
         def _read(self):
@@ -600,8 +622,8 @@ class Cameca(KaitaiStruct):
             self.dataset_type = self._root.DatasetType(self._io.read_u4le())
             self.stage_x = self._io.read_s4le()
             self.stage_y = self._io.read_s4le()
-            self.beam_x = self._io.read_s4le()
-            self.beam_y = self._io.read_s4le()
+            self.beam_x = self._io.read_f4le()
+            self.beam_y = self._io.read_f4le()
             self.step_x = self._io.read_f4le()
             self.step_y = self._io.read_f4le()
             self.width = self._io.read_u4le()
@@ -610,7 +632,7 @@ class Cameca(KaitaiStruct):
             self.img_pixel_dtype = self._root.ImageArrayDtype(self._io.read_u4le())
             self.dwell_time = self._io.read_f4le()
             if  ((self.dataset_type != self._root.DatasetType.line_stage) and (self.dataset_type != self._root.DatasetType.line_beam)) :
-                self.n_accumulation = self._io.read_u4le()
+                self.n_frames = self._io.read_u4le()
 
             self.not_re_flag = self._io.read_u4le()
             self.data_size = self._io.read_u4le()
@@ -655,7 +677,7 @@ class Cameca(KaitaiStruct):
             if hasattr(self, '_m_frame_size'):
                 return self._m_frame_size if hasattr(self, '_m_frame_size') else None
 
-            self._m_frame_size = ((1 if self.img_pixel_dtype.value == 0 else 4) * self.n_pixels)
+            self._m_frame_size = (((1 if self.img_pixel_dtype.value == 0 else 4) * self.height) * self.width)
             return self._m_frame_size if hasattr(self, '_m_frame_size') else None
 
         @property
@@ -663,7 +685,7 @@ class Cameca(KaitaiStruct):
             if hasattr(self, '_m_n_of_frames'):
                 return self._m_n_of_frames if hasattr(self, '_m_n_of_frames') else None
 
-            self._m_n_of_frames = self.array_data_size // self.frame_size
+            self._m_n_of_frames = (self.array_data_size // self.frame_size if self.frame_size != 0 else 0)
             return self._m_n_of_frames if hasattr(self, '_m_n_of_frames') else None
 
 
@@ -756,6 +778,22 @@ class Cameca(KaitaiStruct):
 
 
 
+    class PolygonSelection(KaitaiStruct):
+        def __init__(self, _io, _parent=None, _root=None):
+            self._io = _io
+            self._parent = _parent
+            self._root = _root if _root else self
+            self._read()
+
+        def _read(self):
+            self.type = self._io.read_u4le()
+            self.n_polygon_nodes = self._io.read_u4le()
+            self.polygon_nodes = [None] * (self.n_polygon_nodes)
+            for i in range(self.n_polygon_nodes):
+                self.polygon_nodes[i] = self._root.PolygonPoint(self._io, self, self._root)
+
+
+
     class SxfHeader(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -768,11 +806,18 @@ class Cameca(KaitaiStruct):
             self.magic = self._io.ensure_fixed_contents(b"\x66\x78\x73")
             self.sxf_version = self._io.read_u4le()
             self.comment = self._root.CSharpString(self._io, self, self._root)
-            self.reserved_0 = self._io.read_bytes(28)
-            self.n_file_modifications = self._io.read_u4le()
-            self.file_changes = [None] * (self.n_file_modifications)
-            for i in range(self.n_file_modifications):
-                self.file_changes[i] = self._root.FileModification(self._io, self, self._root)
+            self.reserved_0 = self._io.read_bytes(24)
+            if self.sxf_version >= 3:
+                self.reserved_v3 = self._io.read_bytes(4)
+
+            if self.sxf_version >= 3:
+                self.n_file_modifications = self._io.read_u4le()
+
+            if self.sxf_version >= 3:
+                self.file_changes = [None] * (self.n_file_modifications)
+                for i in range(self.n_file_modifications):
+                    self.file_changes[i] = self._root.FileModification(self._io, self, self._root)
+
 
             if self.sxf_version >= 4:
                 self.reserved_v4 = self._io.read_bytes(8)
@@ -827,8 +872,8 @@ class Cameca(KaitaiStruct):
         def _read(self):
             self.version = self._io.read_u4le()
             self.focus_frequency = self._io.read_u4le()
-            self.verify_xtal_after_flip = self._io.read_u4le()
-            self.verify_xtal_before_start = self._io.read_u4le()
+            self.verify_xtal_after_flip = self._io.read_s4le()
+            self.verify_xtal_before_start = self._io.read_s4le()
             self.bkgd_measure_every_nth = self._io.read_u4le()
             self.decontamination_time = self._io.read_u4le()
             self.n_of_datasets = self._io.read_u4le()
@@ -839,8 +884,14 @@ class Cameca(KaitaiStruct):
             self.not_re_global_options = self._io.read_bytes(12)
             self.current_qti_set = self._root.CSharpString(self._io, self, self._root)
             self.not_re_global_options_2 = self._io.read_bytes(216)
-            if self._root.header.sxf_version >= 4:
-                self.not_re_global_options_v4 = self._io.read_bytes(12)
+            if self.version >= 12:
+                self.not_re_global_options_v12 = self._io.read_bytes(4)
+
+            if self.version >= 13:
+                self.eds_acquisition_time = self._io.read_f4le()
+
+            if self.version >= 13:
+                self.not_re_global_option_v13 = self._io.read_bytes(4)
 
 
 
@@ -889,7 +940,7 @@ class Cameca(KaitaiStruct):
             self.channel = self._io.read_u4le()
             self.video_signal_type = self._root.VideoSignalType(self._io.read_u4le())
             self.padding_0 = self._io.read_bytes(24)
-            self.hv_set = self._io.read_f4le()
+            self.hv = self._io.read_f4le()
             self.beam_current = self._io.read_f4le()
             self.padding_1 = self._io.read_bytes(28)
 
@@ -1108,12 +1159,14 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.phase_something_str = self._root.CSharpString(self._io, self, self._root)
-            self.reserved_0 = self._io.read_bytes(300)
+            self.reserved_0 = self._io.read_bytes(292)
+            self.overlayed_dataset = self._root.CSharpString(self._io, self, self._root)
+            self.reserved_01 = self._io.read_bytes(4)
             self.mosaic_rows = self._io.read_u4le()
             self.mosaic_cols = self._io.read_u4le()
-            self.mosaic_segment_enabled_flag_array = [None] * ((self.mosaic_rows * self.mosaic_cols))
+            self.mosaic_tiling_states = [None] * ((self.mosaic_rows * self.mosaic_cols))
             for i in range((self.mosaic_rows * self.mosaic_cols)):
-                self.mosaic_segment_enabled_flag_array[i] = self._io.read_s1()
+                self.mosaic_tiling_states[i] = self._io.read_s1()
 
 
 
@@ -1220,8 +1273,8 @@ class Cameca(KaitaiStruct):
             self.dataset_type = self._root.DatasetType(self._io.read_u4le())
             self.stage_x = self._io.read_s4le()
             self.stage_y = self._io.read_s4le()
-            self.beam_x = self._io.read_s4le()
-            self.beam_y = self._io.read_s4le()
+            self.beam_x = self._io.read_f4le()
+            self.beam_y = self._io.read_f4le()
             self.step_x = self._io.read_f4le()
             self.step_y = self._io.read_f4le()
             self.n_of_steps = self._io.read_u4le()
@@ -1249,7 +1302,7 @@ class Cameca(KaitaiStruct):
             self.mosaic_cols = self._io.read_u4le()
             self.mosaic_rows = self._io.read_u4le()
             self.focus_freq = self._io.read_u4le()
-            self.load_setup_everyth_nth = self._io.read_s4le()
+            self.load_setup_every_nth = self._io.read_s4le()
             self.not_re_flag4 = self._io.read_s4le()
             self.setup_file_name = self._root.CSharpString(self._io, self, self._root)
             self.n_of_elements = self._io.read_u4le()
@@ -1348,19 +1401,33 @@ class Cameca(KaitaiStruct):
             for i in range(self.n_extra_wds_stuff):
                 self.extra_wds_stuff[i] = self._root.WdsItemExtraEnding(self._io, self, self._root)
 
-            self.template_flag = self._io.read_u4le()
-            if self.template_flag == 1:
-                self.reserved_tmp_sector_0 = self._io.read_bytes(8)
+            self.has_overview_image = self._io.read_u4le()
+            if self.has_overview_image == 1:
+                self.polygon_selection = self._root.PolygonSelection(self._io, self, self._root)
 
-            if self.template_flag == 1:
-                self.template = self._root.Dataset(self._io, self, self._root)
+            if self.has_overview_image == 1:
+                self.overview_image_dataset = self._root.Dataset(self._io, self, self._root)
 
-            if self.template_flag == 1:
-                self.reserved_tmp_sector_1 = self._io.read_bytes(4)
+            if self.has_overview_image == 1:
+                self.polygon_selection_type = self._root.PolygonSelectionMode(self._io.read_u4le())
 
-            self.reserved_1 = self._io.read_bytes(104)
-            self.image_frames = self._io.read_u4le()
-            self.reserved_2 = self._io.read_bytes(12)
+            self.is_video_capture_mode = self._io.read_u4le()
+            self.reserved_1 = self._io.read_bytes(96)
+            if self.header.version >= 17:
+                self.reserved_v17 = self._io.read_bytes(4)
+
+            if self.header.version >= 17:
+                self.image_frames = self._io.read_u4le()
+
+            if self.header.version >= 17:
+                self.reserved_2 = self._io.read_bytes(4)
+
+            if self.header.version >= 17:
+                self.overscan_x = self._io.read_f4le()
+
+            if self.header.version >= 17:
+                self.overscan_y = self._io.read_f4le()
+
             if self.header.version >= 18:
                 self.reserved_v18 = self._io.read_bytes(4)
 
