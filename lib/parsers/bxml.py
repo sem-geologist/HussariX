@@ -25,15 +25,15 @@ import numpy as np
 from scipy.interpolate import UnivariateSpline
 
 import logging
-_logger = logging.getLogger(__name__)
 
 from periodictable import elements
 
 from math import log
 
-from .. misc import xray_util as xu # TODO: This should go away after proper implementation 
+from .. misc import xray_util as xu
 from ..generic import spectra, image
 
+_logger = logging.getLogger(__name__)
 
 class Container(object):  #TODO: Boo
     pass

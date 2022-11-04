@@ -24,10 +24,7 @@ import io
 from datetime import datetime, timedelta
 import numpy as np
 from struct import unpack as strct_unp
-import json
-
-import logging
-_logger = logging.getLogger(__name__)
+import json  # can be replaced with pprint
 
 
 class SFSTreeItem(object):
@@ -84,9 +81,9 @@ class SFSTreeItem(object):
         continuation of file pointer table, thus it have to be read and filled
         consecutive.
         """
-        #table size in number of chunks:
+        # table size in number of chunks:
         n_of_chunks = -(-self.size_in_chunks //
-                       (self.sfs.usable_chunk // 4))
+                        (self.sfs.usable_chunk // 4))
         with open(self.sfs.filename, 'rb') as fn:
             if n_of_chunks > 1:
                 next_chunk = self._pointer_to_pointer_table
@@ -103,9 +100,9 @@ class SFSTreeItem(object):
                 fn.seek(self.sfs.chunksize *
                         self._pointer_to_pointer_table + 0x138)
                 temp_table = fn.read(self.sfs.usable_chunk)
-            self.pointers = np.fromstring(temp_table[:self.size_in_chunks * 4],
-                                          dtype='uint32').astype(np.int64) *\
-                                                   self.sfs.chunksize + 0x138
+            self.pointers = np.fromstring(
+                temp_table[:self.size_in_chunks * 4],
+                dtype='uint32').astype(np.int64) * self.sfs.chunksize + 0x138
 
     def read_piece(self, offset, length):
         """Read and returns raw byte string of the file without applying
@@ -121,13 +118,13 @@ class SFSTreeItem(object):
         io.ByteIO object
         """
         data = io.BytesIO()
-        #first block index:
+        # first block index:
         fb_idx = offset // self.sfs.usable_chunk
-        #first block offset:
+        # first block offset:
         fbo = offset % self.sfs.usable_chunk
-        #last block index:
+        # last block index:
         lb_idx = (offset + length) // self.sfs.usable_chunk
-        #last block cut off:
+        # last block cut off:
         lbco = (offset + length) % self.sfs.usable_chunk
         with open(self.sfs.filename, 'rb') as fn:
             if fb_idx != lb_idx:
@@ -184,7 +181,7 @@ class SFSTreeItem(object):
         """
         with open(self.sfs.filename, 'rb') as fn:
             fn.seek(self.pointers[0])
-            #AACS signature, uncompressed size, undef var, number of blocks
+            # AACS signature, uncompressed size, undef var, number of blocks
             aacs, uc_size, _, n_of_blocks = strct_unp('<IIII', fn.read(16))
         if aacs == 0x53434141:  # AACS as string
             self.uncompressed_blk_size = uc_size
