@@ -16,32 +16,51 @@
 # along with any project and source this library is coupled.
 # If not, see <http://www.gnu.org/licenses/>.
 
-
 # from xraydb import XrayDB
 from math import log, e, sqrt
-#import periodictable as pt
-#import scipy.constants as sc
+from functools import cached_property
 from . elements import elements
 from . sat_lines import sattelite_lines
 from . rae_lines import lines as rae_lines
 
-# atom_num = {1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C',
-#             7: 'N', 8: 'O', 9: 'F', 10: 'Ne', 11: 'Na', 12: 'Mg',
-#             13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar',
-#             19: 'K', 20: 'Ca', 21: 'Sc', 22: 'Ti', 23: 'V', 24: 'Cr',
-#             25: 'Mn', 26: 'Fe', 27: 'Co', 28: 'Ni', 29: 'Cu', 30: 'Zn',
-#             31: 'Ga', 32: 'Ge', 33: 'As', 34: 'Se', 35: 'Br', 36: 'Kr',
-#             37: 'Rb', 38: 'Sr', 39: 'Y', 40: 'Zr', 41: 'Nb', 42: 'Mo',
-#             43: 'Tc', 44: 'Ru', 45: 'Rh', 46: 'Pd', 47: 'Ag', 48: 'Cd',
-#             49: 'In', 50: 'Sn', 51: 'Sb', 52: 'Te', 53: 'I', 54: 'Xe',
-#             55: 'Cs', 56: 'Ba', 57: 'La', 58: 'Ce', 59: 'Pr', 60: 'Nd',
-#             61: 'Pm', 62: 'Sm', 63: 'Eu', 64: 'Gd', 65: 'Tb', 66: 'Dy',
-#             67: 'Ho', 68: 'Er', 69: 'Tm', 70: 'Yb', 71: 'Lu', 72: 'Hf',
-#             73: 'Ta', 74: 'W', 75: 'Re', 76: 'Os', 77: 'Ir', 78: 'Pt',
-#             79: 'Au', 80: 'Hg', 81: 'Tl', 82: 'Pb', 83: 'Bi', 84: 'Po',
-#             85: 'At', 86: 'Rn', 87: 'Fr', 88: 'Ra', 89: 'Ac', 90: 'Th',
-#             91: 'Pa', 92: 'U'}
-#
+
+class Element:
+    _el_list = (
+          "n H He "
+          "Li Be B C N O F Ne "
+          "Na Mg Al Si P S Cl Ar "
+          "K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "
+          "Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe "
+          "Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "
+          "Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn "
+          "Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm".split())
+
+    def __init__(self, el):
+        if type(el) == str:
+            if el in self._el_list:
+                self.atomic_number = self._el_list.index(el)
+            else:
+                raise TypeError(f'not possible to initialise element from '
+                                f'given string {el}')
+        elif type(el) == int and el <= 99:
+            self.atomic_number = el
+        else:
+            raise TypeError(f'cant initiate Element from {el}')
+
+    @cached_property
+    def symbol(self):
+        """element abbreviation"""
+        return self._el_list[self.atomic_number]
+
+    def __str__(self):
+        return self.symbol
+
+    def __repr__(self):
+        return self.symbol
+
+    def __eq__(self, other):
+        return self.atomic_number == other.atomic_number
+
 
 iupac_siegbahn = {'K-L3': 'Kα1', 'K-L2': 'Kα2', 'K-M3': 'Kβ1',
                   'K-N3': 'Kβ2', 'K-M2': 'Kβ3', 'K-N5': 'Kβ4',
