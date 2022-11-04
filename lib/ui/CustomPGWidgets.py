@@ -207,7 +207,7 @@ class CustomAxisItem(pg.AxisItem):
         # menu = self.scene().addParentContextMenus(self, menu, ev)
 
         pos = ev.screenPos()
-        menu.popup(QtCore.QPoint(pos.x(), pos.y()))
+        menu.popup(QtCore.QPoint(int(pos.x()), int(pos.y())))
         return True
 
     # This method will be called when this item's _children_ want to raise
