@@ -702,6 +702,21 @@ class Cameca(KaitaiStruct):
             self.user_comment = (self._io.read_bytes_full()).decode(u"CP1252")
 
 
+    class OffsetPos(KaitaiStruct):
+        """type for file offset position for eventual in-place edditing of values
+        externally.
+        """
+        def __init__(self, pos, _io, _parent=None, _root=None):
+            self._io = _io
+            self._parent = _parent
+            self._root = _root if _root else self
+            self.pos = pos
+            self._read()
+
+        def _read(self):
+            pass
+
+
     class LazyData(KaitaiStruct):
         """its _read method needs to be reimplemented in target language
         to seek in the stream by provided size by parameter instead
@@ -731,6 +746,9 @@ class Cameca(KaitaiStruct):
             self.beam_current = self._io.read_f4le()
             self.peak_cps = self._io.read_f4le()
             self.peak_time = self._io.read_f4le()
+            self._raw_fop_bkgd = self._io.read_bytes(0)
+            io = KaitaiStream(BytesIO(self._raw_fop_bkgd))
+            self.fop_bkgd = self._root.OffsetPos(self._root._io.pos(), io, self, self._root)
             self.bkgd_under_peak_cps = self._io.read_f4le()
             self.bkgd_1_cps = self._io.read_f4le()
             self.bkgd_2_cps = self._io.read_f4le()
@@ -776,6 +794,19 @@ class Cameca(KaitaiStruct):
             if self.version >= 11:
                 self.padding_v11 = self._io.read_bytes(8)
 
+
+        @property
+        def bkgd_acq_time(self):
+            """acq time ensuring correct background time; In normal (default) conditions
+            in case peak counting hits 1M counts the background time is then set
+            to half of that of peak (which terminates counting with 1M counter hit);
+            In case using subcounting, such limititation does not apply.
+            """
+            if hasattr(self, '_m_bkgd_acq_time'):
+                return self._m_bkgd_acq_time if hasattr(self, '_m_bkgd_acq_time') else None
+
+            self._m_bkgd_acq_time = ((self.peak_time / 2) if  ((self.peak_raw_pulses >= 1000000) and (self.n_sub_count == 1))  else self.bkgd_time)
+            return self._m_bkgd_acq_time if hasattr(self, '_m_bkgd_acq_time') else None
 
 
     class PolygonSelection(KaitaiStruct):
@@ -975,9 +1006,12 @@ class Cameca(KaitaiStruct):
             self._raw_xtal = self._io.read_bytes(4)
             io = KaitaiStream(BytesIO(self._raw_xtal))
             self.xtal = self._root.XtalT(io, self, self._root)
-            self.not_re_flag_0 = self._io.read_f4le()
-            self.not_re_flag_1 = self._io.read_f4le()
+            self.two_d = self._io.read_f4le()
+            self.k = self._io.read_f4le()
             self.calibration_file = self._root.CSharpString(self._io, self, self._root)
+            self._raw_fop_peak_bkgd = self._io.read_bytes(0)
+            io = KaitaiStream(BytesIO(self._raw_fop_peak_bkgd))
+            self.fop_peak_bkgd = self._root.OffsetPos(self._root._io.pos(), io, self, self._root)
             self.reserved_0 = self._io.read_bytes(12)
             self.peak_position = self._io.read_u4le()
             self.peak_time = self._io.read_f4le()
@@ -1691,6 +1725,9 @@ class Cameca(KaitaiStruct):
             self.calibration_file_name = self._root.CSharpString(self._io, self, self._root)
             self.calib_peak_time = self._io.read_f4le()
             self.calib_bkgd_time = self._io.read_f4le()
+            self._raw_fop_bkgd_setup = self._io.read_bytes(0)
+            io = KaitaiStream(BytesIO(self._raw_fop_bkgd_setup))
+            self.fop_bkgd_setup = self._root.OffsetPos(self._root._io.pos(), io, self, self._root)
             self.bkgd_1_pos = self._io.read_s4le()
             self.bkgd_2_pos = self._io.read_s4le()
             self.bkgd_slope = self._io.read_f4le()

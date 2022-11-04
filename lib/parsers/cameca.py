@@ -25,12 +25,15 @@ along with source code of this program,
 or see <http://www.gnu.org/licenses/>.
 """
 
-from enum import IntEnum
-from functools import cached_property
 import os
 import numpy as np
-from .cameca_ks.cameca import Cameca, KaitaiStream
+
+from enum import IntEnum
+from functools import cached_property
 from copy import copy
+
+from .cameca_ks.cameca import Cameca, KaitaiStream
+from ..misc.xray_util import Element
 
 # import scipy.constants as sc
 # x_ray_const = sc.h * sc.c / sc.eV * 1E12
@@ -66,16 +69,17 @@ class XrayLine(IntEnum):
 Cameca.XrayLine = XrayLine
 
 
-class ElementT(Cameca.ElementT):
-    _el_list = (
-          "n H He "
-          "Li Be B C N O F Ne "
-          "Na Mg Al Si P S Cl Ar "
-          "K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "
-          "Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe "
-          "Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "
-          "Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn "
-          "Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm".split())
+class ElementT(Cameca.ElementT, Element):
+    pass
+    #_el_list = (
+          #"n H He "
+          #"Li Be B C N O F Ne "
+          #"Na Mg Al Si P S Cl Ar "
+          #"K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "
+          #"Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe "
+          #"Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "
+          #"Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn "
+          #"Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm".split())
 
     @cached_property
     def name(self):
@@ -309,7 +313,7 @@ class XraySignalHeader(Cameca.XraySignalHeader):
 
     def __repr__(self):
         if self.element.atomic_number != 0:
-            return '<{} {} on spect {}>'.format(self.element, self.xray_line,
+            return '<{} {} on spect {}>'.format(self.element, self.xray_line.name,
                                                 self.combi_string)
         return '<spect {}>'.format(self.combi_string)
 

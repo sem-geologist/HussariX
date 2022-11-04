@@ -565,6 +565,8 @@ types:
         type: f4
       - id: beam_current
         type: f4
+        doc: |
+          set value, not read value
       - id: peak_pos
         type: u4
       - id: counter_setting
@@ -576,7 +578,6 @@ types:
         if: '_parent.signal_type == signal_source::wds'
     -webide-representation: '{combi_string:str}'
     
-  
   xtal_t:
     seq:
       - id: first_byte
@@ -862,6 +863,14 @@ types:
         value: (peak_cps - bkgd_inter_cps) / beam_current
     -webide-representation: '{net_intensity:str}'
 
+  offset_pos:
+    doc: |
+      type for file offset position for eventual in-place edditing of values
+      externally.
+    params:
+      - id: pos
+        type: u4
+
   wds_qti_signal:
     params:
       - id: n_points
@@ -902,6 +911,10 @@ types:
         type: f4
       - id: calib_bkgd_time
         type: f4
+      - id: fop_bkgd_setup
+        doc: file offset position of background setup
+        type: offset_pos(_root._io.pos)
+        size: 0
       - id: bkgd_1_pos
         type: s4
       - id: bkgd_2_pos
@@ -1073,7 +1086,12 @@ types:
       - id: peak_cps
         type: f4
       - id: peak_time
+        doc: either set and acq time, or acq time (if raw counts =>1M)
         type: f4
+      - id: fop_bkgd
+        doc: file offset position of time corrected background records  
+        type: offset_pos(_root._io.pos)
+        size: 0
       - id: bkgd_under_peak_cps
         type: f4
       - id: bkgd_1_cps
@@ -1146,10 +1164,24 @@ types:
       - id: padding_2
         size: (30 - n_sub_count) * 4
       - id: bkgd_time
+        doc: set background time
         type: f4
       - id: padding_v11
         size: 8
         if: version >= 11
+    
+    instances:
+      bkgd_acq_time:
+        doc: |
+          acq time ensuring correct background time; In normal (default) conditions
+          in case peak counting hits 1M counts the background time is then set
+          to half of that of peak (which terminates counting with 1M counter hit);
+          In case using subcounting, such limititation does not apply.
+        value: |
+          ((peak_raw_pulses >= 1000000) and (n_sub_count == 1))?
+            peak_time / 2 :
+            bkgd_time
+      
 
   dts_img_sec_footer:
     seq:
@@ -1593,14 +1625,17 @@ types:
       - id: xtal
         size: 4
         type: xtal_t
-      - id: not_re_flag_0
+      - id: two_d
         type: f4
-      - id: not_re_flag_1
+      - id: k
         type: f4
       - id: calibration_file
         type: c_sharp_string
+      - id: fop_peak_bkgd
+        type: offset_pos(_root._io.pos)
+        size: 0
       - id: reserved_0  # Is order in this?
-        size: 12
+        size: 12  # 1st u4 is bkgd method? 2nd or 3rd meas method?; 2nd or 3rd order?
       - id: peak_position
         type: u4
       - id: peak_time
@@ -1632,6 +1667,7 @@ types:
       - id: reserved_v4
         size: 4
         if: _root.header.sxf_version >= 4
+    -webide-representation: '{element.atomic_number:str}'
         
   datetime_t:
     seq:
@@ -1778,7 +1814,7 @@ enums:
     0: average
     1: sum
     
-  xray_line:
+  xray_line:  # this ugly placeholder should be replaced in target language
     1: kb
     2: ka
     3: lg4
