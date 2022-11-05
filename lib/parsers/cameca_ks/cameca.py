@@ -1,12 +1,12 @@
 # This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-from pkg_resources import parse_version
-from kaitaistruct import __version__ as ks_version, KaitaiStruct, KaitaiStream, BytesIO
+import kaitaistruct
+from kaitaistruct import KaitaiStruct, KaitaiStream, BytesIO
 from enum import Enum
 
 
-if parse_version(ks_version) < parse_version('0.7'):
-    raise Exception("Incompatible Kaitai Struct Python API: 0.7 or later is required, but you have %s" % (ks_version))
+if getattr(kaitaistruct, 'API_VERSION', (0, 9)) < (0, 9):
+    raise Exception("Incompatible Kaitai Struct Python API: 0.9 or later is required, but you have %s" % (kaitaistruct.__version__))
 
 class Cameca(KaitaiStruct):
     """This parser is created for reading the proprietary binary data formats
@@ -194,41 +194,26 @@ class Cameca(KaitaiStruct):
         self._read()
 
     def _read(self):
-        self.header = self._root.SxfHeader(self._io, self, self._root)
+        self.header = Cameca.SxfHeader(self._io, self, self._root)
         _on = self.header.file_type
-        if _on == self._root.FileType.calibration_results:
-            self.content = self._root.SxfMain(self._io, self, self._root)
-        elif _on == self._root.FileType.image_mapping_setup:
-            self.content = self._root.ImgSetup(self._io, self, self._root)
-        elif _on == self._root.FileType.image_mapping_results:
-            self.content = self._root.SxfMain(self._io, self, self._root)
-        elif _on == self._root.FileType.wds_results:
-            self.content = self._root.SxfMain(self._io, self, self._root)
-        elif _on == self._root.FileType.wds_setup:
-            self.content = self._root.WdsSetup(self._io, self, self._root)
-        elif _on == self._root.FileType.quanti_results:
-            self.content = self._root.SxfMain(self._io, self, self._root)
-        elif _on == self._root.FileType.quanti_setup:
-            self.content = self._root.QtiSetup(self._io, self, self._root)
-        elif _on == self._root.FileType.overlap_table:
-            self.content = self._root.OverlapCorrections(self._io, self, self._root)
-        elif _on == self._root.FileType.calibration_setup:
-            self.content = self._root.CalSetup(self._io, self, self._root)
-
-    class AnnotatedLines(KaitaiStruct):
-        def __init__(self, _io, _parent=None, _root=None):
-            self._io = _io
-            self._parent = _parent
-            self._root = _root if _root else self
-            self._read()
-
-        def _read(self):
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.line = self._root.XrayLine(self._io.read_u4le())
-            self.order = self._io.read_u4le()
-            self.reserverd1 = self._io.read_u4le()
-            self.reserverd2 = self._io.read_u4le()
-
+        if _on == Cameca.FileType.calibration_results:
+            self.content = Cameca.SxfMain(self._io, self, self._root)
+        elif _on == Cameca.FileType.image_mapping_setup:
+            self.content = Cameca.ImgSetup(self._io, self, self._root)
+        elif _on == Cameca.FileType.image_mapping_results:
+            self.content = Cameca.SxfMain(self._io, self, self._root)
+        elif _on == Cameca.FileType.wds_results:
+            self.content = Cameca.SxfMain(self._io, self, self._root)
+        elif _on == Cameca.FileType.wds_setup:
+            self.content = Cameca.WdsSetup(self._io, self, self._root)
+        elif _on == Cameca.FileType.quanti_results:
+            self.content = Cameca.SxfMain(self._io, self, self._root)
+        elif _on == Cameca.FileType.quanti_setup:
+            self.content = Cameca.QtiSetup(self._io, self, self._root)
+        elif _on == Cameca.FileType.overlap_table:
+            self.content = Cameca.OverlapCorrectionsContent(self._io, self, self._root)
+        elif _on == Cameca.FileType.calibration_setup:
+            self.content = Cameca.CalSetup(self._io, self, self._root)
 
     class DtsWdsCalibFooter(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
@@ -238,15 +223,15 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            if self._root.header.file_type == self._root.FileType.calibration_results:
+            if self._root.header.file_type == Cameca.FileType.calibration_results:
                 self.reserved_0 = self._io.read_bytes(4)
 
-            if self._root.header.file_type == self._root.FileType.calibration_results:
-                self.n_space_time = self._io.read_u4le()
+            if self._root.header.file_type == Cameca.FileType.calibration_results:
+                self.num_datetime_and_pos = self._io.read_u4le()
 
-            self.datetime_and_pos = [None] * ((self.n_space_time if self._root.header.file_type == self._root.FileType.calibration_results else 1))
-            for i in range((self.n_space_time if self._root.header.file_type == self._root.FileType.calibration_results else 1)):
-                self.datetime_and_pos[i] = self._root.SpaceTime(self._io, self, self._root)
+            self.datetime_and_pos = []
+            for i in range((self.num_datetime_and_pos if self._root.header.file_type == Cameca.FileType.calibration_results else 1)):
+                self.datetime_and_pos.append(Cameca.SpaceTime(self._io, self, self._root))
 
             self.reserved_1 = self._io.read_bytes(4)
             if self._root.header.file_type.value != 8:
@@ -259,7 +244,7 @@ class Cameca(KaitaiStruct):
                 self.reserved_wds_ending_2 = self._io.read_bytes(40)
 
             if self._root.header.file_type.value == 8:
-                self.standard = self._root.StandardCompositionTable(self._io, self, self._root)
+                self.standard = Cameca.StandardCompositionTable(self._io, self, self._root)
 
 
 
@@ -271,30 +256,30 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.xray_line = self._root.XrayLine(self._io.read_u4le())
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.xray_line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.order = self._io.read_u4le()
             self.spect_no = self._io.read_u4le()
             self._raw_xtal = self._io.read_bytes(4)
-            io = KaitaiStream(BytesIO(self._raw_xtal))
-            self.xtal = self._root.XtalT(io, self, self._root)
+            _io__raw_xtal = KaitaiStream(BytesIO(self._raw_xtal))
+            self.xtal = Cameca.XtalT(_io__raw_xtal, self, self._root)
             self.two_d = self._io.read_f4le()
             self.k = self._io.read_f4le()
             self.reserved_0 = self._io.read_bytes(4)
             self.hv = self._io.read_f4le()
             self.beam_current = self._io.read_f4le()
             self.peak_pos = self._io.read_u4le()
-            self.counter_setting = self._root.CounterSetting(self._io, self, self._root)
+            self.counter_setting = Cameca.CounterSetting(self._io, self, self._root)
 
         @property
         def combi_string(self):
             if hasattr(self, '_m_combi_string'):
-                return self._m_combi_string if hasattr(self, '_m_combi_string') else None
+                return self._m_combi_string
 
-            if self._parent.signal_type == self._root.SignalSource.wds:
+            if self._parent.signal_type == Cameca.SignalSource.wds:
                 self._m_combi_string = str(self.spect_no) + u": " + self.xtal.full_name
 
-            return self._m_combi_string if hasattr(self, '_m_combi_string') else None
+            return getattr(self, '_m_combi_string', None)
 
 
     class PolygonPoint(KaitaiStruct):
@@ -320,7 +305,7 @@ class Cameca(KaitaiStruct):
         def _read(self):
             self.version = self._io.read_u4le()
             self.reserved_0 = self._io.read_bytes(4)
-            self.condition_name = self._root.CSharpString(self._io, self, self._root)
+            self.condition_name = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_1 = self._io.read_bytes(20)
             self.heat = self._io.read_u4le()
             self.hv = self._io.read_u4le()
@@ -342,23 +327,23 @@ class Cameca(KaitaiStruct):
             self.beam_size = self._io.read_s4le()
             self.stigmator_amplitude = self._io.read_s4le()
             self.stigmator_angle = self._io.read_s4le()
-            self.reserved_flags_5 = [None] * (6)
+            self.reserved_flags_5 = []
             for i in range(6):
-                self.reserved_flags_5[i] = self._io.read_s4le()
+                self.reserved_flags_5.append(self._io.read_s4le())
 
             self.extractor = self._io.read_s4le()
             self.suppressor = self._io.read_s4le()
-            self.reserved_flags_6 = [None] * ((86 if self._root.header.file_type.value > 1 else 85))
+            self.reserved_flags_6 = []
             for i in range((86 if self._root.header.file_type.value > 1 else 85)):
-                self.reserved_flags_6[i] = self._io.read_s4le()
+                self.reserved_flags_6.append(self._io.read_s4le())
 
             if self._root.header.file_type.value > 1:
-                self.n_eds_measurement_setups = self._io.read_u4le()
+                self.num_eds_meas_setups = self._io.read_u4le()
 
             if self._root.header.file_type.value > 1:
-                self.eds_measurement_setups = [None] * (self.n_eds_measurement_setups)
-                for i in range(self.n_eds_measurement_setups):
-                    self.eds_measurement_setups[i] = self._root.QtiEdsMeasurementSetup(self._io, self, self._root)
+                self.eds_measurement_setups = []
+                for i in range(self.num_eds_meas_setups):
+                    self.eds_measurement_setups.append(Cameca.QtiEdsMeasurementSetup(self._io, self, self._root))
 
 
             self.default_eds_live_time = self._io.read_f4le()
@@ -369,10 +354,10 @@ class Cameca(KaitaiStruct):
                 self.wds_measurement_struct_type = self._io.read_u4le()
 
             if self.wds_measurement_struct_type == 3:
-                self.wds_img_spect_setups = self._root.ImgWdsSpectSetups(self._io, self, self._root)
+                self.wds_img_spect_setups = Cameca.ImgWdsSpectSetups(self._io, self, self._root)
 
             if self.wds_measurement_struct_type >= 19:
-                self.wds_qti_measurement_setups = self._root.QtiWdsMeasurementSetups(self._io, self, self._root)
+                self.wds_qti_measurement_setups = Cameca.QtiWdsMeasurementSetups(self._io, self, self._root)
 
 
 
@@ -385,32 +370,32 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.data_size = self._io.read_u4le()
+            self.len_data = self._io.read_u4le()
             self.unkn_x = self._io.read_bytes(4)
             self.total_size = self._io.read_u4le()
-            self._raw_data = [None] * (self.total_size // self.data_size)
-            self.data = [None] * (self.total_size // self.data_size)
-            for i in range(self.total_size // self.data_size):
-                self._raw_data[i] = self._io.read_bytes(self.data_size)
-                io = KaitaiStream(BytesIO(self._raw_data[i]))
-                self.data[i] = self._root.CalibItem(io, self, self._root)
+            self._raw_data = []
+            self.data = []
+            for i in range(self.total_size // self.len_data):
+                self._raw_data.append(self._io.read_bytes(self.len_data))
+                _io__raw_data = KaitaiStream(BytesIO(self._raw_data[i]))
+                self.data.append(Cameca.CalibItem(_io__raw_data, self, self._root))
 
             self.calib_peak_time = self._io.read_f4le()
             self.calib_bkgd_time = self._io.read_f4le()
             self.bkgd_1_pos = self._io.read_s4le()
             self.bkgd_2_pos = self._io.read_s4le()
             self.bkgd_slope = self._io.read_f4le()
-            self.quanti_mode = self._root.QuantiMode(self._io.read_u4le())
+            self.quanti_mode = KaitaiStream.resolve_enum(Cameca.QuantiMode, self._io.read_u4le())
             self.pk_area_range = self._io.read_u4le()
             self.pk_area_channels = self._io.read_u4le()
             self.pk_area_bkgd_1 = self._io.read_s4le()
             self.pk_area_bkgd_2 = self._io.read_s4le()
             self.pk_area_n_accumulation = self._io.read_u4le()
             self.not_re_area_flags = self._io.read_bytes(24)
-            self.n_calib_points = self._io.read_u4le()
-            self.pk_area_wds_spetras = [None] * (self.n_calib_points)
-            for i in range(self.n_calib_points):
-                self.pk_area_wds_spetras[i] = self._root.QuantiWdsScan(self._io, self, self._root)
+            self.num_pk_area_wds_spectra = self._io.read_u4le()
+            self.pk_area_wds_spectra = []
+            for i in range(self.num_pk_area_wds_spectra):
+                self.pk_area_wds_spectra.append(Cameca.QuantiWdsScan(self._io, self, self._root))
 
 
 
@@ -422,7 +407,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.item_comment = self._root.CSharpString(self._io, self, self._root)
+            self.item_comment = Cameca.CSharpString(self._io, self, self._root)
             self.not_re_flag_0 = self._io.read_f4le()
             self.not_re_flag_1 = self._io.read_s4le()
             self.not_re_flag_2 = self._io.read_s4le()
@@ -441,11 +426,11 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self._raw_xtal = self._io.read_bytes(4)
-            io = KaitaiStream(BytesIO(self._raw_xtal))
-            self.xtal = self._root.XtalT(io, self, self._root)
+            _io__raw_xtal = KaitaiStream(BytesIO(self._raw_xtal))
+            self.xtal = Cameca.XtalT(_io__raw_xtal, self, self._root)
             self.two_d = self._io.read_f4le()
             self.k = self._io.read_f4le()
-            self.wds_scan_type = self._root.WdsScanType(self._io.read_u4le())
+            self.wds_scan_type = KaitaiStream.resolve_enum(Cameca.WdsScanType, self._io.read_u4le())
             self.min_pos = self._io.read_u4le()
             self.reserved_1 = self._io.read_u4le()
             self.reserved_2 = self._io.read_u4le()
@@ -453,12 +438,12 @@ class Cameca(KaitaiStruct):
             self.max_pos = self._io.read_u4le()
             self.reserved_4 = self._io.read_bytes((4 * 3))
             self.position = self._io.read_u4le()
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.xray_line = self._root.XrayLine(self._io.read_u4le())
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.xray_line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.order = self._io.read_u4le()
             self.offset_1 = self._io.read_s4le()
             self.offset_2 = self._io.read_s4le()
-            self.counter_setting = self._root.CounterSetting(self._io, self, self._root)
+            self.counter_setting = Cameca.CounterSetting(self._io, self, self._root)
 
 
     class DatasetItem(KaitaiStruct):
@@ -471,54 +456,54 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.signal_type = self._root.SignalSource(self._io.read_u4le())
+            self.signal_type = KaitaiStream.resolve_enum(Cameca.SignalSource, self._io.read_u4le())
             _on = self.signal_type
-            if _on == self._root.SignalSource.qti_stoch:
+            if _on == Cameca.SignalSource.qti_stoch:
                 self._raw_signal_header = self._io.read_bytes(68)
-                io = KaitaiStream(BytesIO(self._raw_signal_header))
-                self.signal_header = self._root.LimitedSignalHeader(io, self, self._root)
-            elif _on == self._root.SignalSource.qti_diff:
+                _io__raw_signal_header = KaitaiStream(BytesIO(self._raw_signal_header))
+                self.signal_header = Cameca.LimitedSignalHeader(_io__raw_signal_header, self, self._root)
+            elif _on == Cameca.SignalSource.qti_diff:
                 self._raw_signal_header = self._io.read_bytes(68)
-                io = KaitaiStream(BytesIO(self._raw_signal_header))
-                self.signal_header = self._root.LimitedSignalHeader(io, self, self._root)
-            elif _on == self._root.SignalSource.qti_matrix:
+                _io__raw_signal_header = KaitaiStream(BytesIO(self._raw_signal_header))
+                self.signal_header = Cameca.LimitedSignalHeader(_io__raw_signal_header, self, self._root)
+            elif _on == Cameca.SignalSource.qti_matrix:
                 self._raw_signal_header = self._io.read_bytes(68)
-                io = KaitaiStream(BytesIO(self._raw_signal_header))
-                self.signal_header = self._root.LimitedSignalHeader(io, self, self._root)
-            elif _on == self._root.SignalSource.im_camera:
+                _io__raw_signal_header = KaitaiStream(BytesIO(self._raw_signal_header))
+                self.signal_header = Cameca.LimitedSignalHeader(_io__raw_signal_header, self, self._root)
+            elif _on == Cameca.SignalSource.im_camera:
                 self._raw_signal_header = self._io.read_bytes(68)
-                io = KaitaiStream(BytesIO(self._raw_signal_header))
-                self.signal_header = self._root.EmptySignalHeader(io, self, self._root)
-            elif _on == self._root.SignalSource.video:
+                _io__raw_signal_header = KaitaiStream(BytesIO(self._raw_signal_header))
+                self.signal_header = Cameca.EmptySignalHeader(_io__raw_signal_header, self, self._root)
+            elif _on == Cameca.SignalSource.video:
                 self._raw_signal_header = self._io.read_bytes(68)
-                io = KaitaiStream(BytesIO(self._raw_signal_header))
-                self.signal_header = self._root.VideoSignalHeader(io, self, self._root)
+                _io__raw_signal_header = KaitaiStream(BytesIO(self._raw_signal_header))
+                self.signal_header = Cameca.VideoSignalHeader(_io__raw_signal_header, self, self._root)
             else:
                 self._raw_signal_header = self._io.read_bytes(68)
-                io = KaitaiStream(BytesIO(self._raw_signal_header))
-                self.signal_header = self._root.XraySignalHeader(io, self, self._root)
+                _io__raw_signal_header = KaitaiStream(BytesIO(self._raw_signal_header))
+                self.signal_header = Cameca.XraySignalHeader(_io__raw_signal_header, self, self._root)
             self.not_re_flag = self._io.read_u4le()
             if self.version >= 3:
                 self.reserved_0 = self._io.read_bytes(12)
 
             if self.version >= 3:
-                self.n_of_reserved_1_blocks = self._io.read_u4le()
+                self.num_reserved_1 = self._io.read_u4le()
 
             if self.version >= 3:
-                self.reserved_1_blocks = [None] * (self.n_of_reserved_1_blocks)
-                for i in range(self.n_of_reserved_1_blocks):
-                    self.reserved_1_blocks[i] = self._io.read_bytes(12)
+                self.reserved_1 = []
+                for i in range(self.num_reserved_1):
+                    self.reserved_1.append(self._io.read_bytes(12))
 
 
             _on = self._root.header.file_type
-            if _on == self._root.FileType.image_mapping_results:
-                self.signal = self._root.ImageProfileSignal(self._io, self, self._root)
-            elif _on == self._root.FileType.wds_results:
-                self.signal = self._root.WdsScanSignal(self._io, self, self._root)
-            elif _on == self._root.FileType.quanti_results:
-                self.signal = self._root.WdsQtiSignal(self.n_points, self._io, self, self._root)
-            elif _on == self._root.FileType.calibration_results:
-                self.signal = self._root.CalibSignal(self._io, self, self._root)
+            if _on == Cameca.FileType.image_mapping_results:
+                self.signal = Cameca.ImageProfileSignal(self._io, self, self._root)
+            elif _on == Cameca.FileType.wds_results:
+                self.signal = Cameca.WdsScanSignal(self._io, self, self._root)
+            elif _on == Cameca.FileType.quanti_results:
+                self.signal = Cameca.WdsQtiSignal(self.n_points, self._io, self, self._root)
+            elif _on == Cameca.FileType.calibration_results:
+                self.signal = Cameca.CalibSignal(self._io, self, self._root)
 
 
     class ElementT(KaitaiStruct):
@@ -545,7 +530,7 @@ class Cameca(KaitaiStruct):
             self.dead_time = self._io.read_u4le()
             self.base_line = self._io.read_u4le()
             self.window = self._io.read_u4le()
-            self.mode = self._root.PhaMode(self._io.read_u4le())
+            self.mode = KaitaiStream.resolve_enum(Cameca.PhaMode, self._io.read_u4le())
 
 
     class DtsImgSecFooter(KaitaiStruct):
@@ -556,14 +541,14 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.datetime_and_pos = self._root.SpaceTime(self._io, self, self._root)
+            self.datetime_and_pos = Cameca.SpaceTime(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(4)
             self.reserved_1 = self._io.read_bytes(8)
             self.reserved_2 = self._io.read_bytes(64)
-            self.n_subsections = self._io.read_u4le()
-            self.subsections = [None] * (self.n_subsections)
-            for i in range(self.n_subsections):
-                self.subsections[i] = self._root.ImgFooterSubsection(self._io, self, self._root)
+            self.num_subsections = self._io.read_u4le()
+            self.subsections = []
+            for i in range(self.num_subsections):
+                self.subsections.append(Cameca.ImgFooterSubsection(self._io, self, self._root))
 
 
 
@@ -575,9 +560,9 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.wds_img_spect_setup_table = [None] * (5)
+            self.wds_img_spect_setup_table = []
             for i in range(5):
-                self.wds_img_spect_setup_table[i] = self._root.ImgWdsSpectSetup(self._io, self, self._root)
+                self.wds_img_spect_setup_table.append(Cameca.ImgWdsSpectSetup(self._io, self, self._root))
 
 
 
@@ -589,24 +574,20 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.n_color_bar_ticks = self._io.read_u4le()
-            if self.n_color_bar_ticks > 0:
-                self.colors = [None] * (self.n_color_bar_ticks)
-                for i in range(self.n_color_bar_ticks):
-                    self.colors[i] = self._root.ColorTick(self._io, self, self._root)
+            self.num_colorbar_ticks = self._io.read_u4le()
+            self.colorbar_ticks = []
+            for i in range(self.num_colorbar_ticks):
+                self.colorbar_ticks.append(Cameca.ColorTick(self._io, self, self._root))
 
-
-            if self.n_color_bar_ticks > 0:
+            if self.num_colorbar_ticks > 0:
                 self.max_value = self._io.read_f4le()
 
             self.reserved_0 = self._io.read_f4le()
             self.reserved_1 = self._io.read_bytes(4)
-            self.n_color_bar_labels = self._io.read_u4le()
-            if self.n_color_bar_labels > 0:
-                self.custom_color_bar_labels = [None] * (self.n_color_bar_labels)
-                for i in range(self.n_color_bar_labels):
-                    self.custom_color_bar_labels[i] = self._root.BarLabel(self._io, self, self._root)
-
+            self.num_custom_colorbar_labels = self._io.read_u4le()
+            self.custom_colorbar_labels = []
+            for i in range(self.num_custom_colorbar_labels):
+                self.custom_colorbar_labels.append(Cameca.BarLabel(self._io, self, self._root))
 
 
 
@@ -619,7 +600,7 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.dataset_type = self._root.DatasetType(self._io.read_u4le())
+            self.dataset_type = KaitaiStream.resolve_enum(Cameca.DatasetType, self._io.read_u4le())
             self.stage_x = self._io.read_s4le()
             self.stage_y = self._io.read_s4le()
             self.beam_x = self._io.read_f4le()
@@ -629,35 +610,35 @@ class Cameca(KaitaiStruct):
             self.width = self._io.read_u4le()
             self.height = self._io.read_u4le()
             self.z_axis = self._io.read_s4le()
-            self.img_pixel_dtype = self._root.ImageArrayDtype(self._io.read_u4le())
+            self.img_pixel_dtype = KaitaiStream.resolve_enum(Cameca.ImageArrayDtype, self._io.read_u4le())
             self.dwell_time = self._io.read_f4le()
-            if  ((self.dataset_type != self._root.DatasetType.line_stage) and (self.dataset_type != self._root.DatasetType.line_beam)) :
+            if  ((self.dataset_type != Cameca.DatasetType.line_stage) and (self.dataset_type != Cameca.DatasetType.line_beam)) :
                 self.n_frames = self._io.read_u4le()
 
             self.not_re_flag = self._io.read_u4le()
             self.data_size = self._io.read_u4le()
-            if  ((self.dataset_type != self._root.DatasetType.line_stage) and (self.dataset_type != self._root.DatasetType.line_beam)) :
+            if  ((self.dataset_type != Cameca.DatasetType.line_stage) and (self.dataset_type != Cameca.DatasetType.line_beam)) :
                 self.not_re_flag2 = self._io.read_u4le()
 
-            if  ((self.dataset_type != self._root.DatasetType.line_stage) and (self.dataset_type != self._root.DatasetType.line_beam)) :
+            if  ((self.dataset_type != Cameca.DatasetType.line_stage) and (self.dataset_type != Cameca.DatasetType.line_beam)) :
                 self.not_re_flag3 = self._io.read_f4le()
 
-            if  ((self.dataset_type != self._root.DatasetType.line_stage) and (self.dataset_type != self._root.DatasetType.line_beam)) :
+            if  ((self.dataset_type != Cameca.DatasetType.line_stage) and (self.dataset_type != Cameca.DatasetType.line_beam)) :
                 self.not_re_flag4 = self._io.read_f4le()
 
-            self.data = [None] * (self.n_of_frames)
-            for i in range(self.n_of_frames):
-                self.data[i] = self._root.LazyData(self._root._io.pos(), self.frame_size, self._io, self, self._root)
+            self.data = []
+            for i in range(self.num_data):
+                self.data.append(Cameca.LazyData(self._root._io.pos(), self.frame_size, self._io, self, self._root))
 
             self.reserved_0 = self._io.read_bytes(56)
-            self.lut_name = self._root.CSharpString(self._io, self, self._root)
-            self.signal_name = self._root.CSharpString(self._io, self, self._root)
+            self.lut_name = Cameca.CSharpString(self._io, self, self._root)
+            self.signal_name = Cameca.CSharpString(self._io, self, self._root)
             self.intensity_min = self._io.read_f4le()
             self.intensity_max = self._io.read_f4le()
             self.reserved_1 = self._io.read_bytes(20)
             self.visible_width = self._io.read_u4le()
             self.visible_height = self._io.read_u4le()
-            self.colorbar_ticks = self._root.ColorBarTicks(self._io, self, self._root)
+            self.colorbar_ticks = Cameca.ColorBarTicks(self._io, self, self._root)
             self.img_rotation = self._io.read_f4le()
             self.reserved_2 = self._io.read_bytes(8)
             if self.version >= 6:
@@ -667,26 +648,26 @@ class Cameca(KaitaiStruct):
         @property
         def array_data_size(self):
             if hasattr(self, '_m_array_data_size'):
-                return self._m_array_data_size if hasattr(self, '_m_array_data_size') else None
+                return self._m_array_data_size
 
-            self._m_array_data_size = (self.data_size - (0 if  ((self.dataset_type == self._root.DatasetType.line_stage) or (self.dataset_type == self._root.DatasetType.line_beam))  else 12))
-            return self._m_array_data_size if hasattr(self, '_m_array_data_size') else None
+            self._m_array_data_size = (self.data_size - (0 if  ((self.dataset_type == Cameca.DatasetType.line_stage) or (self.dataset_type == Cameca.DatasetType.line_beam))  else 12))
+            return getattr(self, '_m_array_data_size', None)
 
         @property
         def frame_size(self):
             if hasattr(self, '_m_frame_size'):
-                return self._m_frame_size if hasattr(self, '_m_frame_size') else None
+                return self._m_frame_size
 
             self._m_frame_size = (((1 if self.img_pixel_dtype.value == 0 else 4) * self.height) * self.width)
-            return self._m_frame_size if hasattr(self, '_m_frame_size') else None
+            return getattr(self, '_m_frame_size', None)
 
         @property
-        def n_of_frames(self):
-            if hasattr(self, '_m_n_of_frames'):
-                return self._m_n_of_frames if hasattr(self, '_m_n_of_frames') else None
+        def num_data(self):
+            if hasattr(self, '_m_num_data'):
+                return self._m_num_data
 
-            self._m_n_of_frames = (self.array_data_size // self.frame_size if self.frame_size != 0 else 0)
-            return self._m_n_of_frames if hasattr(self, '_m_n_of_frames') else None
+            self._m_num_data = (self.array_data_size // self.frame_size if self.frame_size != 0 else 0)
+            return getattr(self, '_m_num_data', None)
 
 
     class ModificationAttributes(KaitaiStruct):
@@ -722,16 +703,16 @@ class Cameca(KaitaiStruct):
         to seek in the stream by provided size by parameter instead
         of reading into memory
         """
-        def __init__(self, offset, size, _io, _parent=None, _root=None):
+        def __init__(self, offset, len_bytes, _io, _parent=None, _root=None):
             self._io = _io
             self._parent = _parent
             self._root = _root if _root else self
             self.offset = offset
-            self.size = size
+            self.len_bytes = len_bytes
             self._read()
 
         def _read(self):
-            self.bytes = self._io.read_bytes(self.size)
+            self.bytes = self._io.read_bytes(self.len_bytes)
 
 
     class QtiDataItem(KaitaiStruct):
@@ -746,9 +727,9 @@ class Cameca(KaitaiStruct):
             self.beam_current = self._io.read_f4le()
             self.peak_cps = self._io.read_f4le()
             self.peak_time = self._io.read_f4le()
-            self._raw_fop_bkgd = self._io.read_bytes(0)
-            io = KaitaiStream(BytesIO(self._raw_fop_bkgd))
-            self.fop_bkgd = self._root.OffsetPos(self._root._io.pos(), io, self, self._root)
+            self._raw_ofs_bkgd = self._io.read_bytes(0)
+            _io__raw_ofs_bkgd = KaitaiStream(BytesIO(self._raw_ofs_bkgd))
+            self.ofs_bkgd = Cameca.OffsetPos(self._root._io.pos(), _io__raw_ofs_bkgd, self, self._root)
             self.bkgd_under_peak_cps = self._io.read_f4le()
             self.bkgd_1_cps = self._io.read_f4le()
             self.bkgd_2_cps = self._io.read_f4le()
@@ -769,27 +750,27 @@ class Cameca(KaitaiStruct):
             self.peak_raw_pulses = self._io.read_u4le()
             self.bkgd_1_raw_pulses = self._io.read_u4le()
             self.bkgd_2_raw_pulses = self._io.read_u4le()
-            self.subcounting_mode = self._root.SubcountingMode(self._io.read_u4le())
-            self.n_sub_count = self._io.read_u4le()
+            self.subcounting_mode = KaitaiStream.resolve_enum(Cameca.SubcountingMode, self._io.read_u4le())
+            self.num_subcount = self._io.read_u4le()
             self.subcount_peak_enabled_flags = self._io.read_u4le()
-            self.subcount_peak_pulses = [None] * (self.n_sub_count)
-            for i in range(self.n_sub_count):
-                self.subcount_peak_pulses[i] = self._io.read_u4le()
+            self.subcount_peak_pulses = []
+            for i in range(self.num_subcount):
+                self.subcount_peak_pulses.append(self._io.read_u4le())
 
-            self.padding_0 = self._io.read_bytes(((30 - self.n_sub_count) * 4))
+            self.padding_0 = self._io.read_bytes(((30 - self.num_subcount) * 4))
             self.reserved_0 = self._io.read_bytes(4)
             self.subcount_bkgd1_enabled_flags = self._io.read_u4le()
-            self.subcount_bkgd1_pulses = [None] * (self.n_sub_count)
-            for i in range(self.n_sub_count):
-                self.subcount_bkgd1_pulses[i] = self._io.read_u4le()
+            self.subcount_bkgd1_pulses = []
+            for i in range(self.num_subcount):
+                self.subcount_bkgd1_pulses.append(self._io.read_u4le())
 
-            self.padding_1 = self._io.read_bytes(((30 - self.n_sub_count) * 4))
+            self.padding_1 = self._io.read_bytes(((30 - self.num_subcount) * 4))
             self.subcount_bkgd2_enabled_flags = self._io.read_u4le()
-            self.subcount_bkgd2_pulses = [None] * (self.n_sub_count)
-            for i in range(self.n_sub_count):
-                self.subcount_bkgd2_pulses[i] = self._io.read_u4le()
+            self.subcount_bkgd2_pulses = []
+            for i in range(self.num_subcount):
+                self.subcount_bkgd2_pulses.append(self._io.read_u4le())
 
-            self.padding_2 = self._io.read_bytes(((30 - self.n_sub_count) * 4))
+            self.padding_2 = self._io.read_bytes(((30 - self.num_subcount) * 4))
             self.bkgd_time = self._io.read_f4le()
             if self.version >= 11:
                 self.padding_v11 = self._io.read_bytes(8)
@@ -803,10 +784,10 @@ class Cameca(KaitaiStruct):
             In case using subcounting, such limititation does not apply.
             """
             if hasattr(self, '_m_bkgd_acq_time'):
-                return self._m_bkgd_acq_time if hasattr(self, '_m_bkgd_acq_time') else None
+                return self._m_bkgd_acq_time
 
-            self._m_bkgd_acq_time = ((self.peak_time / 2) if  ((self.peak_raw_pulses >= 1000000) and (self.n_sub_count == 1))  else self.bkgd_time)
-            return self._m_bkgd_acq_time if hasattr(self, '_m_bkgd_acq_time') else None
+            self._m_bkgd_acq_time = ((self.peak_time / 2) if  ((self.peak_raw_pulses >= 1000000) and (self.num_subcount == 1))  else self.bkgd_time)
+            return getattr(self, '_m_bkgd_acq_time', None)
 
 
     class PolygonSelection(KaitaiStruct):
@@ -818,10 +799,10 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.type = self._io.read_u4le()
-            self.n_polygon_nodes = self._io.read_u4le()
-            self.polygon_nodes = [None] * (self.n_polygon_nodes)
-            for i in range(self.n_polygon_nodes):
-                self.polygon_nodes[i] = self._root.PolygonPoint(self._io, self, self._root)
+            self.num_polygon_nodes = self._io.read_u4le()
+            self.polygon_nodes = []
+            for i in range(self.num_polygon_nodes):
+                self.polygon_nodes.append(Cameca.PolygonPoint(self._io, self, self._root))
 
 
 
@@ -833,21 +814,23 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.file_type = self._root.FileType(self._io.read_u1())
-            self.magic = self._io.ensure_fixed_contents(b"\x66\x78\x73")
+            self.file_type = KaitaiStream.resolve_enum(Cameca.FileType, self._io.read_u1())
+            self.magic = self._io.read_bytes(3)
+            if not self.magic == b"\x66\x78\x73":
+                raise kaitaistruct.ValidationNotEqualError(b"\x66\x78\x73", self.magic, self._io, u"/types/sxf_header/seq/1")
             self.sxf_version = self._io.read_u4le()
-            self.comment = self._root.CSharpString(self._io, self, self._root)
+            self.comment = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(24)
             if self.sxf_version >= 3:
                 self.reserved_v3 = self._io.read_bytes(4)
 
             if self.sxf_version >= 3:
-                self.n_file_modifications = self._io.read_u4le()
+                self.num_file_modifications = self._io.read_u4le()
 
             if self.sxf_version >= 3:
-                self.file_changes = [None] * (self.n_file_modifications)
-                for i in range(self.n_file_modifications):
-                    self.file_changes[i] = self._root.FileModification(self._io, self, self._root)
+                self.file_modifications = []
+                for i in range(self.num_file_modifications):
+                    self.file_modifications.append(Cameca.FileModification(self._io, self, self._root))
 
 
             if self.sxf_version >= 4:
@@ -890,7 +873,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.element = self._root.ElementT(self._io, self, self._root)
+            self.element = Cameca.ElementT(self._io, self, self._root)
 
 
     class SxfMain(KaitaiStruct):
@@ -907,13 +890,13 @@ class Cameca(KaitaiStruct):
             self.verify_xtal_before_start = self._io.read_s4le()
             self.bkgd_measure_every_nth = self._io.read_u4le()
             self.decontamination_time = self._io.read_u4le()
-            self.n_of_datasets = self._io.read_u4le()
-            self.datasets = [None] * (self.n_of_datasets)
-            for i in range(self.n_of_datasets):
-                self.datasets[i] = self._root.Dataset(self._io, self, self._root)
+            self.num_datasets = self._io.read_u4le()
+            self.datasets = []
+            for i in range(self.num_datasets):
+                self.datasets.append(Cameca.Dataset(self._io, self, self._root))
 
             self.not_re_global_options = self._io.read_bytes(12)
-            self.current_qti_set = self._root.CSharpString(self._io, self, self._root)
+            self.current_qti_set = Cameca.CSharpString(self._io, self, self._root)
             self.not_re_global_options_2 = self._io.read_bytes(216)
             if self.version >= 12:
                 self.not_re_global_options_v12 = self._io.read_bytes(4)
@@ -935,13 +918,13 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(4)
-            self.element_for_stochiometry = self._root.ElementT(self._io, self, self._root)
-            self.n_changed_oxy_states = self._io.read_u4le()
-            self.oxy_state_changes = [None] * (self.n_changed_oxy_states)
-            for i in range(self.n_changed_oxy_states):
-                self.oxy_state_changes[i] = self._root.ElementOxyState(self._io, self, self._root)
+            self.element_for_stochiometry = Cameca.ElementT(self._io, self, self._root)
+            self.num_oxy_state_changes = self._io.read_u4le()
+            self.oxy_state_changes = []
+            for i in range(self.num_oxy_state_changes):
+                self.oxy_state_changes.append(Cameca.ElementOxyState(self._io, self, self._root))
 
-            self.element_by_difference = self._root.ElementT(self._io, self, self._root)
+            self.element_by_difference = Cameca.ElementT(self._io, self, self._root)
 
 
     class QtiEdsMeasurementSetup(KaitaiStruct):
@@ -953,10 +936,10 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_u4le()
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.xray_line = self._root.XrayLine(self._io.read_u4le())
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.xray_line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.reserved_1 = self._io.read_u4le()
-            self.calibration_setup_file = self._root.CSharpString(self._io, self, self._root)
+            self.calibration_setup_file = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_2 = self._io.read_u4le()
 
 
@@ -969,7 +952,7 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.channel = self._io.read_u4le()
-            self.video_signal_type = self._root.VideoSignalType(self._io.read_u4le())
+            self.video_signal_type = KaitaiStream.resolve_enum(Cameca.VideoSignalType, self._io.read_u4le())
             self.padding_0 = self._io.read_bytes(24)
             self.hv = self._io.read_f4le()
             self.beam_current = self._io.read_f4le()
@@ -984,11 +967,11 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.standard_name = self._root.CSharpString(self._io, self, self._root)
-            self.n_elements = self._io.read_u4le()
-            self.standard_weight_table = [None] * (self.n_elements)
-            for i in range(self.n_elements):
-                self.standard_weight_table[i] = self._root.ElementWeight(self._io, self, self._root)
+            self.standard_name = Cameca.CSharpString(self._io, self, self._root)
+            self.num_element_weights = self._io.read_u4le()
+            self.element_weights = []
+            for i in range(self.num_element_weights):
+                self.element_weights.append(Cameca.ElementWeight(self._io, self, self._root))
 
 
 
@@ -1000,18 +983,18 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.xray_line = self._root.XrayLine(self._io.read_u4le())
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.xray_line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.spect_number = self._io.read_u4le()
             self._raw_xtal = self._io.read_bytes(4)
-            io = KaitaiStream(BytesIO(self._raw_xtal))
-            self.xtal = self._root.XtalT(io, self, self._root)
+            _io__raw_xtal = KaitaiStream(BytesIO(self._raw_xtal))
+            self.xtal = Cameca.XtalT(_io__raw_xtal, self, self._root)
             self.two_d = self._io.read_f4le()
             self.k = self._io.read_f4le()
-            self.calibration_file = self._root.CSharpString(self._io, self, self._root)
-            self._raw_fop_peak_bkgd = self._io.read_bytes(0)
-            io = KaitaiStream(BytesIO(self._raw_fop_peak_bkgd))
-            self.fop_peak_bkgd = self._root.OffsetPos(self._root._io.pos(), io, self, self._root)
+            self.calibration_file = Cameca.CSharpString(self._io, self, self._root)
+            self._raw_ofs_peak_bkgd = self._io.read_bytes(0)
+            _io__raw_ofs_peak_bkgd = KaitaiStream(BytesIO(self._raw_ofs_peak_bkgd))
+            self.ofs_peak_bkgd = Cameca.OffsetPos(self._root._io.pos(), _io__raw_ofs_peak_bkgd, self, self._root)
             self.reserved_0 = self._io.read_bytes(12)
             self.peak_position = self._io.read_u4le()
             self.peak_time = self._io.read_f4le()
@@ -1019,12 +1002,12 @@ class Cameca(KaitaiStruct):
             self.offset_bkgd_2 = self._io.read_s4le()
             self.slope = self._io.read_f4le()
             self.bkgd_time = self._io.read_f4le()
-            self.counter_setting = self._root.CounterSetting(self._io, self, self._root)
+            self.counter_setting = Cameca.CounterSetting(self._io, self, self._root)
             self.one_div_sqrt_n = self._io.read_f4le()
             self.reserved_1 = self._io.read_bytes(12)
-            self.background_type = self._root.BackgroundType(self._io.read_u4le())
+            self.background_type = KaitaiStream.resolve_enum(Cameca.BackgroundType, self._io.read_u4le())
             self.reserved_2 = self._io.read_bytes(180)
-            self.subcounting_flag = self._root.SubcountingMode(self._io.read_u4le())
+            self.subcounting_flag = KaitaiStream.resolve_enum(Cameca.SubcountingMode, self._io.read_u4le())
             self.reserved_3 = self._io.read_bytes(156)
             if self._root.header.sxf_version >= 4:
                 self.reserved_v4 = self._io.read_bytes(4)
@@ -1039,7 +1022,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.sec_name = self._root.CSharpString(self._io, self, self._root)
+            self.sec_name = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(40)
 
 
@@ -1051,7 +1034,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.element_by_difference = self._root.ElementT(self._io, self, self._root)
+            self.element_by_difference = Cameca.ElementT(self._io, self, self._root)
 
 
     class FileModification(KaitaiStruct):
@@ -1062,11 +1045,11 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.timestamp = self._root.DatetimeT(self._io, self, self._root)
-            self.len_of_bytestring = self._io.read_u4le()
-            self._raw_attributes = self._io.read_bytes(self.len_of_bytestring)
-            io = KaitaiStream(BytesIO(self._raw_attributes))
-            self.attributes = self._root.ModificationAttributes(io, self, self._root)
+            self.timestamp = Cameca.DatetimeT(self._io, self, self._root)
+            self.len_attributes = self._io.read_u4le()
+            self._raw_attributes = self._io.read_bytes(self.len_attributes)
+            _io__raw_attributes = KaitaiStream(BytesIO(self._raw_attributes))
+            self.attributes = Cameca.ModificationAttributes(_io__raw_attributes, self, self._root)
 
 
     class SpaceTime(KaitaiStruct):
@@ -1085,7 +1068,7 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.datetime = self._root.DatetimeT(self._io, self, self._root)
+            self.datetime = Cameca.DatetimeT(self._io, self, self._root)
             self.x_axis = self._io.read_f4le()
             self.y_axis = self._io.read_f4le()
             self.z_axis = self._io.read_f4le()
@@ -1099,22 +1082,6 @@ class Cameca(KaitaiStruct):
 
 
 
-    class OverlapCorrections(KaitaiStruct):
-        def __init__(self, _io, _parent=None, _root=None):
-            self._io = _io
-            self._parent = _parent
-            self._root = _root if _root else self
-            self._read()
-
-        def _read(self):
-            self.reserved_0 = self._io.read_bytes(4)
-            self.n_corrections = self._io.read_u4le()
-            self.overlap_correction_table = [None] * (self.n_corrections)
-            for i in range(self.n_corrections):
-                self.overlap_correction_table[i] = self._root.OverlapTableItem(self._io, self, self._root)
-
-
-
     class MacRecord(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -1125,7 +1092,7 @@ class Cameca(KaitaiStruct):
         def _read(self):
             self.absorbing_element = self._io.read_u1()
             self.measured_element = self._io.read_u1()
-            self.line = self._root.XrayLine(self._io.read_u2le())
+            self.line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u2le())
             self.value = self._io.read_f4le()
 
 
@@ -1139,18 +1106,18 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(4)
-            self.n_space_time = self._io.read_u4le()
-            self.datetime_and_pos = [None] * (self.n_space_time)
-            for i in range(self.n_space_time):
-                self.datetime_and_pos[i] = self._root.SpaceTime(self._io, self, self._root)
+            self.num_datetime_and_pos = self._io.read_u4le()
+            self.datetime_and_pos = []
+            for i in range(self.num_datetime_and_pos):
+                self.datetime_and_pos.append(Cameca.SpaceTime(self._io, self, self._root))
 
-            self.quantification_options = self._root.QuantiOptions(self._io, self, self._root)
+            self.quantification_options = Cameca.QuantiOptions(self._io, self, self._root)
             self.reserved_3 = self._io.read_bytes(12)
-            if self.dts_extras_type == self._root.DatasetExtrasType.qti_v6_footer:
+            if self.dts_extras_type == Cameca.DatasetExtrasType.qti_v6_footer:
                 self.reserved_4 = self._io.read_bytes(4)
 
-            if self.dts_extras_type == self._root.DatasetExtrasType.qti_v6_footer:
-                self.mac_table = self._root.EmbeddedMacTable(self._io, self, self._root)
+            if self.dts_extras_type == Cameca.DatasetExtrasType.qti_v6_footer:
+                self.mac_table = Cameca.EmbeddedMacTable(self._io, self, self._root)
 
 
 
@@ -1176,12 +1143,12 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(12)
-            self.n_sub_setups = self._io.read_u4le()
-            self.subsetups = [None] * (self.n_sub_setups)
-            for i in range(self.n_sub_setups):
-                self.subsetups[i] = self._root.SubSetup(self._io, self, self._root)
+            self.num_subsetups = self._io.read_u4le()
+            self.subsetups = []
+            for i in range(self.num_subsetups):
+                self.subsetups.append(Cameca.SubSetup(self._io, self, self._root))
 
-            self.calibration_options = self._root.CalOptions(self._io, self, self._root)
+            self.calibration_options = Cameca.CalOptions(self._io, self, self._root)
 
 
     class ImgFooterSubsection(KaitaiStruct):
@@ -1192,15 +1159,15 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.phase_something_str = self._root.CSharpString(self._io, self, self._root)
+            self.phase_something_str = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(292)
-            self.overlayed_dataset = self._root.CSharpString(self._io, self, self._root)
+            self.overlayed_dataset = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_01 = self._io.read_bytes(4)
             self.mosaic_rows = self._io.read_u4le()
             self.mosaic_cols = self._io.read_u4le()
-            self.mosaic_tiling_states = [None] * ((self.mosaic_rows * self.mosaic_cols))
+            self.mosaic_tiling_states = []
             for i in range((self.mosaic_rows * self.mosaic_cols)):
-                self.mosaic_tiling_states[i] = self._io.read_s1()
+                self.mosaic_tiling_states.append(self._io.read_s1())
 
 
 
@@ -1231,10 +1198,10 @@ class Cameca(KaitaiStruct):
         @property
         def net_intensity(self):
             if hasattr(self, '_m_net_intensity'):
-                return self._m_net_intensity if hasattr(self, '_m_net_intensity') else None
+                return self._m_net_intensity
 
             self._m_net_intensity = ((self.peak_cps - self.bkgd_inter_cps) / self.beam_current)
-            return self._m_net_intensity if hasattr(self, '_m_net_intensity') else None
+            return getattr(self, '_m_net_intensity', None)
 
 
     class XtalT(KaitaiStruct):
@@ -1250,29 +1217,45 @@ class Cameca(KaitaiStruct):
         @property
         def rev_name(self):
             if hasattr(self, '_m_rev_name'):
-                return self._m_rev_name if hasattr(self, '_m_rev_name') else None
+                return self._m_rev_name
 
             _pos = self._io.pos()
             self._io.seek((0 if self.first_byte > 32 else 1))
             self._m_rev_name = (self._io.read_bytes_full()).decode(u"CP1252")
             self._io.seek(_pos)
-            return self._m_rev_name if hasattr(self, '_m_rev_name') else None
+            return getattr(self, '_m_rev_name', None)
 
         @property
         def full_name(self):
             if hasattr(self, '_m_full_name'):
-                return self._m_full_name if hasattr(self, '_m_full_name') else None
+                return self._m_full_name
 
-            self._m_full_name = self.rev_name[::-1]
-            return self._m_full_name if hasattr(self, '_m_full_name') else None
+            self._m_full_name = (self.rev_name)[::-1]
+            return getattr(self, '_m_full_name', None)
 
         @property
         def family_name(self):
             if hasattr(self, '_m_family_name'):
-                return self._m_family_name if hasattr(self, '_m_family_name') else None
+                return self._m_family_name
 
-            self._m_family_name = self.rev_name[0:3][::-1]
-            return self._m_family_name if hasattr(self, '_m_family_name') else None
+            self._m_family_name = ((self.rev_name)[0:3])[::-1]
+            return getattr(self, '_m_family_name', None)
+
+
+    class OverlapCorrectionsContent(KaitaiStruct):
+        def __init__(self, _io, _parent=None, _root=None):
+            self._io = _io
+            self._parent = _parent
+            self._root = _root if _root else self
+            self._read()
+
+        def _read(self):
+            self.reserved_0 = self._io.read_bytes(4)
+            self.num_overlap_corrections = self._io.read_u4le()
+            self.overlap_corrections = []
+            for i in range(self.num_overlap_corrections):
+                self.overlap_corrections.append(Cameca.OverlapTableItem(self._io, self, self._root))
+
 
 
     class DatetimeT(KaitaiStruct):
@@ -1289,10 +1272,10 @@ class Cameca(KaitaiStruct):
         def unix_timestamp(self):
             """seconds since Jan 1 1970."""
             if hasattr(self, '_m_unix_timestamp'):
-                return self._m_unix_timestamp if hasattr(self, '_m_unix_timestamp') else None
+                return self._m_unix_timestamp
 
             self._m_unix_timestamp = ((self.ms_filetime / 10000000) - 11644473600)
-            return self._m_unix_timestamp if hasattr(self, '_m_unix_timestamp') else None
+            return getattr(self, '_m_unix_timestamp', None)
 
 
     class DatasetHeader(KaitaiStruct):
@@ -1304,7 +1287,7 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.dataset_type = self._root.DatasetType(self._io.read_u4le())
+            self.dataset_type = KaitaiStream.resolve_enum(Cameca.DatasetType, self._io.read_u4le())
             self.stage_x = self._io.read_s4le()
             self.stage_y = self._io.read_s4le()
             self.beam_x = self._io.read_f4le()
@@ -1313,57 +1296,57 @@ class Cameca(KaitaiStruct):
             self.step_y = self._io.read_f4le()
             self.n_of_steps = self._io.read_u4le()
             self.n_of_lines = self._io.read_u4le()
-            self.not_re_dataset_flags = [None] * (3)
+            self.not_re_dataset_flags = []
             for i in range(3):
-                self.not_re_dataset_flags[i] = self._io.read_s4le()
+                self.not_re_dataset_flags.append(self._io.read_s4le())
 
             self.n_accumulation = self._io.read_u4le()
             self.dwell_time = self._io.read_f4le()
             self.not_re_dataset_flag_4 = self._io.read_s4le()
-            self.stage_z = [None] * (49)
+            self.stage_z = []
             for i in range(49):
-                self.stage_z[i] = self._io.read_s4le()
+                self.stage_z.append(self._io.read_s4le())
 
-            self.not_re_flags2 = [None] * (2)
+            self.not_re_flags2 = []
             for i in range(2):
-                self.not_re_flags2[i] = self._io.read_s4le()
+                self.not_re_flags2.append(self._io.read_s4le())
 
             self.beam_measurement_freq = self._io.read_f4le()
-            self.not_re_flags3 = [None] * (2)
+            self.not_re_flags3 = []
             for i in range(2):
-                self.not_re_flags3[i] = self._io.read_s4le()
+                self.not_re_flags3.append(self._io.read_s4le())
 
             self.mosaic_cols = self._io.read_u4le()
             self.mosaic_rows = self._io.read_u4le()
             self.focus_freq = self._io.read_u4le()
             self.load_setup_every_nth = self._io.read_s4le()
             self.not_re_flag4 = self._io.read_s4le()
-            self.setup_file_name = self._root.CSharpString(self._io, self, self._root)
+            self.setup_file_name = Cameca.CSharpString(self._io, self, self._root)
             self.n_of_elements = self._io.read_u4le()
 
         @property
         def n_of_points(self):
             if hasattr(self, '_m_n_of_points'):
-                return self._m_n_of_points if hasattr(self, '_m_n_of_points') else None
+                return self._m_n_of_points
 
             self._m_n_of_points = (self.n_of_steps * self.n_of_lines)
-            return self._m_n_of_points if hasattr(self, '_m_n_of_points') else None
+            return getattr(self, '_m_n_of_points', None)
 
         @property
         def n_of_tiles(self):
             if hasattr(self, '_m_n_of_tiles'):
-                return self._m_n_of_tiles if hasattr(self, '_m_n_of_tiles') else None
+                return self._m_n_of_tiles
 
             self._m_n_of_tiles = (self.mosaic_cols * self.mosaic_rows)
-            return self._m_n_of_tiles if hasattr(self, '_m_n_of_tiles') else None
+            return getattr(self, '_m_n_of_tiles', None)
 
         @property
         def is_mosaic(self):
             if hasattr(self, '_m_is_mosaic'):
-                return self._m_is_mosaic if hasattr(self, '_m_is_mosaic') else None
+                return self._m_is_mosaic
 
             self._m_is_mosaic = self.n_of_tiles > 1
-            return self._m_is_mosaic if hasattr(self, '_m_is_mosaic') else None
+            return getattr(self, '_m_is_mosaic', None)
 
 
     class QtiWdsMeasurementSetups(KaitaiStruct):
@@ -1375,10 +1358,10 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.qti_setup_reserved_0 = self._io.read_bytes(20)
-            self.n_wds_measurements = self._io.read_u4le()
-            self.qti_wds_measurement_setups = [None] * (self.n_wds_measurements)
-            for i in range(self.n_wds_measurements):
-                self.qti_wds_measurement_setups[i] = self._root.QtiWdsMeasurementSetup(self._io, self, self._root)
+            self.num_qti_wds_measurement_setups = self._io.read_u4le()
+            self.qti_wds_measurement_setups = []
+            for i in range(self.num_qti_wds_measurement_setups):
+                self.qti_wds_measurement_setups.append(Cameca.QtiWdsMeasurementSetup(self._io, self, self._root))
 
 
 
@@ -1390,7 +1373,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.element = self._root.ElementT(self._io, self, self._root)
+            self.element = Cameca.ElementT(self._io, self, self._root)
             self.weight_fraction = self._io.read_f4le()
 
 
@@ -1404,11 +1387,11 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(12)
-            self.wds_scan_spect_setups = [None] * (5)
+            self.wds_scan_spect_setups = []
             for i in range(5):
-                self.wds_scan_spect_setups[i] = self._root.WdsScanSpectSetup(self._io, self, self._root)
+                self.wds_scan_spect_setups.append(Cameca.WdsScanSpectSetup(self._io, self, self._root))
 
-            self.column_and_sem_setup = self._root.SubSetup(self._io, self, self._root)
+            self.column_and_sem_setup = Cameca.SubSetup(self._io, self, self._root)
 
 
     class Dataset(KaitaiStruct):
@@ -1423,27 +1406,27 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.header = self._root.DatasetHeader(self._io, self, self._root)
-            self.items = [None] * (self.header.n_of_elements)
+            self.header = Cameca.DatasetHeader(self._io, self, self._root)
+            self.items = []
             for i in range(self.header.n_of_elements):
-                self.items[i] = self._root.DatasetItem(self.header.n_of_points, self._io, self, self._root)
+                self.items.append(Cameca.DatasetItem(self.header.n_of_points, self._io, self, self._root))
 
-            self.comment = self._root.CSharpString(self._io, self, self._root)
+            self.comment = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(32)
-            self.n_extra_wds_stuff = self._io.read_u4le()
-            self.extra_wds_stuff = [None] * (self.n_extra_wds_stuff)
-            for i in range(self.n_extra_wds_stuff):
-                self.extra_wds_stuff[i] = self._root.WdsItemExtraEnding(self._io, self, self._root)
+            self.num_extra_wds_stuff = self._io.read_u4le()
+            self.extra_wds_stuff = []
+            for i in range(self.num_extra_wds_stuff):
+                self.extra_wds_stuff.append(Cameca.WdsItemExtraEnding(self._io, self, self._root))
 
             self.has_overview_image = self._io.read_u4le()
             if self.has_overview_image == 1:
-                self.polygon_selection = self._root.PolygonSelection(self._io, self, self._root)
+                self.polygon_selection = Cameca.PolygonSelection(self._io, self, self._root)
 
             if self.has_overview_image == 1:
-                self.overview_image_dataset = self._root.Dataset(self._io, self, self._root)
+                self.overview_image_dataset = Cameca.Dataset(self._io, self, self._root)
 
             if self.has_overview_image == 1:
-                self.polygon_selection_type = self._root.PolygonSelectionMode(self._io.read_u4le())
+                self.polygon_selection_type = KaitaiStream.resolve_enum(Cameca.PolygonSelectionMode, self._io.read_u4le())
 
             self.is_video_capture_mode = self._io.read_u4le()
             self.reserved_1 = self._io.read_bytes(96)
@@ -1468,16 +1451,16 @@ class Cameca(KaitaiStruct):
             if self.header.version >= 19:
                 self.reserved_v19 = self._io.read_bytes(12)
 
-            self.dts_extras_type = self._root.DatasetExtrasType(self._io.read_u4le())
+            self.dts_extras_type = KaitaiStream.resolve_enum(Cameca.DatasetExtrasType, self._io.read_u4le())
             _on = self.dts_extras_type
-            if _on == self._root.DatasetExtrasType.img_sec_footer:
-                self.extras = self._root.DtsImgSecFooter(self._io, self, self._root)
-            elif _on == self._root.DatasetExtrasType.wds_and_cal_footer:
-                self.extras = self._root.DtsWdsCalibFooter(self._io, self, self._root)
-            elif _on == self._root.DatasetExtrasType.qti_v5_footer:
-                self.extras = self._root.DtsQtiFooter(self.dts_extras_type, self._io, self, self._root)
-            elif _on == self._root.DatasetExtrasType.qti_v6_footer:
-                self.extras = self._root.DtsQtiFooter(self.dts_extras_type, self._io, self, self._root)
+            if _on == Cameca.DatasetExtrasType.img_sec_footer:
+                self.extras = Cameca.DtsImgSecFooter(self._io, self, self._root)
+            elif _on == Cameca.DatasetExtrasType.wds_and_cal_footer:
+                self.extras = Cameca.DtsWdsCalibFooter(self._io, self, self._root)
+            elif _on == Cameca.DatasetExtrasType.qti_v5_footer:
+                self.extras = Cameca.DtsQtiFooter(self.dts_extras_type, self._io, self, self._root)
+            elif _on == Cameca.DatasetExtrasType.qti_v6_footer:
+                self.extras = Cameca.DtsQtiFooter(self.dts_extras_type, self._io, self, self._root)
 
 
     class ImgWdsSpectSetup(KaitaiStruct):
@@ -1489,16 +1472,31 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self._raw_xtal = self._io.read_bytes(4)
-            io = KaitaiStream(BytesIO(self._raw_xtal))
-            self.xtal = self._root.XtalT(io, self, self._root)
+            _io__raw_xtal = KaitaiStream(BytesIO(self._raw_xtal))
+            self.xtal = Cameca.XtalT(_io__raw_xtal, self, self._root)
             self.two_d = self._io.read_f4le()
             self.k = self._io.read_f4le()
             self.peak_position = self._io.read_u4le()
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.xray_line = self._root.XrayLine(self._io.read_u4le())
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.xray_line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.order = self._io.read_u4le()
-            self.counter_setting = self._root.CounterSetting(self._io, self, self._root)
+            self.counter_setting = Cameca.CounterSetting(self._io, self, self._root)
             self.padding_0 = self._io.read_bytes(12)
+
+
+    class AnnotatedLine(KaitaiStruct):
+        def __init__(self, _io, _parent=None, _root=None):
+            self._io = _io
+            self._parent = _parent
+            self._root = _root if _root else self
+            self._read()
+
+        def _read(self):
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
+            self.order = self._io.read_u4le()
+            self.reserverd1 = self._io.read_u4le()
+            self.reserverd2 = self._io.read_u4le()
 
 
     class CSharpString(KaitaiStruct):
@@ -1521,11 +1519,11 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.mac_name = self._root.CSharpString(self._io, self, self._root)
-            self.n_records = self._io.read_u4le()
-            self.mac_table = [None] * (self.n_records)
-            for i in range(self.n_records):
-                self.mac_table[i] = self._root.MacRecord(self._io, self, self._root)
+            self.mac_name = Cameca.CSharpString(self._io, self, self._root)
+            self.num_macs = self._io.read_u4le()
+            self.macs = []
+            for i in range(self.num_macs):
+                self.macs.append(Cameca.MacRecord(self._io, self, self._root))
 
 
 
@@ -1538,11 +1536,11 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(4)
-            self.element_for_stochiometry = self._root.ElementT(self._io, self, self._root)
-            self.n_changed_oxy_states = self._io.read_u4le()
-            self.oxy_state_changes = [None] * (self.n_changed_oxy_states)
-            for i in range(self.n_changed_oxy_states):
-                self.oxy_state_changes[i] = self._root.ElementOxyState(self._io, self, self._root)
+            self.element_for_stochiometry = Cameca.ElementT(self._io, self, self._root)
+            self.num_oxy_state_changes = self._io.read_u4le()
+            self.oxy_state_changes = []
+            for i in range(self.num_oxy_state_changes):
+                self.oxy_state_changes.append(Cameca.ElementOxyState(self._io, self, self._root))
 
 
 
@@ -1556,10 +1554,10 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(12)
-            self.n_sub_setups = self._io.read_u4le()
-            self.subsetups = [None] * (self.n_sub_setups)
-            for i in range(self.n_sub_setups):
-                self.subsetups[i] = self._root.SubSetup(self._io, self, self._root)
+            self.num_subsetups = self._io.read_u4le()
+            self.subsetups = []
+            for i in range(self.num_subsetups):
+                self.subsetups.append(Cameca.SubSetup(self._io, self, self._root))
 
 
 
@@ -1571,7 +1569,7 @@ class Cameca(KaitaiStruct):
             self._read()
 
         def _read(self):
-            self.element = self._root.ElementT(self._io, self, self._root)
+            self.element = Cameca.ElementT(self._io, self, self._root)
             self.oxy_state = self._io.read_f4le()
 
 
@@ -1584,21 +1582,21 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.qti_analysis_mode = self._root.AnalysisMode(self._io.read_u4le())
+            self.qti_analysis_mode = KaitaiStream.resolve_enum(Cameca.AnalysisMode, self._io.read_u4le())
             _on = self.qti_analysis_mode
-            if _on == self._root.AnalysisMode.by_stochiometry:
-                self.analysis_mode_info = self._root.StochiometryInfo(self._io, self, self._root)
-            elif _on == self._root.AnalysisMode.matrix_def_and_stoch:
-                self.analysis_mode_info = self._root.MatrixDefinitionAndStochInfo(self._io, self, self._root)
-            elif _on == self._root.AnalysisMode.with_matrix_definition:
-                self.analysis_mode_info = self._root.MatrixDefinitionInfo(self._io, self, self._root)
-            elif _on == self._root.AnalysisMode.by_difference:
-                self.analysis_mode_info = self._root.ByDifferenceInfo(self._io, self, self._root)
-            elif _on == self._root.AnalysisMode.stoch_and_difference:
-                self.analysis_mode_info = self._root.StochAndDifferenceInfo(self._io, self, self._root)
+            if _on == Cameca.AnalysisMode.by_stochiometry:
+                self.analysis_mode_info = Cameca.StochiometryInfo(self._io, self, self._root)
+            elif _on == Cameca.AnalysisMode.matrix_def_and_stoch:
+                self.analysis_mode_info = Cameca.MatrixDefinitionAndStochInfo(self._io, self, self._root)
+            elif _on == Cameca.AnalysisMode.with_matrix_definition:
+                self.analysis_mode_info = Cameca.MatrixDefinitionInfo(self._io, self, self._root)
+            elif _on == Cameca.AnalysisMode.by_difference:
+                self.analysis_mode_info = Cameca.ByDifferenceInfo(self._io, self, self._root)
+            elif _on == Cameca.AnalysisMode.stoch_and_difference:
+                self.analysis_mode_info = Cameca.StochAndDifferenceInfo(self._io, self, self._root)
             self.reserved_2 = self._io.read_bytes(12)
-            self.matrix_correction_model = self._root.MatrixCorrectionType(self._io.read_u4le())
-            self.geo_species_name = self._root.CSharpString(self._io, self, self._root)
+            self.matrix_correction_model = KaitaiStream.resolve_enum(Cameca.MatrixCorrectionType, self._io.read_u4le())
+            self.geo_species_name = Cameca.CSharpString(self._io, self, self._root)
 
 
     class QtiSetup(KaitaiStruct):
@@ -1613,16 +1611,16 @@ class Cameca(KaitaiStruct):
             self.version = self._io.read_u4le()
             self.count_sync = self._io.read_u4le()
             self.reserved_0 = self._io.read_bytes(4)
-            self.n_sub_setups = self._io.read_u4le()
-            self.subsetups = [None] * (self.n_sub_setups)
-            for i in range(self.n_sub_setups):
-                self.subsetups[i] = self._root.SubSetup(self._io, self, self._root)
+            self.num_subsetups = self._io.read_u4le()
+            self.subsetups = []
+            for i in range(self.num_subsetups):
+                self.subsetups.append(Cameca.SubSetup(self._io, self, self._root))
 
             self.reserved_1 = self._io.read_u4le()
             self.fixed_order = self._io.read_u4le()
             self.reserved_2 = self._io.read_bytes(16)
-            self.quantification_options = self._root.QuantiOptions(self._io, self, self._root)
-            self.same_line_multi_spect_handling = self._root.MSpectSameLineHandling(self._io.read_u4le())
+            self.quantification_options = Cameca.QuantiOptions(self._io, self, self._root)
+            self.same_line_multi_spect_handling = KaitaiStream.resolve_enum(Cameca.MSpectSameLineHandling, self._io.read_u4le())
             if self._root.header.sxf_version >= 4:
                 self.reserved_v20 = self._io.read_bytes(140)
 
@@ -1643,9 +1641,9 @@ class Cameca(KaitaiStruct):
             self.dwell_time = self._io.read_f4le()
             self.beam_size = self._io.read_u4le()
             self.data_array_size = self._io.read_u4le()
-            self.data = self._root.LazyData(self._root._io.pos(), self.data_array_size, self._io, self, self._root)
+            self.data = Cameca.LazyData(self._root._io.pos(), self.data_array_size, self._io, self, self._root)
             self.not_re_flag = self._io.read_u4le()
-            self.signal_name = self._root.CSharpString(self._io, self, self._root)
+            self.signal_name = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_0 = self._io.read_bytes(4)
             self.smoothing_pts = self._io.read_u4le()
             self.min_x = self._io.read_f4le()
@@ -1657,18 +1655,18 @@ class Cameca(KaitaiStruct):
             self.curve_type = self._io.read_u4le()
             self.curve_width = self._io.read_u4le()
             self.reserved_2 = self._io.read_bytes(4)
-            self.lut_name = self._root.CSharpString(self._io, self, self._root)
+            self.lut_name = Cameca.CSharpString(self._io, self, self._root)
             self.reserved_3 = self._io.read_bytes(52)
-            self.n_of_annot_lines = self._io.read_u4le()
-            self.annotated_lines_table = [None] * (self.n_of_annot_lines)
-            for i in range(self.n_of_annot_lines):
-                self.annotated_lines_table[i] = self._root.AnnotatedLines(self._io, self, self._root)
+            self.num_annotated_lines = self._io.read_u4le()
+            self.annotated_lines = []
+            for i in range(self.num_annotated_lines):
+                self.annotated_lines.append(Cameca.AnnotatedLine(self._io, self, self._root))
 
             self.reserved_4 = self._io.read_bytes(4)
-            self.n_extra_ending = self._io.read_u4le()
-            self.extra_ending = [None] * (self.n_extra_ending)
-            for i in range(self.n_extra_ending):
-                self.extra_ending[i] = self._root.WdsItemExtraEnding(self._io, self, self._root)
+            self.num_extra_ending = self._io.read_u4le()
+            self.extra_ending = []
+            for i in range(self.num_extra_ending):
+                self.extra_ending.append(Cameca.WdsItemExtraEnding(self._io, self, self._root))
 
 
 
@@ -1681,17 +1679,17 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(4)
-            self.element_for_stochiometry = self._root.ElementT(self._io, self, self._root)
-            self.n_changed_oxy_states = self._io.read_u4le()
-            self.oxy_state_changes = [None] * (self.n_changed_oxy_states)
-            for i in range(self.n_changed_oxy_states):
-                self.oxy_state_changes[i] = self._root.ElementOxyState(self._io, self, self._root)
+            self.element_for_stochiometry = Cameca.ElementT(self._io, self, self._root)
+            self.num_oxy_state_changes = self._io.read_u4le()
+            self.oxy_state_changes = []
+            for i in range(self.num_oxy_state_changes):
+                self.oxy_state_changes.append(Cameca.ElementOxyState(self._io, self, self._root))
 
             self.reserved_2 = self._io.read_bytes(4)
-            self.n_elements = self._io.read_u4le()
-            self.element_table = [None] * (self.n_elements)
-            for i in range(self.n_elements):
-                self.element_table[i] = self._root.ElementWeight(self._io, self, self._root)
+            self.num_element_weights = self._io.read_u4le()
+            self.element_weights = []
+            for i in range(self.num_element_weights):
+                self.element_weights.append(Cameca.ElementWeight(self._io, self, self._root))
 
 
 
@@ -1705,43 +1703,43 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.dataset_type = self._root.DatasetType(self._io.read_u4le())
+            self.dataset_type = KaitaiStream.resolve_enum(Cameca.DatasetType, self._io.read_u4le())
             self.data_size = self._io.read_u4le()
-            self.data = [None] * (self.n_points)
+            self.data = []
             for i in range(self.n_points):
-                self.data[i] = self._root.QtiDataItem(self._io, self, self._root)
+                self.data.append(Cameca.QtiDataItem(self._io, self, self._root))
 
             self.reserved_0 = self._io.read_u4le()
-            self.standard_name = self._root.CSharpString(self._io, self, self._root)
-            self.n_elements_standard = self._io.read_u4le()
-            self.standard_weight_table = [None] * (self.n_elements_standard)
-            for i in range(self.n_elements_standard):
-                self.standard_weight_table[i] = self._root.ElementWeight(self._io, self, self._root)
+            self.standard_name = Cameca.CSharpString(self._io, self, self._root)
+            self.num_standard_weights = self._io.read_u4le()
+            self.standard_weights = []
+            for i in range(self.num_standard_weights):
+                self.standard_weights.append(Cameca.ElementWeight(self._io, self, self._root))
 
             self.calib_hv = self._io.read_f4le()
             self.calib_current = self._io.read_f4le()
             self.i_standard = self._io.read_f4le()
             self.i_standard_std = self._io.read_f4le()
-            self.calibration_file_name = self._root.CSharpString(self._io, self, self._root)
+            self.calibration_file_name = Cameca.CSharpString(self._io, self, self._root)
             self.calib_peak_time = self._io.read_f4le()
             self.calib_bkgd_time = self._io.read_f4le()
-            self._raw_fop_bkgd_setup = self._io.read_bytes(0)
-            io = KaitaiStream(BytesIO(self._raw_fop_bkgd_setup))
-            self.fop_bkgd_setup = self._root.OffsetPos(self._root._io.pos(), io, self, self._root)
+            self._raw_ofs_bkgd_setup = self._io.read_bytes(0)
+            _io__raw_ofs_bkgd_setup = KaitaiStream(BytesIO(self._raw_ofs_bkgd_setup))
+            self.ofs_bkgd_setup = Cameca.OffsetPos(self._root._io.pos(), _io__raw_ofs_bkgd_setup, self, self._root)
             self.bkgd_1_pos = self._io.read_s4le()
             self.bkgd_2_pos = self._io.read_s4le()
             self.bkgd_slope = self._io.read_f4le()
-            self.quanti_mode = self._root.QuantiMode(self._io.read_u4le())
+            self.quanti_mode = KaitaiStream.resolve_enum(Cameca.QuantiMode, self._io.read_u4le())
             self.pk_area_range = self._io.read_u4le()
             self.pk_area_channels = self._io.read_u4le()
             self.pk_area_bkgd_1 = self._io.read_s4le()
             self.pk_area_bkgd2 = self._io.read_s4le()
             self.pk_area_n_accumulation = self._io.read_u4le()
             self.not_re_pk_area_flags = self._io.read_bytes(36)
-            self.n_of_embedded_wds = self._io.read_u4le()
-            self.pk_area_wds_spectras = [None] * (self.n_of_embedded_wds)
-            for i in range(self.n_of_embedded_wds):
-                self.pk_area_wds_spectras[i] = self._root.QuantiWdsScan(self._io, self, self._root)
+            self.num_pk_area_wds_spectra = self._io.read_u4le()
+            self.pk_area_wds_spectra = []
+            for i in range(self.num_pk_area_wds_spectra):
+                self.pk_area_wds_spectra.append(Cameca.QuantiWdsScan(self._io, self, self._root))
 
             if self._root.header.sxf_version > 3:
                 self.not_re_calib_block = self._io.read_bytes(8)
@@ -1768,21 +1766,21 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.version = self._io.read_u4le()
-            self.element = self._root.ElementT(self._io, self, self._root)
-            self.line = self._root.XrayLine(self._io.read_u4le())
+            self.element = Cameca.ElementT(self._io, self, self._root)
+            self.line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.i_element = self._io.read_u4le()
-            self.i_line = self._root.XrayLine(self._io.read_u4le())
+            self.i_line = KaitaiStream.resolve_enum(Cameca.XrayLine, self._io.read_u4le())
             self.i_order = self._io.read_u4le()
             self.i_offset = self._io.read_s4le()
             self.hv = self._io.read_f4le()
             self.beam_current = self._io.read_f4le()
             self.peak_min_bkgd = self._io.read_f4le()
-            self.standard_name = self._root.CSharpString(self._io, self, self._root)
+            self.standard_name = Cameca.CSharpString(self._io, self, self._root)
             self.nr_in_standard_db = self._io.read_u4le()
             self.spect_nr = self._io.read_u4le()
             self._raw_xtal = self._io.read_bytes(4)
-            io = KaitaiStream(BytesIO(self._raw_xtal))
-            self.xtal = self._root.XtalT(io, self, self._root)
+            _io__raw_xtal = KaitaiStream(BytesIO(self._raw_xtal))
+            self.xtal = Cameca.XtalT(_io__raw_xtal, self, self._root)
             if self.version >= 3:
                 self.dwell_time = self._io.read_f4le()
 
@@ -1801,7 +1799,7 @@ class Cameca(KaitaiStruct):
         def _read(self):
             self.reserved = self._io.read_bytes(24)
             self.standard_id = self._io.read_u4le()
-            self.standard_name = self._root.CSharpString(self._io, self, self._root)
+            self.standard_name = Cameca.CSharpString(self._io, self, self._root)
 
 
     class MatrixDefinitionInfo(KaitaiStruct):
@@ -1813,10 +1811,10 @@ class Cameca(KaitaiStruct):
 
         def _read(self):
             self.reserved_0 = self._io.read_bytes(4)
-            self.n_elements = self._io.read_u4le()
-            self.element_table = [None] * (self.n_elements)
-            for i in range(self.n_elements):
-                self.element_table[i] = self._root.ElementWeight(self._io, self, self._root)
+            self.num_element_weights = self._io.read_u4le()
+            self.element_weights = []
+            for i in range(self.num_element_weights):
+                self.element_weights.append(Cameca.ElementWeight(self._io, self, self._root))
 
 
 

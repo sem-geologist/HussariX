@@ -50,7 +50,7 @@ seq:
         'file_type::image_mapping_results': sxf_main
         'file_type::calibration_results': sxf_main
         'file_type::quanti_results': sxf_main
-        'file_type::overlap_table': overlap_corrections
+        'file_type::overlap_table': overlap_corrections_content
 
 types:
   sxf_header:
@@ -70,13 +70,13 @@ types:
       - id: reserved_v3
         size: 0x4
         if: sxf_version >= 3
-      - id: n_file_modifications
+      - id: num_file_modifications
         type: u4
         if: sxf_version >= 3
-      - id: file_changes
+      - id: file_modifications
         type: file_modification
         repeat: expr
-        repeat-expr: n_file_modifications
+        repeat-expr: num_file_modifications
         if: sxf_version >= 3
       - id: reserved_v4
         size: 8
@@ -84,17 +84,17 @@ types:
       - id: reserved_v5
         type: f8
         if: sxf_version >= 5
-    -webide-representation: '{file_type}, v{sxf_version:dec}, n_mod:{n_file_modifications:dec}'
+    -webide-representation: '{file_type}, v{sxf_version:dec}, n_mod:{num_file_modifications:dec}'
 
   file_modification:
     seq:
       - id: timestamp
         type: datetime_t
-      - id: len_of_bytestring
+      - id: len_attributes
         type: u4
       - id: attributes
         type: modification_attributes
-        size: len_of_bytestring
+        size: len_attributes
       
         
   modification_attributes:
@@ -135,12 +135,12 @@ types:
         type: u4
       - id: decontamination_time
         type: u4
-      - id: n_of_datasets
+      - id: num_datasets
         type: u4
       - id: datasets
         type: dataset
         repeat: expr
-        repeat-expr: n_of_datasets
+        repeat-expr: num_datasets
       - id: not_re_global_options
         size: 12
       - id: current_qti_set
@@ -156,18 +156,18 @@ types:
       - id: not_re_global_option_v13
         size: 4
         if: version >= 0xD
-    -webide-representation: 'v{version:dec}, {n_of_datasets:dec} datasets'
+    -webide-representation: 'v{version:dec}, {num_datasets:dec} datasets'
 
   polygon_selection:
     seq:
       - id: type
         type: u4
-      - id: n_polygon_nodes
+      - id: num_polygon_nodes
         type: u4
       - id: polygon_nodes
         type: polygon_point
         repeat: expr
-        repeat-expr: n_polygon_nodes
+        repeat-expr: num_polygon_nodes
       
   polygon_point:
     seq:
@@ -192,13 +192,13 @@ types:
         type: c_sharp_string
       - id: reserved_0
         size: 32
-      - id: n_extra_wds_stuff
+      - id: num_extra_wds_stuff
         doc: "looks similar to info per item"
         type: u4
       - id: extra_wds_stuff
         type: wds_item_extra_ending  # what about other types?
         repeat: expr
-        repeat-expr: n_extra_wds_stuff
+        repeat-expr: num_extra_wds_stuff
       - id: has_overview_image
         type: u4
         doc: "former template_flag"
@@ -265,12 +265,12 @@ types:
     seq:
       - id: reserved_0
         size: 4
-      - id: n_space_time
+      - id: num_datetime_and_pos
         type: u4
       - id: datetime_and_pos
         type: space_time
         repeat: expr
-        repeat-expr: n_space_time
+        repeat-expr: num_datetime_and_pos
       - id: quantification_options
         type: quanti_options
       - id: reserved_3
@@ -312,12 +312,12 @@ types:
         size: 4
       - id: element_for_stochiometry
         type: element_t
-      - id: n_changed_oxy_states
+      - id: num_oxy_state_changes
         type: u4
       - id: oxy_state_changes
         type: element_oxy_state
         repeat: expr
-        repeat-expr: n_changed_oxy_states
+        repeat-expr: num_oxy_state_changes
   
   by_difference_info:
     seq:
@@ -328,12 +328,12 @@ types:
     seq:
       - id: reserved_0
         size: 4
-      - id: n_elements
+      - id: num_element_weights
         type: u4
-      - id: element_table
+      - id: element_weights
         type: element_weight
         repeat: expr
-        repeat-expr: n_elements
+        repeat-expr: num_element_weights
       
   
   matrix_definition_and_stoch_info:
@@ -342,20 +342,20 @@ types:
         size: 4
       - id: element_for_stochiometry
         type: element_t
-      - id: n_changed_oxy_states
+      - id: num_oxy_state_changes
         type: u4
       - id: oxy_state_changes
         type: element_oxy_state
         repeat: expr
-        repeat-expr: n_changed_oxy_states
+        repeat-expr: num_oxy_state_changes
       - id: reserved_2
         size: 4
-      - id: n_elements
+      - id: num_element_weights
         type: u4
-      - id: element_table
+      - id: element_weights
         type: element_weight
         repeat: expr
-        repeat-expr: n_elements
+        repeat-expr: num_element_weights
         
   stoch_and_difference_info:
     seq:
@@ -363,12 +363,12 @@ types:
         size: 4
       - id: element_for_stochiometry
         type: element_t
-      - id: n_changed_oxy_states
+      - id: num_oxy_state_changes
         type: u4
       - id: oxy_state_changes
         type: element_oxy_state
         repeat: expr
-        repeat-expr: n_changed_oxy_states
+        repeat-expr: num_oxy_state_changes
       - id: element_by_difference
         type: element_t
         
@@ -376,12 +376,12 @@ types:
     seq:
       - id: mac_name
         type: c_sharp_string
-      - id: n_records
+      - id: num_macs
         type: u4
-      - id: mac_table
+      - id: macs
         type: mac_record
         repeat: expr
-        repeat-expr: n_records
+        repeat-expr: num_macs
         
   mac_record:
     seq:
@@ -400,7 +400,7 @@ types:
       - id: reserved_0
         size: 4
         if: _root.header.file_type == file_type::calibration_results
-      - id: n_space_time
+      - id: num_datetime_and_pos
         type: u4
         if: _root.header.file_type == file_type::calibration_results
       - id: datetime_and_pos
@@ -408,7 +408,7 @@ types:
         repeat: expr
         repeat-expr: |
           _root.header.file_type == file_type::calibration_results ?
-          n_space_time : 1
+          num_datetime_and_pos : 1
       - id: reserved_1
         size:  4
       - id: reserved_wds_ending_1
@@ -523,13 +523,13 @@ types:
       - id: reserved_0
         size: 12
         if: version >= 3
-      - id: n_of_reserved_1_blocks
+      - id: num_reserved_1
         type: u4
         if: version >= 3
-      - id: reserved_1_blocks
+      - id: reserved_1
         size: 12
         repeat: expr
-        repeat-expr: n_of_reserved_1_blocks
+        repeat-expr: num_reserved_1
         if: version >= 3
       - id: signal
         type:
@@ -696,7 +696,7 @@ types:
       - id: data
         type: lazy_data(_root._io.pos, frame_size)
         repeat: expr
-        repeat-expr: n_of_frames
+        repeat-expr: num_data
         doc: |
           list of arrays, where if mosaic: every item is bytestring from
           one tile; else if multi-frame picture (multiple-overscan) then
@@ -736,32 +736,32 @@ types:
             (dataset_type == dataset_type::line_beam) ? 0: 12)
       frame_size:
         value: '(img_pixel_dtype.to_i == 0 ? 1 : 4) * height * width'
-      n_of_frames:
+      num_data:
         value: 'frame_size != 0 ? array_data_size / frame_size : 0'
   
   color_bar_ticks:
     seq:
-      - id: n_color_bar_ticks
+      - id: num_colorbar_ticks
         type: u4
-      - id: colors
+      - id: colorbar_ticks
         type: color_tick
         repeat: expr
-        repeat-expr: n_color_bar_ticks
-        if: n_color_bar_ticks > 0
+        repeat-expr: num_colorbar_ticks
+        #if: n_color_bar_ticks > 0
       - id: max_value
         type: f4
-        if: n_color_bar_ticks > 0
+        if: num_colorbar_ticks > 0
       - id: reserved_0
         type: f4
       - id: reserved_1
         size: 4
-      - id: n_color_bar_labels
+      - id: num_custom_colorbar_labels
         type: u4
-      - id: custom_color_bar_labels
+      - id: custom_colorbar_labels
         type: bar_label
         repeat: expr
-        repeat-expr: n_color_bar_labels
-        if: n_color_bar_labels > 0
+        repeat-expr: num_custom_colorbar_labels
+        #if: num_custom_colorbar_labels > 0
   
   color_tick:
     seq:
@@ -781,17 +781,17 @@ types:
     seq:
       - id: version
         type: u4
-      - id: data_size
+      - id: len_data
         type: u4
       - id: unkn_x
         size: 4
       - id: total_size
         type: u4
       - id: data
-        size: data_size
+        size: len_data
         type: calib_item
         repeat: expr
-        repeat-expr: total_size / data_size
+        repeat-expr: total_size / len_data
         
       - id: calib_peak_time
         type: f4
@@ -818,12 +818,12 @@ types:
         type: u4
       - id: not_re_area_flags
         size: 24
-      - id: n_calib_points
+      - id: num_pk_area_wds_spectra
         type: u4
-      - id: pk_area_wds_spetras
+      - id: pk_area_wds_spectra
         type: quanti_wds_scan
         repeat: expr
-        repeat-expr: n_calib_points
+        repeat-expr: num_pk_area_wds_spectra
 
   calib_item:
     seq:
@@ -891,12 +891,12 @@ types:
         type: u4
       - id: standard_name
         type: c_sharp_string
-      - id: n_elements_standard
+      - id: num_standard_weights
         type: u4
-      - id: standard_weight_table
+      - id: standard_weights
         type: element_weight
         repeat: expr
-        repeat-expr: n_elements_standard
+        repeat-expr: num_standard_weights
       - id: calib_hv
         type: f4
       - id: calib_current
@@ -911,7 +911,7 @@ types:
         type: f4
       - id: calib_bkgd_time
         type: f4
-      - id: fop_bkgd_setup
+      - id: ofs_bkgd_setup
         doc: file offset position of background setup
         type: offset_pos(_root._io.pos)
         size: 0
@@ -937,12 +937,12 @@ types:
         type: u4
       - id: not_re_pk_area_flags
         size: 36
-      - id: n_of_embedded_wds
+      - id: num_pk_area_wds_spectra
         type: u4
-      - id: pk_area_wds_spectras
+      - id: pk_area_wds_spectra
         type: quanti_wds_scan
         repeat: expr
-        repeat-expr: n_of_embedded_wds
+        repeat-expr: num_pk_area_wds_spectra
       - id: not_re_calib_block
         size: 8
         if: _root.header.sxf_version > 3
@@ -1009,20 +1009,20 @@ types:
         type: c_sharp_string
       - id: reserved_3
         size: 52
-      - id: n_of_annot_lines
+      - id: num_annotated_lines
         type: u4
-      - id: annotated_lines_table
-        type: annotated_lines
+      - id: annotated_lines
+        type: annotated_line
         repeat: expr
-        repeat-expr: n_of_annot_lines
+        repeat-expr: num_annotated_lines
       - id: reserved_4
         size: 4
-      - id: n_extra_ending
+      - id: num_extra_ending
         type: u4
       - id: extra_ending
         type: wds_item_extra_ending
         repeat: expr
-        repeat-expr: n_extra_ending
+        repeat-expr: num_extra_ending
   
   quanti_wds_scan:
     seq:
@@ -1063,7 +1063,7 @@ types:
         size: 16
         
   
-  annotated_lines:
+  annotated_line:
     seq:
       - id: element
         type: element_t
@@ -1088,7 +1088,7 @@ types:
       - id: peak_time
         doc: either set and acq time, or acq time (if raw counts =>1M)
         type: f4
-      - id: fop_bkgd
+      - id: ofs_bkgd
         doc: file offset position of time corrected background records  
         type: offset_pos(_root._io.pos)
         size: 0
@@ -1135,16 +1135,16 @@ types:
       - id: subcounting_mode
         type: u4
         enum: subcounting_mode
-      - id: n_sub_count
+      - id: num_subcount
         type: u4
       - id: subcount_peak_enabled_flags
         type: u4
       - id: subcount_peak_pulses
         type: u4
         repeat: expr
-        repeat-expr: n_sub_count
+        repeat-expr: num_subcount
       - id: padding_0
-        size: (30 - n_sub_count) * 4  # 30 is maximum number of subcounts
+        size: (30 - num_subcount) * 4  # 30 is maximum number of subcounts
       - id: reserved_0
         size: 4
       - id: subcount_bkgd1_enabled_flags
@@ -1152,17 +1152,17 @@ types:
       - id: subcount_bkgd1_pulses
         type: u4
         repeat: expr
-        repeat-expr: n_sub_count
+        repeat-expr: num_subcount
       - id: padding_1
-        size: (30 - n_sub_count) * 4
+        size: (30 - num_subcount) * 4
       - id: subcount_bkgd2_enabled_flags
         type: u4
       - id: subcount_bkgd2_pulses
         type: u4
         repeat: expr
-        repeat-expr: n_sub_count
+        repeat-expr: num_subcount
       - id: padding_2
-        size: (30 - n_sub_count) * 4
+        size: (30 - num_subcount) * 4
       - id: bkgd_time
         doc: set background time
         type: f4
@@ -1178,7 +1178,7 @@ types:
           to half of that of peak (which terminates counting with 1M counter hit);
           In case using subcounting, such limititation does not apply.
         value: |
-          ((peak_raw_pulses >= 1000000) and (n_sub_count == 1))?
+          ((peak_raw_pulses >= 1000000) and (num_subcount == 1))?
             peak_time / 2 :
             bkgd_time
       
@@ -1193,12 +1193,12 @@ types:
         size: 8
       - id: reserved_2
         size: 64
-      - id: n_subsections
+      - id: num_subsections
         type: u4
       - id: subsections
         type: img_footer_subsection
         repeat: expr
-        repeat-expr: n_subsections
+        repeat-expr: num_subsections
   
   space_time:
     doc: |
@@ -1261,23 +1261,23 @@ types:
     seq:
       - id: standard_name
         type: c_sharp_string
-      - id: n_elements
+      - id: num_element_weights
         type: u4
-      - id: standard_weight_table
+      - id: element_weights
         type: element_weight
         repeat: expr
-        repeat-expr: n_elements
+        repeat-expr: num_element_weights
 
-  overlap_corrections:
+  overlap_corrections_content:
     seq:
       - id: reserved_0
         size: 4
-      - id: n_corrections
+      - id: num_overlap_corrections
         type: u4
-      - id: overlap_correction_table
+      - id: overlap_corrections
         type: overlap_table_item
         repeat: expr
-        repeat-expr: n_corrections
+        repeat-expr: num_overlap_corrections
         
   overlap_table_item:
     seq:
@@ -1324,24 +1324,24 @@ types:
     seq:
       - id: reserved_0
         size: 12
-      - id: n_sub_setups
+      - id: num_subsetups
         type: u4
       - id: subsetups
         type: sub_setup
         repeat: expr
-        repeat-expr: n_sub_setups
+        repeat-expr: num_subsetups
   
   cal_setup:
     doc: this is a rought reverse engineared and far from complete
     seq:
       - id: reserved_0
         size: 12
-      - id: n_sub_setups
+      - id: num_subsetups
         type: u4
       - id: subsetups
         type: sub_setup
         repeat: expr
-        repeat-expr: n_sub_setups
+        repeat-expr: num_subsetups
       - id: calibration_options
         type: cal_options
       
@@ -1367,12 +1367,12 @@ types:
         doc: '0 == async; 1 == sync'
       - id: reserved_0
         size: 4
-      - id: n_sub_setups
+      - id: num_subsetups
         type: u4
       - id: subsetups
         type: sub_setup
         repeat: expr
-        repeat-expr: n_sub_setups
+        repeat-expr: num_subsetups
       - id: reserved_1
         type: u4
       - id: fixed_order
@@ -1470,13 +1470,13 @@ types:
         repeat: expr
         repeat-expr: |
           _root.header.file_type.to_i > 1 ? 86 : 85
-      - id: n_eds_measurement_setups
+      - id: num_eds_meas_setups
         type: u4
         if: _root.header.file_type.to_i > 1
       - id: eds_measurement_setups
         type: qti_eds_measurement_setup
         repeat: expr
-        repeat-expr: n_eds_measurement_setups
+        repeat-expr: num_eds_meas_setups
         if: _root.header.file_type.to_i > 1
       - id: default_eds_live_time
         type: f4
@@ -1504,11 +1504,11 @@ types:
     params:
       - id: offset
         type: u4
-      - id: size
+      - id: len_bytes
         type: u4
     seq:
       - id: bytes
-        size: size
+        size: len_bytes
         doc: |
           this needs to be get rid off in target language and replaced with
           relative seek.
@@ -1564,12 +1564,12 @@ types:
     seq:
       - id: qti_setup_reserved_0
         size: 20
-      - id: n_wds_measurements
+      - id: num_qti_wds_measurement_setups
         type: u4
       - id: qti_wds_measurement_setups
         type: qti_wds_measurement_setup
         repeat: expr
-        repeat-expr: n_wds_measurements
+        repeat-expr: num_qti_wds_measurement_setups
         
   
   img_wds_spect_setup:
@@ -1631,7 +1631,7 @@ types:
         type: f4
       - id: calibration_file
         type: c_sharp_string
-      - id: fop_peak_bkgd
+      - id: ofs_peak_bkgd
         type: offset_pos(_root._io.pos)
         size: 0
       - id: reserved_0  # Is order in this?
