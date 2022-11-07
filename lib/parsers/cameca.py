@@ -70,16 +70,6 @@ Cameca.XrayLine = XrayLine
 
 
 class ElementT(Cameca.ElementT, Element):
-    pass
-    #_el_list = (
-          #"n H He "
-          #"Li Be B C N O F Ne "
-          #"Na Mg Al Si P S Cl Ar "
-          #"K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr "
-          #"Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe "
-          #"Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu "
-          #"Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn "
-          #"Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm".split())
 
     @cached_property
     def name(self):
@@ -110,7 +100,7 @@ Cameca.CSharpString = CSharpString
 class LazyData(Cameca.LazyData):
 
     def _read(self):
-        seek_to_pos = self.offset + self.size
+        seek_to_pos = self.offset + self.len_bytes
         self._root._io.seek(seek_to_pos)
 
     @property
@@ -119,7 +109,7 @@ class LazyData(Cameca.LazyData):
             io_fn = self._root._io._io.name
             with open(io_fn, "rb") as fn:
                 fn.seek(self.offset)
-                self._m_bytes = fn.read(self.size)
+                self._m_bytes = fn.read(self.len_bytes)
         return self._m_bytes
 
     @bytes.deleter
@@ -342,7 +332,7 @@ class CamecaBase(Cameca):
         # add check_states for recursivly checkable object tree:
         self.q_checked_state = 0
         self.q_children = self.content.datasets
-        self.q_row_count = self.content.n_of_datasets
+        self.q_row_count = self.content.num_datasets
         for i, dataset in enumerate(self.q_children):
             dataset.dts_number = i + 1
             dataset.q_row = i
