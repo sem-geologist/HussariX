@@ -36,8 +36,8 @@ class SEMImageGUI(cw.FullscreenableWidget):
     
     def _setup_pet(self):
         self.dock_layer_win = QtWidgets.QDockWidget('Signals', self)
-        self.dock_layer_win.setSizePolicy(QtGui.QSizePolicy.Minimum,
-                                        QtGui.QSizePolicy.Minimum)
+        self.dock_layer_win.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                        QtWidgets.QSizePolicy.Minimum)
         #self.pet = XRayElementTable(parent=self.dock_pet_win)
         #self.dock_layer_win.setWidget(self.pet)
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea,
