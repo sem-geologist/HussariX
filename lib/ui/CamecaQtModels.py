@@ -125,6 +125,19 @@ class SpecXTALCombiModel(QAbstractListModel):
         return [i for i in self.combinations
                 if i.q_checked_state == Qt.Checked]
 
+    def uncheck_all_combinations(self):
+        combinations = self.get_checked_combinations()
+        rows = [self.combinations.index(i)
+                for i in combinations]
+        for r in rows:
+            self.setData(self.index(r), Qt.Unchecked, Qt.CheckStateRole)
+
+    def check_on_combination(self, combination):
+        if combination in self.combinations:
+            row = self.combinations.index(combination)
+            self.uncheck_all_combinations()
+            self.setData(self.index(row), Qt.Checked, Qt.CheckStateRole)
+
     def data(self, index, role):
         if not index.isValid():
             return
