@@ -68,6 +68,16 @@
     "Yb",
     "Lu"
   ],
+  "AREE": [
+    "La",
+    "Ce",
+    "Nd",
+    "Sm",
+    "Gd",
+    "Dy",
+    "Er",
+    "Yb"
+  ],
   "LREE": [
     "La",
     "Ce",
@@ -99,5 +109,51 @@
     "Cr",
     "Mn",
     "Fe"
+  ],
+  "PGE": [
+    "Ru",
+    "Rh",
+    "Pd",
+    "Os",
+    "Ir",
+    "Pt"
+  ],
+  "PRECIOUS_METALS": [
+    "Cu",
+    "Ru",
+    "Rh",
+    "Pd",
+    "Ag",
+    "Re",
+    "Os",
+    "Ir",
+    "Pt",
+    "Au",
+    "Hg"
+  ],
+  "NOBLE_METALS": [
+  "Cu",
+  "Ag",
+  "Au"
+  ],
+  "POST_TRANSITION_METALS": [
+  "Zn",
+  "Ga",
+  "Cd",
+  "In",
+  "Sn",
+  "Hg",
+  "Tl",
+  "Pb",
+  "Bi"
+  ],
+  "POOR_METALS": [
+  "Al",
+  "Ga",
+  "In",
+  "Tl",
+  "Sn",
+  "Pb",
+  "Bi"
   ]
 }

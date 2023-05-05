@@ -1415,7 +1415,7 @@ class PositionMarkers(QObject):
         if self.canvas.dark_mode:
             color = '#eff0f1'
         else:
-            color = '232629'
+            color = '#232629'
         lower, middle, higher = self.gen_positions()
         self.m_line = InfiniteLine(middle, movable=True,
                                    pen=mkPen(color, width=3.),
